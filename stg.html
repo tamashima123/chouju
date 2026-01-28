@@ -2,95 +2,235 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Simple Danmaku Game</title>
+    <title>Danmaku Game v2</title>
     <style>
-        body { background: #111; color: white; display: flex; flex-direction: column; align-items: center; overflow: hidden; font-family: sans-serif; }
-        canvas { background: #000; border: 2px solid #555; cursor: crosshair; }
-        .ui { margin-top: 10px; }
+        body { background: #111; color: white; display: flex; flex-direction: column; align-items: center; overflow: hidden; font-family: 'Courier New', sans-serif; }
+        canvas { background: #000; border: 2px solid #555; box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); }
+        .ui { margin-top: 10px; font-size: 14px; color: #aaa; text-align: center; }
     </style>
 </head>
 <body>
-    <h2>Gemini Danmaku Blast</h2>
-    <canvas id="gameCanvas" width="400" height="600"></canvas>
-    <div class="ui">移動: マウス / 自動射撃</div>
+    <h2>Gemini Danmaku Blast v2</h2>
+    <canvas id="gameCanvas" width="480" height="640"></canvas>
+    <div class="ui">
+        操作: [矢印キー] 移動 / [Z] 射撃（押しっぱなし）<br>
+        開始: [Space]
+    </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let player = { x: 200, y: 500, size: 5 };
-let bullets = [];
-let enemyBullets = [];
+// --- ゲームの状態管理 ---
+let gameState = "TITLE"; // TITLE, PLAYING, GAMEOVER
+let score = 0;
 let frame = 0;
 
-// ゲームループ
-function update() {
-    frame++;
+// --- オブジェクト管理 ---
+let player = { x: 240, y: 550, size: 4, speed: 5 };
+let keys = {}; // キー入力状態
+let bullets = [];      // 自機弾
+let enemyBullets = []; // 敵弾
+let enemies = [];      // 敵機
+
+// --- キー入力イベント ---
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+// --- メインループ ---
+function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    frame++;
 
-    // 1. プレイヤー描画
-    ctx.fillStyle = '#0cf';
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 2. 自機弾の生成 (一定間隔)
-    if (frame % 5 === 0) {
-        bullets.push({ x: player.x, y: player.y - 10 });
+    if (gameState === "TITLE") {
+        drawTitleScreen();
+    } else if (gameState === "PLAYING") {
+        updateGame();
+        drawGame();
+    } else if (gameState === "GAMEOVER") {
+        drawGameOverScreen();
     }
 
-    // 3. 敵弾の生成 (弾幕アルゴリズム)
-    // 360度方向に弾を飛ばす
-    if (frame % 20 === 0) {
-        for (let i = 0; i < 12; i++) {
-            let angle = (i * 30 + frame) * Math.PI / 180;
-            enemyBullets.push({
-                x: 200, y: 150,
-                vx: Math.cos(angle) * 2,
-                vy: Math.sin(angle) * 2
-            });
+    requestAnimationFrame(gameLoop);
+}
+
+// --- 更新処理 (ロジック) ---
+function updateGame() {
+    // 1. 自機移動 (矢印キー)
+    if (keys['ArrowLeft'] && player.x > 10) player.x -= player.speed;
+    if (keys['ArrowRight'] && player.x < canvas.width - 10) player.x += player.speed;
+    if (keys['ArrowUp'] && player.y > 10) player.y -= player.speed;
+    if (keys['ArrowDown'] && player.y < canvas.height - 10) player.y += player.speed;
+
+    // 2. 自機射撃 (Zキー または 自動連射ならここを調整)
+    if (keys['KeyZ'] || true) { // 今は常時射撃にしています
+        if (frame % 4 === 0) {
+            bullets.push({ x: player.x - 5, y: player.y, vx: 0, vy: -10 }); // 左
+            bullets.push({ x: player.x + 5, y: player.y, vx: 0, vy: -10 }); // 右
         }
     }
 
-    // 4. 自機弾の移動と描画
-    ctx.fillStyle = '#ff0';
-    bullets.forEach((b, i) => {
-        b.y -= 7;
-        ctx.fillRect(b.x - 2, b.y, 4, 10);
-        if (b.y < 0) bullets.splice(i, 1);
+    // 3. 敵のスポーン (画面上部からランダム)
+    if (frame % 60 === 0) {
+        enemies.push({
+            x: Math.random() * (canvas.width - 40) + 20,
+            y: -20,
+            hp: 3,
+            vx: (Math.random() - 0.5) * 2, // 左右にふらつく
+            vy: 2 + Math.random() // 下への速度
+        });
+    }
+
+    // 4. 敵の更新 (移動 & 射撃)
+    enemies.forEach((e, i) => {
+        e.x += e.vx;
+        e.y += e.vy;
+        
+        // 敵が一定間隔で自機狙い弾を撃つ
+        if (frame % 100 === 0 && e.y > 0) {
+            let angle = Math.atan2(player.y - e.y, player.x - e.x);
+            // 3WAY弾
+            for(let a = -0.2; a <= 0.2; a += 0.2) {
+                enemyBullets.push({
+                    x: e.x, y: e.y,
+                    vx: Math.cos(angle + a) * 3,
+                    vy: Math.sin(angle + a) * 3
+                });
+            }
+        }
+        
+        // 画面外に出たら削除
+        if (e.y > canvas.height + 20) enemies.splice(i, 1);
     });
 
-    // 5. 敵弾の移動と描画
-    ctx.fillStyle = '#f0f';
+    // 5. 弾の移動
+    bullets.forEach((b, i) => {
+        b.x += b.vx;
+        b.y += b.vy;
+        if (b.y < -10) bullets.splice(i, 1);
+    });
+
     enemyBullets.forEach((eb, i) => {
         eb.x += eb.vx;
         eb.y += eb.vy;
-        ctx.beginPath();
-        ctx.arc(eb.x, eb.y, 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 当たり判定 (簡易版)
-        let dx = eb.x - player.x;
-        let dy = eb.y - player.y;
-        if (Math.sqrt(dx*dx + dy*dy) < player.size + 2) {
-            ctx.fillStyle = "white";
-            ctx.fillText("HIT!", player.x - 10, player.y - 20);
+        if (eb.x < -10 || eb.x > canvas.width + 10 || eb.y > canvas.height + 10) {
+            enemyBullets.splice(i, 1);
         }
-
-        if (eb.x < 0 || eb.x > 400 || eb.y > 600) enemyBullets.splice(i, 1);
     });
 
-    requestAnimationFrame(update);
+    // 6. 当たり判定
+    // 自機弾 vs 敵
+    bullets.forEach((b, bi) => {
+        enemies.forEach((e, ei) => {
+            if (Math.abs(b.x - e.x) < 15 && Math.abs(b.y - e.y) < 15) {
+                e.hp--;
+                bullets.splice(bi, 1); // 弾消滅
+                if (e.hp <= 0) {
+                    enemies.splice(ei, 1); // 敵撃破
+                    score += 100;
+                    // 簡単な爆発エフェクト代わり(将来用)
+                }
+            }
+        });
+    });
+
+    // 敵弾 vs 自機
+    enemyBullets.forEach(eb => {
+        let dist = Math.hypot(eb.x - player.x, eb.y - player.y);
+        if (dist < player.size + 4) {
+            gameState = "GAMEOVER";
+        }
+    });
+    
+    // 敵本体 vs 自機
+    enemies.forEach(e => {
+        let dist = Math.hypot(e.x - player.x, e.y - player.y);
+        if (dist < 15) gameState = "GAMEOVER";
+    });
 }
 
-// マウス移動イベント
-canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    player.x = e.clientX - rect.left;
-    player.y = e.clientY - rect.top;
-});
+// --- 描画処理 ---
+function drawGame() {
+    // プレイヤー
+    ctx.fillStyle = '#0ff';
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y - 10);
+    ctx.lineTo(player.x - 8, player.y + 8);
+    ctx.lineTo(player.x + 8, player.y + 8);
+    ctx.fill();
+    // 当たり判定ドット
+    ctx.fillStyle = 'white';
+    ctx.beginPath(); ctx.arc(player.x, player.y, player.size, 0, Math.PI*2); ctx.fill();
 
-update();
+    // 敵
+    enemies.forEach(e => {
+        ctx.fillStyle = '#f55';
+        ctx.fillRect(e.x - 10, e.y - 10, 20, 20);
+    });
+
+    // 自機弾
+    ctx.fillStyle = '#ff0';
+    bullets.forEach(b => ctx.fillRect(b.x - 2, b.y - 5, 4, 10));
+
+    // 敵弾
+    ctx.fillStyle = '#f0f';
+    enemyBullets.forEach(eb => {
+        ctx.beginPath(); ctx.arc(eb.x, eb.y, 4, 0, Math.PI*2); ctx.fill();
+    });
+
+    // UI
+    ctx.fillStyle = 'white';
+    ctx.font = '20px Arial';
+    ctx.fillText("SCORE: " + score, 10, 30);
+}
+
+function drawTitleScreen() {
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.font = '40px Arial';
+    ctx.fillText("DANMAKU GAME", canvas.width / 2, 200);
+    
+    ctx.font = '20px Arial';
+    if (Math.floor(Date.now() / 500) % 2 === 0) {
+        ctx.fillText("PRESS SPACE TO START", canvas.width / 2, 350);
+    }
+
+    if (keys['Space']) {
+        resetGame();
+        gameState = "PLAYING";
+    }
+}
+
+function drawGameOverScreen() {
+    ctx.fillStyle = 'red';
+    ctx.textAlign = 'center';
+    ctx.font = '40px Arial';
+    ctx.fillText("GAME OVER", canvas.width / 2, 250);
+    
+    ctx.fillStyle = 'white';
+    ctx.font = '20px Arial';
+    ctx.fillText("FINAL SCORE: " + score, canvas.width / 2, 300);
+    ctx.fillText("PRESS SPACE TO RETRY", canvas.width / 2, 400);
+
+    if (keys['Space']) {
+        resetGame();
+        gameState = "PLAYING";
+    }
+}
+
+function resetGame() {
+    player.x = canvas.width / 2;
+    player.y = canvas.height - 100;
+    bullets = [];
+    enemyBullets = [];
+    enemies = [];
+    score = 0;
+    frame = 0;
+}
+
+// ゲーム開始
+gameLoop();
+
 </script>
 </body>
 </html>
