@@ -3,25 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>和風ポモドーロ</title>
+    <title>和風多機能タイマー</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700;900&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            /* 日本の伝統色 */
-            --bg-color: #fcfaf2; /* 生成り色 (和紙) */
-            --ink-color: #2b2b2b; /* 墨色 */
-            --indigo: #2e4b71;    /* 藍色 (集中用) */
-            --matcha: #7d9463;    /* 抹茶色 (休憩用) */
-            --vermilion: #c94042; /* 茜色 (アクセント) */
+            --bg-color: #fcfaf2; 
+            --ink-color: #2b2b2b;
+            --indigo: #2e4b71;
+            --matcha: #7d9463;
+            --vermilion: #c94042;
+            --gold: #c5a059;
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--ink-color);
-            font-family: 'Zen Old Mincho', 'Hiragino Mincho ProN', serif;
+            font-family: 'Zen Old Mincho', serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -29,26 +29,42 @@
             height: 100vh;
             margin: 0;
             transition: background-color 0.8s ease;
+            user-select: none;
         }
 
-        /* 縦書きのタイトル */
-        .title {
+        /* モード切り替えタブ */
+        .tabs {
             position: absolute;
-            top: 20px;
-            right: 30px;
-            writing-mode: vertical-rl;
-            font-size: 1.5rem;
-            letter-spacing: 0.2em;
-            opacity: 0.6;
-            border-left: 1px solid var(--ink-color);
-            padding-left: 10px;
+            top: 40px;
+            display: flex;
+            gap: 20px;
+            z-index: 10;
         }
 
-        /* メインのタイマー円形表示 */
+        .tab-btn {
+            background: transparent;
+            border: none;
+            font-family: inherit;
+            font-size: 1rem;
+            color: var(--ink-color);
+            opacity: 0.4;
+            cursor: pointer;
+            padding-bottom: 5px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            opacity: 1;
+            border-bottom-color: var(--vermilion);
+            font-weight: bold;
+        }
+
+        /* メイン円形コンテナ */
         .timer-container {
             position: relative;
-            width: 300px;
-            height: 300px;
+            width: 320px;
+            height: 320px;
             border-radius: 50%;
             border: 4px solid var(--indigo);
             display: flex;
@@ -58,10 +74,7 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.05);
             transition: border-color 0.5s ease;
             background-color: #fffcf5;
-        }
-
-        .timer-container.break-mode {
-            border-color: var(--matcha);
+            margin-top: 20px;
         }
 
         .status-label {
@@ -70,23 +83,59 @@
             letter-spacing: 0.2em;
             color: var(--indigo);
             font-weight: bold;
+            min-height: 1.5em; /* 高さ確保 */
         }
 
         .time-display {
             font-size: 4.5rem;
             font-weight: 900;
             line-height: 1;
-            font-variant-numeric: tabular-nums; /* 数字の幅を等しく */
+            font-variant-numeric: tabular-nums;
+            z-index: 2;
+        }
+        
+        /* ストップウォッチ用のミリ秒表示 */
+        .milli-display {
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin-top: 5px;
+            opacity: 0.7;
+            height: 1.5rem;
         }
 
-        /* ボタン群 */
+        /* タイマー設定用の入力エリア（タイマーモード時のみ表示） */
+        .timer-inputs {
+            display: none; /* JSで制御 */
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+            position: absolute;
+            bottom: 60px;
+        }
+
+        .timer-input {
+            width: 60px;
+            border: none;
+            border-bottom: 1px solid var(--ink-color);
+            background: transparent;
+            font-family: inherit;
+            font-size: 1.5rem;
+            text-align: center;
+            color: var(--ink-color);
+        }
+        .timer-input:focus {
+            outline: none;
+            border-bottom-color: var(--vermilion);
+        }
+
+        /* コントロールボタン */
         .controls {
-            margin-top: 40px;
+            margin-top: 50px;
             display: flex;
             gap: 20px;
         }
 
-        button {
+        button.ctrl-btn {
             background: transparent;
             border: 1px solid var(--ink-color);
             padding: 10px 30px;
@@ -95,20 +144,14 @@
             cursor: pointer;
             transition: all 0.3s ease;
             border-radius: 2px;
-            position: relative;
-            overflow: hidden;
         }
 
-        button:hover {
+        button.ctrl-btn:hover {
             background-color: var(--ink-color);
             color: var(--bg-color);
         }
 
-        button:active {
-            transform: translateY(2px);
-        }
-
-        /* 進行状況の演出（擬似的な波紋） */
+        /* 波紋アニメーション */
         .ripple {
             position: absolute;
             top: 50%;
@@ -118,8 +161,12 @@
             height: 100%;
             border-radius: 50%;
             border: 1px solid rgba(46, 75, 113, 0.2);
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        .animating {
             animation: breathe 3s infinite ease-in-out;
-            z-index: -1;
         }
 
         @keyframes breathe {
@@ -128,115 +175,256 @@
             100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.5; }
         }
 
+        /* 入力中のプレースホルダー色 */
+        ::placeholder { color: rgba(43, 43, 43, 0.3); }
+
     </style>
 </head>
 <body>
 
-    <h1 class="title">時を刻む</h1>
+    <nav class="tabs">
+        <button class="tab-btn active" onclick="changeMode('pomodoro')" id="tab-pomodoro">ポモドーロ</button>
+        <button class="tab-btn" onclick="changeMode('timer')" id="tab-timer">タイマー</button>
+        <button class="tab-btn" onclick="changeMode('stopwatch')" id="tab-stopwatch">計時</button>
+    </nav>
 
     <div class="timer-container" id="timerContainer">
-        <div class="ripple"></div>
+        <div class="ripple" id="ripple"></div>
         <div class="status-label" id="statusLabel">集中</div>
+        
         <div class="time-display" id="timeDisplay">25:00</div>
+        <div class="milli-display" id="milliDisplay"></div>
+
+        <div class="timer-inputs" id="timerInputs">
+            <input type="number" class="timer-input" id="inputMin" placeholder="分" min="0" max="99" value="3">
+            <span>:</span>
+            <input type="number" class="timer-input" id="inputSec" placeholder="秒" min="0" max="59" value="00">
+        </div>
     </div>
 
     <div class="controls">
-        <button onclick="toggleTimer()" id="startBtn">開始</button>
-        <button onclick="resetTimer()">リセット</button>
+        <button class="ctrl-btn" onclick="toggleTimer()" id="startBtn">開始</button>
+        <button class="ctrl-btn" onclick="resetTimer()">リセット</button>
     </div>
 
     <script>
-        let timeLeft = 25 * 60; // 秒数
-        let isRunning = false;
-        let isWorkMode = true; // true: 集中, false: 休憩
+        // 状態管理
+        let currentMode = 'pomodoro'; // 'pomodoro', 'timer', 'stopwatch'
         let timerInterval = null;
+        let isRunning = false;
+        
+        // ポモドーロ用変数
+        let isPomoWork = true; // true:集中, false:休憩
+        let pomoTime = 25 * 60;
+        
+        // タイマー用変数
+        let timerTime = 3 * 60; // 初期値3分
+        
+        // ストップウォッチ用変数
+        let stopwatchStartTime = 0;
+        let stopwatchElapsed = 0;
 
-        const timeDisplay = document.getElementById('timeDisplay');
+        // DOM要素
+        const display = document.getElementById('timeDisplay');
+        const milliDisplay = document.getElementById('milliDisplay');
         const startBtn = document.getElementById('startBtn');
         const statusLabel = document.getElementById('statusLabel');
-        const timerContainer = document.getElementById('timerContainer');
-        const root = document.documentElement;
+        const container = document.getElementById('timerContainer');
+        const ripple = document.getElementById('ripple');
+        const inputsDiv = document.getElementById('timerInputs');
+        const inputMin = document.getElementById('inputMin');
+        const inputSec = document.getElementById('inputSec');
 
-        // 時間を表示用にフォーマット (mm:ss)
-        function formatTime(seconds) {
-            const m = Math.floor(seconds / 60);
-            const s = seconds % 60;
+        // --- 共通関数 ---
+
+        function formatTime(totalSeconds) {
+            const m = Math.floor(totalSeconds / 60);
+            const s = Math.floor(totalSeconds % 60);
             return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         }
 
-        function updateDisplay() {
-            timeDisplay.textContent = formatTime(timeLeft);
+        // モード変更処理
+        function changeMode(mode) {
+            // タイマーリセット
+            stopTimer();
+            currentMode = mode;
+            
+            // タブの見た目更新
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${mode}`).classList.add('active');
+
+            // 画面初期化
+            resetTimer();
         }
 
-        // タイマーの開始・停止
+        function stopTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            startBtn.textContent = "開始";
+            ripple.classList.remove('animating');
+        }
+
         function toggleTimer() {
             if (isRunning) {
-                clearInterval(timerInterval);
-                startBtn.textContent = "再開";
-                isRunning = false;
+                stopTimer();
             } else {
-                startBtn.textContent = "停止";
-                isRunning = true;
+                start();
+            }
+        }
+
+        function start() {
+            isRunning = true;
+            startBtn.textContent = "停止";
+            ripple.classList.add('animating');
+            
+            // タイマーモードの場合、入力値を取得してセット
+            if (currentMode === 'timer') {
+                inputsDiv.style.display = 'none'; // 入力を隠す
+                // 値が更新されていれば反映（リセット直後などでない場合）
+                if (timerTime === 0) { // 0なら入力値から取る
+                    const m = parseInt(inputMin.value) || 0;
+                    const s = parseInt(inputSec.value) || 0;
+                    timerTime = m * 60 + s;
+                }
+            }
+
+            if (currentMode === 'stopwatch') {
+                stopwatchStartTime = Date.now() - stopwatchElapsed;
+            }
+
+            timerInterval = setInterval(tick, 100); // 0.1秒ごとに更新(ストップウォッチ対応)
+        }
+
+        function tick() {
+            if (currentMode === 'pomodoro') {
+                if (pomoTime > 0) {
+                    pomoTime--; // 簡易的に1秒減算（厳密な精度より雰囲気を優先）
+                    // ※setIntervalが100msなので、カウンタで調整が必要ですが
+                    // 複雑さを避けるためポモドーロとタイマーは1000ms間隔に変更します
+                } else {
+                    switchPomoMode();
+                }
+                display.textContent = formatTime(pomoTime);
+            } 
+            else if (currentMode === 'timer') {
+                if (timerTime > 0) {
+                    timerTime--;
+                } else {
+                    stopTimer();
+                    alert("時間になりました");
+                }
+                display.textContent = formatTime(timerTime);
+            } 
+            else if (currentMode === 'stopwatch') {
+                const now = Date.now();
+                stopwatchElapsed = now - stopwatchStartTime;
+                
+                const totalSec = Math.floor(stopwatchElapsed / 1000);
+                const ms = Math.floor((stopwatchElapsed % 1000) / 10); // 2桁
+                
+                display.textContent = formatTime(totalSec);
+                milliDisplay.textContent = `.${ms.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // インターバル管理を最適化（モードによって間隔を変える）
+        function start() {
+            isRunning = true;
+            startBtn.textContent = "停止";
+            ripple.classList.add('animating');
+
+            if (currentMode === 'stopwatch') {
+                // ストップウォッチは高頻度更新
+                stopwatchStartTime = Date.now() - stopwatchElapsed;
                 timerInterval = setInterval(() => {
-                    if (timeLeft > 0) {
-                        timeLeft--;
-                        updateDisplay();
-                    } else {
-                        switchMode(); // 時間切れでモード切り替え
+                    tick();
+                }, 50); // 滑らかな表示のため50ms
+            } else {
+                // ポモドーロとタイマーは入力値の反映処理
+                if (currentMode === 'timer') {
+                    inputsDiv.style.display = 'none';
+                    // もし表示が00:00なら入力値を採用
+                    if (timerTime <= 0) { 
+                        const m = parseInt(inputMin.value) || 0;
+                        const s = parseInt(inputSec.value) || 0;
+                        timerTime = m * 60 + s;
+                        if(timerTime <= 0) { stopTimer(); return; } // 0なら開始しない
                     }
+                }
+                
+                // 1秒ごとの更新
+                timerInterval = setInterval(() => {
+                    tick();
                 }, 1000);
             }
         }
 
-        // リセットボタン
         function resetTimer() {
-            clearInterval(timerInterval);
-            isRunning = false;
-            startBtn.textContent = "開始";
-            
-            // 現在のモードに合わせて初期時間をセット
-            if (isWorkMode) {
-                timeLeft = 25 * 60;
-            } else {
-                timeLeft = 5 * 60;
-            }
-            updateDisplay();
-        }
+            stopTimer();
+            milliDisplay.textContent = "";
+            inputsDiv.style.display = 'none';
+            container.style.borderColor = "var(--indigo)";
+            statusLabel.style.color = "var(--indigo)";
 
-        // 集中/休憩モードの切り替え
-        function switchMode() {
-            clearInterval(timerInterval);
-            isRunning = false;
-            startBtn.textContent = "開始";
-
-            isWorkMode = !isWorkMode;
-
-            if (isWorkMode) {
-                // 集中モードへ
-                timeLeft = 25 * 60;
+            if (currentMode === 'pomodoro') {
+                isPomoWork = true;
+                pomoTime = 25 * 60;
                 statusLabel.textContent = "集中";
-                statusLabel.style.color = "var(--indigo)";
-                timerContainer.classList.remove('break-mode');
-                // 色変え
-                timerContainer.style.borderColor = "var(--indigo)";
-            } else {
-                // 休憩モードへ
-                timeLeft = 5 * 60;
-                statusLabel.textContent = "休憩";
-                statusLabel.style.color = "var(--matcha)";
-                timerContainer.classList.add('break-mode');
-                // 色変え
-                timerContainer.style.borderColor = "var(--matcha)";
+                display.textContent = formatTime(pomoTime);
+            } 
+            else if (currentMode === 'timer') {
+                statusLabel.textContent = "設定";
+                inputsDiv.style.display = 'flex'; // 入力表示
+                
+                // 現在の入力値を反映して表示
+                const m = parseInt(inputMin.value) || 0;
+                const s = parseInt(inputSec.value) || 0;
+                timerTime = m * 60 + s;
+                display.textContent = formatTime(timerTime);
+                
+                // 入力欄変更時にも表示を更新するイベントリスナ
+                const updateFromInput = () => {
+                    if(!isRunning) {
+                        const m = parseInt(inputMin.value) || 0;
+                        const s = parseInt(inputSec.value) || 0;
+                        timerTime = m * 60 + s;
+                        display.textContent = formatTime(timerTime);
+                    }
+                };
+                inputMin.oninput = updateFromInput;
+                inputSec.oninput = updateFromInput;
+            } 
+            else if (currentMode === 'stopwatch') {
+                statusLabel.textContent = "経過";
+                stopwatchElapsed = 0;
+                display.textContent = "00:00";
+                milliDisplay.textContent = ".00";
             }
-            updateDisplay();
-            
-            // 完了時の通知音の代わりにアラート（簡易実装）
-            // 実際にはここで <audio> を再生すると良いです
-            alert(isWorkMode ? "休憩終了。集中しましょう。" : "集中終了。一服しましょう。");
         }
 
-        // 初期表示
-        updateDisplay();
+        // ポモドーロのモード切替
+        function switchPomoMode() {
+            stopTimer();
+            isPomoWork = !isPomoWork;
+            if (isPomoWork) {
+                pomoTime = 25 * 60;
+                statusLabel.textContent = "集中";
+                container.style.borderColor = "var(--indigo)";
+                statusLabel.style.color = "var(--indigo)";
+                alert("休憩終了。集中しましょう。");
+            } else {
+                pomoTime = 5 * 60;
+                statusLabel.textContent = "休憩";
+                container.style.borderColor = "var(--matcha)";
+                statusLabel.style.color = "var(--matcha)";
+                alert("集中終了。一服しましょう。");
+            }
+            display.textContent = formatTime(pomoTime);
+        }
+
+        // 初期化
+        resetTimer();
+
     </script>
 </body>
 </html>
