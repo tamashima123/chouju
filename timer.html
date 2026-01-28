@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>和風ポモドーロ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* 日本の伝統色 */
+            --bg-color: #fcfaf2; /* 生成り色 (和紙) */
+            --ink-color: #2b2b2b; /* 墨色 */
+            --indigo: #2e4b71;    /* 藍色 (集中用) */
+            --matcha: #7d9463;    /* 抹茶色 (休憩用) */
+            --vermilion: #c94042; /* 茜色 (アクセント) */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--ink-color);
+            font-family: 'Zen Old Mincho', 'Hiragino Mincho ProN', serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            transition: background-color 0.8s ease;
+        }
+
+        /* 縦書きのタイトル */
+        .title {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            writing-mode: vertical-rl;
+            font-size: 1.5rem;
+            letter-spacing: 0.2em;
+            opacity: 0.6;
+            border-left: 1px solid var(--ink-color);
+            padding-left: 10px;
+        }
+
+        /* メインのタイマー円形表示 */
+        .timer-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            border: 4px solid var(--indigo);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            transition: border-color 0.5s ease;
+            background-color: #fffcf5;
+        }
+
+        .timer-container.break-mode {
+            border-color: var(--matcha);
+        }
+
+        .status-label {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            letter-spacing: 0.2em;
+            color: var(--indigo);
+            font-weight: bold;
+        }
+
+        .time-display {
+            font-size: 4.5rem;
+            font-weight: 900;
+            line-height: 1;
+            font-variant-numeric: tabular-nums; /* 数字の幅を等しく */
+        }
+
+        /* ボタン群 */
+        .controls {
+            margin-top: 40px;
+            display: flex;
+            gap: 20px;
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid var(--ink-color);
+            padding: 10px 30px;
+            font-family: inherit;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover {
+            background-color: var(--ink-color);
+            color: var(--bg-color);
+        }
+
+        button:active {
+            transform: translateY(2px);
+        }
+
+        /* 進行状況の演出（擬似的な波紋） */
+        .ripple {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 1px solid rgba(46, 75, 113, 0.2);
+            animation: breathe 3s infinite ease-in-out;
+            z-index: -1;
+        }
+
+        @keyframes breathe {
+            0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.5; }
+            50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.1; }
+            100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.5; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1 class="title">時を刻む</h1>
+
+    <div class="timer-container" id="timerContainer">
+        <div class="ripple"></div>
+        <div class="status-label" id="statusLabel">集中</div>
+        <div class="time-display" id="timeDisplay">25:00</div>
+    </div>
+
+    <div class="controls">
+        <button onclick="toggleTimer()" id="startBtn">開始</button>
+        <button onclick="resetTimer()">リセット</button>
+    </div>
+
+    <script>
+        let timeLeft = 25 * 60; // 秒数
+        let isRunning = false;
+        let isWorkMode = true; // true: 集中, false: 休憩
+        let timerInterval = null;
+
+        const timeDisplay = document.getElementById('timeDisplay');
+        const startBtn = document.getElementById('startBtn');
+        const statusLabel = document.getElementById('statusLabel');
+        const timerContainer = document.getElementById('timerContainer');
+        const root = document.documentElement;
+
+        // 時間を表示用にフォーマット (mm:ss)
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            timeDisplay.textContent = formatTime(timeLeft);
+        }
+
+        // タイマーの開始・停止
+        function toggleTimer() {
+            if (isRunning) {
+                clearInterval(timerInterval);
+                startBtn.textContent = "再開";
+                isRunning = false;
+            } else {
+                startBtn.textContent = "停止";
+                isRunning = true;
+                timerInterval = setInterval(() => {
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        updateDisplay();
+                    } else {
+                        switchMode(); // 時間切れでモード切り替え
+                    }
+                }, 1000);
+            }
+        }
+
+        // リセットボタン
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            startBtn.textContent = "開始";
+            
+            // 現在のモードに合わせて初期時間をセット
+            if (isWorkMode) {
+                timeLeft = 25 * 60;
+            } else {
+                timeLeft = 5 * 60;
+            }
+            updateDisplay();
+        }
+
+        // 集中/休憩モードの切り替え
+        function switchMode() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            startBtn.textContent = "開始";
+
+            isWorkMode = !isWorkMode;
+
+            if (isWorkMode) {
+                // 集中モードへ
+                timeLeft = 25 * 60;
+                statusLabel.textContent = "集中";
+                statusLabel.style.color = "var(--indigo)";
+                timerContainer.classList.remove('break-mode');
+                // 色変え
+                timerContainer.style.borderColor = "var(--indigo)";
+            } else {
+                // 休憩モードへ
+                timeLeft = 5 * 60;
+                statusLabel.textContent = "休憩";
+                statusLabel.style.color = "var(--matcha)";
+                timerContainer.classList.add('break-mode');
+                // 色変え
+                timerContainer.style.borderColor = "var(--matcha)";
+            }
+            updateDisplay();
+            
+            // 完了時の通知音の代わりにアラート（簡易実装）
+            // 実際にはここで <audio> を再生すると良いです
+            alert(isWorkMode ? "休憩終了。集中しましょう。" : "集中終了。一服しましょう。");
+        }
+
+        // 初期表示
+        updateDisplay();
+    </script>
+</body>
+</html>
