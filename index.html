@@ -4,86 +4,91 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>長寿の庭園</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Noto Sans JP', sans-serif;
+            font-family: 'Noto Serif JP', serif; /* 和風に合う明朝体 */
+            margin: 0;
+            padding: 0;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            margin: 0;
-            background-color: #f8f9fa;
-            color: #343a40;
+            /* 背景画像の設定 */
+            background-image: url('https://news.1242.com/wp-content/uploads/2023/05/2044016_sTR.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #333;
         }
+
+        /* コンテンツを囲む白い枠（半透明） */
         .container {
             text-align: center;
-            background-color: white;
-            padding: 50px 30px;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(5px); /* 背景を少しぼかす */
+            padding: 60px 40px;
+            border-radius: 2px; /* あえて角を落としすぎず上品に */
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
             max-width: 600px;
             width: 90%;
-            animation: fadeIn 0.8s ease-out;
+            border-top: 5px solid #5d6d7e; /* アクセントライン */
+            animation: fadeIn 1.2s ease-in-out;
         }
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
+
         h1 {
-            color: #212529;
             font-size: 2.5em;
-            margin-bottom: 10px;
-            font-weight: 700;
+            margin-bottom: 15px;
+            letter-spacing: 0.2em; /* 文字の間隔を広げて優雅に */
+            color: #2c3e50;
         }
+
         p.subtitle {
             font-size: 1.1em;
-            color: #6c757d;
             margin-bottom: 40px;
+            color: #555;
         }
+
         .button-group {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 25px;
             flex-wrap: wrap;
         }
+
         .link-button {
             display: inline-block;
-            min-width: 160px;
-            padding: 16px 24px;
+            min-width: 180px;
+            padding: 15px 20px;
             text-decoration: none;
             font-weight: 700;
-            border-radius: 12px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            font-size: 1.05em;
+            border: 1px solid #2c3e50;
+            background-color: transparent;
+            color: #2c3e50;
+            transition: all 0.4s ease;
+            letter-spacing: 0.1em;
         }
-        /* 将棋ボタン：落ち着いたネイビー */
-        .btn-shogi {
-            background-color: #34495e;
-            color: white;
-        }
-        .btn-shogi:hover {
+
+        /* ホバー時の挙動 */
+        .link-button:hover {
             background-color: #2c3e50;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+            color: #fff;
+            transform: scale(1.05);
         }
-        /* STGボタン：爽やかなブルー */
-        .btn-stg {
-            background-color: #007bff;
-            color: white;
-        }
-        .btn-stg:hover {
-            background-color: #0056b3;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
-        }
+
         .footer {
-            margin-top: 40px;
-            font-size: 0.85em;
-            color: #adb5bd;
+            margin-top: 30px;
+            font-size: 0.8em;
+            color: #fff;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8); /* 背景が明るくても読めるように */
         }
+
         @media (max-width: 480px) {
             .button-group {
                 flex-direction: column;
@@ -91,7 +96,6 @@
             }
             .link-button {
                 width: 100%;
-                box-sizing: border-box;
             }
         }
     </style>
@@ -99,17 +103,17 @@
 <body>
 
     <div class="container">
-        <h1>Welcome</h1>
-        <p class="subtitle">お好きなコンテンツを選択してください</p>
+        <h1>長寿の庭園</h1>
+        <p class="subtitle">静謐なひとときをお楽しみください</p>
         
         <div class="button-group">
-            <a href="shogi.html" class="link-button btn-shogi">将棋へ</a>
-            <a href="stg.html" class="link-button btn-stg">シューティングゲームへ</a>
+            <a href="shogi.html" class="link-button">将棋の間</a>
+            <a href="stg.html" class="link-button">遊戯の間</a>
         </div>
     </div>
 
     <footer class="footer">
-        <p>&copy; 2026 My Digital Portal</p>
+        <p>&copy; 2026 長寿の庭園</p>
     </footer>
 
 </body>
