@@ -2,23 +2,24 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>将棋 v0.3</title>
+    <title>将棋 ver 0.4</title>
     <style>
         :root {
-            /* 色の定義 */
-            --bg-gradient-start: #ffffff;
-            --bg-gradient-end: #ffcdd2; /* 薄い紅 */
-            --board-wood-light: #eecfa1;
-            --board-wood-dark: #cd853f;
-            --piece-wood: #f5deb3;
-            --piece-shadow: #8d6e63;
-            --accent-red: #b71c1c;
-            --line-color: #3e2723;
+            /* グラデーション廃止、単色指定 */
+            --bg-color: #f3f3f3; /* 背景：落ち着いた灰色 */
+            --board-color: #e6c18d; /* 盤：明るい木の色 */
+            --piece-color: #f7e9ce; /* 駒：さらに明るい木の色 */
+            --accent-color: #8d6e63; /* アクセント：茶色 */
+            --text-color: #3e2723;
+            --highlight-color: #fff59d; /* 選択時の色 */
+            --red-text: #b71c1c;
         }
 
         body {
-            font-family: "HiraMinProN-W6", "Sawarabi Mincho", "Yu Mincho", "MS PMincho", serif; /* 和風フォント */
-            background: radial-gradient(circle, var(--bg-gradient-start), var(--bg-gradient-end), #e57373);
+            /* 指定のフォントを優先 */
+            font-family: "篠-B", "Shino-B", "Sawarabi Mincho", "HiraMinProN-W6", "Yu Mincho", serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             margin: 0;
             min-height: 100vh;
             display: flex;
@@ -28,119 +29,96 @@
         }
 
         h1 {
-            color: var(--accent-red);
-            text-shadow: 2px 2px 0 #fff;
-            margin: 10px 0;
-            font-size: 2.5rem;
-            letter-spacing: 0.2em;
+            margin: 20px 0;
+            font-size: 3rem;
+            letter-spacing: 0.1em;
+            color: #000;
         }
 
-        /* ゲーム全体のコンテナ（横並びにするためFlexbox） */
         #game-area {
             display: flex;
-            gap: 20px;
+            gap: 30px;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.6);
-            border: 4px double var(--accent-red);
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(183, 28, 28, 0.3);
             align-items: flex-start;
         }
 
-        /* --- 将棋盤のデザイン --- */
+        /* --- 将棋盤 --- */
         #board {
             display: grid;
             grid-template-columns: repeat(9, 60px);
             grid-template-rows: repeat(9, 65px);
-            border: 5px solid #5d4037;
-            background-color: var(--board-wood-light);
-            /* 木目風のテクスチャをCSSグラデーションで表現 */
-            background-image: 
-                linear-gradient(90deg, rgba(205,133,63,0.1) 50%, transparent 50%),
-                linear-gradient(rgba(205,133,63,0.1) 50%, transparent 50%);
-            background-size: 4px 4px;
-            box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+            border: 4px solid #5d4037;
+            background-color: var(--board-color);
+            /* グラデーションなしのベタ塗り */
+            box-shadow: 10px 10px 0px rgba(0,0,0,0.1);
         }
 
         .square {
             width: 60px; height: 65px;
-            border: 1px solid rgba(62, 39, 35, 0.5); /* マスの線 */
+            border: 1px solid rgba(0,0,0,0.2);
             display: flex; align-items: center; justify-content: center;
             cursor: pointer;
             box-sizing: border-box;
         }
         
-        /* 選択中のマス */
-        .square.selected { background-color: rgba(255, 235, 59, 0.5); }
+        .square.selected { background-color: var(--highlight-color); }
 
-        /* --- 駒のデザイン --- */
+        /* --- 駒 --- */
         .piece-visual {
             width: 48px; height: 54px;
-            background: var(--piece-wood);
+            background-color: var(--piece-color);
             color: #000;
             display: flex; align-items: center; justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            /* 将棋の駒のような五角形にする */
+            font-size: 26px;
+            /* 駒の形 */
             clip-path: polygon(50% 0%, 90% 20%, 80% 100%, 20% 100%, 10% 20%);
-            /* 立体感の演出（影はclip-pathで切れるためfilterを使用） */
-            filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.5));
-            /* 木目の微細な線 */
-            background-image: linear-gradient(to bottom right, rgba(0,0,0,0.05), transparent);
+            /* 影もフラットに */
+            filter: drop-shadow(1px 2px 0px rgba(0,0,0,0.3));
         }
 
-        .gote .piece-visual { transform: rotate(180deg); color: #000; } /* 後手の文字は黒 */
-        .sente .piece-visual { color: #000; }
-        .promoted .piece-visual { color: var(--accent-red) !important; } /* 成り駒は赤 */
+        .gote .piece-visual { transform: rotate(180deg); }
+        .promoted .piece-visual { color: var(--red-text) !important; }
 
-        /* --- 右側のエリア（駒台・情報） --- */
+        /* --- 右側のエリア --- */
         #sidebar {
             display: flex;
             flex-direction: column;
             gap: 15px;
-            width: 160px;
+            width: 170px;
         }
 
         .hand-container {
-            background: #d7ccc8;
-            border: 3px solid #8d6e63;
-            border-radius: 4px;
+            background-color: var(--piece-color);
+            border: 2px solid var(--accent-color);
+            min-height: 160px;
             padding: 5px;
-            min-height: 150px;
-            /* 木目調 */
-            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(141, 110, 99, 0.1) 10px, rgba(141, 110, 99, 0.1) 20px);
-            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2);
             display: flex;
             flex-wrap: wrap;
             align-content: flex-start;
-            gap: 2px;
+            gap: 4px;
         }
 
         .hand-title {
             text-align: center;
-            background: var(--line-color);
-            color: white;
-            padding: 4px;
-            font-size: 0.9rem;
-            border-radius: 2px;
-            margin-bottom: 5px;
+            background-color: var(--accent-color);
+            color: #fff;
+            padding: 5px;
+            font-size: 1rem;
+            margin-bottom: 0;
         }
 
         .hand-piece {
-            transform: scale(0.8); /* 駒台の駒は少し小さく */
+            transform: scale(0.85);
             cursor: pointer;
         }
-        .hand-piece.selected .piece-visual { background: #fff176; }
+        .hand-piece.selected .piece-visual { background-color: var(--highlight-color); }
 
         #status {
-            font-size: 1.2rem;
-            font-weight: bold;
+            font-size: 1.4rem;
             text-align: center;
             padding: 10px;
-            background: white;
-            border: 2px solid var(--accent-red);
-            border-radius: 5px;
-            color: var(--accent-red);
+            background-color: #fff;
+            border: 2px solid #000;
         }
 
         .controls {
@@ -151,25 +129,23 @@
         }
 
         button {
-            padding: 10px;
-            font-size: 1rem;
+            padding: 12px;
+            font-size: 1.1rem;
             font-family: inherit;
             cursor: pointer;
-            background: var(--accent-red);
+            background-color: var(--accent-color);
             color: white;
             border: none;
-            border-radius: 4px;
-            box-shadow: 0 4px 0 #7f0000;
-            transition: all 0.1s;
+            transition: opacity 0.2s;
         }
-        button:active { transform: translateY(4px); box-shadow: none; }
-        button:disabled { background: #9e9e9e; box-shadow: none; cursor: not-allowed; }
+        button:hover { opacity: 0.8; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
 
     </style>
 </head>
 <body>
 
-<h1>🎍 迎春将棋 🎍</h1>
+<h1>将棋</h1>
 
 <div id="game-area">
     <div id="board"></div>
@@ -183,7 +159,7 @@
         <div id="status">先手の番です</div>
 
         <div class="controls">
-            <button onclick="undoMove()" id="undo-btn" disabled>待った！</button>
+            <button onclick="undoMove()" id="undo-btn" disabled>待った</button>
             <button onclick="initGame()">最初から</button>
         </div>
 
@@ -205,12 +181,12 @@ let board = [];
 let hands = { s: [], g: [] };
 let turn = 's';
 let selected = null; 
-let history = []; // 履歴保存用
+let history = []; 
 
 const PROMOTION_MAP = { '歩':'と', '香':'杏', '桂':'圭', '銀':'全', '角':'馬', '飛':'竜' };
 const REVERSE_MAP = { 'と':'歩', '杏':'香', '圭':'桂', '全':'銀', '馬':'角', '竜':'飛' };
 
-// 状態を履歴に保存
+// 履歴保存
 function saveState() {
     const state = {
         board: JSON.parse(JSON.stringify(board)),
@@ -221,7 +197,7 @@ function saveState() {
     undoBtn.disabled = false;
 }
 
-// 待った（Undo）機能
+// 待った
 function undoMove() {
     if (history.length === 0) return;
     const lastState = history.pop();
@@ -229,44 +205,39 @@ function undoMove() {
     hands = lastState.hands;
     turn = lastState.turn;
     selected = null;
-    
     if (history.length === 0) undoBtn.disabled = true;
     updateStatus();
     render();
 }
 
 function initGame() {
-    turn = 's';
-    selected = null;
-    hands = { s: [], g: [] };
-    history = [];
+    turn = 's'; selected = null; hands = { s: [], g: [] }; history = [];
     board = Array(9).fill(null).map(() => Array(9).fill(null));
-    
     const backRow = ['香','桂','銀','金','玉','金','銀','桂','香'];
     for(let i=0; i<9; i++) {
         board[0][i] = 'g' + backRow[i];
         board[8][i] = 's' + backRow[i];
     }
-    // 飛車角の正しい配置
     board[1][1] = 'g飛'; board[1][7] = 'g角';
     board[7][1] = 's角'; board[7][7] = 's飛';
     for(let i=0; i<9; i++) {
         board[2][i] = 'g歩';
         board[6][i] = 's歩';
     }
-    
     undoBtn.disabled = true;
     updateStatus();
     render();
 }
 
-// --- ロジック部分は前回と同様 ---
-
-function isValidMove(fR, fC, tR, tC, piece, tempBoard = board) {
+// 基本的な移動ルール（駒の性能のみ）
+function getMoveRules(fR, fC, tR, tC, piece, tempBoard) {
     const side = piece[0], type = piece.substring(1);
     const dr = tR - fR, dc = tC - fC;
     const dir = (side === 's') ? -1 : 1;
+    
+    // 味方の駒の上には移動不可
     if (tempBoard[tR][tC] && tempBoard[tR][tC][0] === side) return false;
+
     if (['金','と','杏','圭','全'].includes(type)) {
         if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) return !(dr === -dir && Math.abs(dc) === 1);
         return false;
@@ -292,71 +263,133 @@ function isPathClear(fR, fC, tR, tC, tempBoard) {
     return true;
 }
 
-function isCheck(side, tempBoard = board) {
+// ★重要：王手放置チェックを含む「合法手」判定
+function isLegalMove(fR, fC, tR, tC, piece) {
+    // 1. 駒の動きとして正しいか
+    if (!getMoveRules(fR, fC, tR, tC, piece, board)) return false;
+
+    // 2. 仮想的に動かしてみて、自分の王様が王手されていないか（自殺手の禁止・王手回避義務）
+    const side = piece[0];
+    const originalTarget = board[tR][tC];
+    
+    // 仮想移動
+    board[tR][tC] = piece;
+    board[fR][fC] = null;
+    
+    const kingInCheck = isKingInCheck(side, board);
+    
+    // 元に戻す
+    board[fR][fC] = piece;
+    board[tR][tC] = originalTarget;
+    
+    // 王手される状態になるなら、その手は指せない
+    return !kingInCheck;
+}
+
+// 自分の玉が取られる状態かチェック
+function isKingInCheck(side, currentBoard) {
     let kingPos = null;
-    for(let r=0; r<9; r++) for(let c=0; c<9; c++) if(tempBoard[r][c] === side + '玉') kingPos = {r, c};
-    if (!kingPos) return false;
+    for(let r=0; r<9; r++) for(let c=0; c<9; c++) if(currentBoard[r][c] === side + '玉') kingPos = {r, c};
+    if (!kingPos) return false; // 玉がいない（ありえないが）
+    
     const opp = side === 's' ? 'g' : 's';
-    for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
-        const p = tempBoard[r][c];
-        if(p && p[0] === opp && isValidMove(r, c, kingPos.r, kingPos.c, p, tempBoard)) return true;
+    // 相手の全駒について、玉に届くかチェック
+    for(let r=0; r<9; r++) {
+        for(let c=0; c<9; c++) {
+            const p = currentBoard[r][c];
+            if(p && p[0] === opp) {
+                if(getMoveRules(r, c, kingPos.r, kingPos.c, p, currentBoard)) return true;
+            }
+        }
     }
     return false;
 }
 
-function checkCheckmate(side) {
-    if (!isCheck(side)) return false;
+// 詰み判定（相手の手番で、どこにも逃げられないか）
+function isCheckmate(side) {
+    // 王手されていなければ詰みではない（ステイルメイト等の細かい将棋ルールは割愛）
+    if (!isKingInCheck(side, board)) return false;
+
+    // 1. 盤上の駒を動かして回避できるか
     for(let fR=0; fR<9; fR++) for(let fC=0; fC<9; fC++) {
         const p = board[fR][fC];
         if(p && p[0] === side) {
             for(let tR=0; tR<9; tR++) for(let tC=0; tC<9; tC++) {
-                if(isValidMove(fR, fC, tR, tC, p)) {
-                    const old = board[tR][tC]; board[tR][tC] = p; board[fR][fC] = null;
-                    const safe = !isCheck(side);
-                    board[fR][fC] = p; board[tR][tC] = old;
-                    if(safe) return false;
-                }
+                if(isLegalMove(fR, fC, tR, tC, p)) return false; // 回避手あり
             }
         }
     }
-    // 持ち駒使用での回避判定は省略（完全版では本来必要）
-    return true;
-}
-
-function checkKinjite(r, c, type, side) {
-    if ((type === '歩' || type === '香') && (side === 's' ? r === 0 : r === 8)) return "そこには打てません（行き所なし）。";
-    if (type === '桂' && (side === 's' ? r <= 1 : r >= 7)) return "そこには打てません（行き所なし）。";
-    if (type === '歩') {
-        for (let row = 0; row < 9; row++) if (board[row][c] === side + '歩') return "二歩です。";
-        // 打ち歩詰めチェック
-        const old = board[r][c]; board[r][c] = side + '歩';
-        const zume = checkCheckmate(side === 's' ? 'g' : 's');
-        board[r][c] = old;
-        if (zume) return "打ち歩詰めは禁じ手です。";
+    // 2. 持ち駒を打って回避できるか
+    const hand = hands[side];
+    // 重複する駒種をまとめる処理をしていないため、全要素試行
+    for(let i=0; i<hand.length; i++) {
+        const pieceType = hand[i];
+        for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
+            if(!board[r][c]) {
+                // 仮想配置
+                board[r][c] = side + pieceType;
+                // 禁じ手チェック（二歩など）は省略せず簡易チェック
+                // 王手が解除されるか
+                const safe = !isKingInCheck(side, board);
+                board[r][c] = null; // 戻す
+                if(safe) return false; // 回避手あり
+            }
+        }
     }
-    return null;
+    return true; // 全ての手を試しても王手回避不可
 }
 
 function handleBoardClick(r, c) {
     const piece = board[r][c];
+
+    // 持ち駒からの「打ち」
     if (selected && selected.type === 'hand') {
         const type = hands[selected.side][selected.index];
-        const err = checkKinjite(r, c, type, selected.side);
-        if (err) { alert(err); selected = null; render(); return; }
         if (!piece) {
-            saveState(); // 変更前に保存
+            // 禁じ手チェック（二歩、行き所なし）
+            if ((type === '歩' || type === '香') && (selected.side === 's' ? r === 0 : r === 8)) { alert("そこには打てません"); return; }
+            if (type === '桂' && (selected.side === 's' ? r <= 1 : r >= 7)) { alert("そこには打てません"); return; }
+            if (type === '歩') {
+                for (let row = 0; row < 9; row++) if (board[row][c] === selected.side + '歩') { alert("二歩です"); return; }
+                // 打ち歩詰めチェック（高度なため今回は省略、必要なら追加可）
+            }
+
+            // 仮置きして王手回避できているかチェック（相手の王手に対して駒を打って守る場合など）
+            board[r][c] = selected.side + type;
+            if (isKingInCheck(selected.side, board)) {
+                board[r][c] = null;
+                alert("王手が放置されています（または自殺手です）");
+                return;
+            }
+            // 元に戻さず確定させる前に、history保存
+            board[r][c] = null; // 一旦戻す（saveStateのため）
+            saveState();
+            
+            // 実行
             board[r][c] = selected.side + type;
             hands[selected.side].splice(selected.index, 1);
             endTurn();
         }
         selected = null;
-    } else if (selected && selected.type === 'board') {
-        if (isValidMove(selected.r, selected.c, r, c, board[selected.r][selected.c])) {
-            saveState(); // 変更前に保存
+    } 
+    // 盤上の駒の移動
+    else if (selected && selected.type === 'board') {
+        const movingPiece = board[selected.r][selected.c];
+        if (isLegalMove(selected.r, selected.c, r, c, movingPiece)) {
+            saveState();
             movePiece(selected.r, selected.c, r, c);
+        } else {
+            // 移動ルール違反か、王手放置
+            if (getMoveRules(selected.r, selected.c, r, c, movingPiece, board)) {
+                // ルール上は動けるが、王手放置になる場合
+                alert("王手が放置されています（または自殺手です）");
+            }
+            // それ以外は単なる無効クリック（選択解除）
         }
         selected = null;
-    } else if (piece && piece[0] === turn) {
+    } 
+    // 駒の選択
+    else if (piece && piece[0] === turn) {
         selected = { type: 'board', r, c };
     }
     render();
@@ -366,30 +399,33 @@ function movePiece(fR, fC, tR, tC) {
     let piece = board[fR][fC];
     const side = piece[0], type = piece.substring(1), target = board[tR][tC];
     if (target) {
-        let cap = target.substring(1);
-        hands[side].push(REVERSE_MAP[cap] || cap);
+        hands[side].push(REVERSE_MAP[target.substring(1)] || target.substring(1));
     }
+    // 成り判定
     const isToIn = (side === 's' ? tR <= 2 : tR >= 6), isFromIn = (side === 's' ? fR <= 2 : fR >= 6);
     if (PROMOTION_MAP[type] && (isToIn || isFromIn)) {
         const must = (type === '歩' || type === '香') && (side === 's' ? tR === 0 : tR === 8) || (type === '桂' && (side === 's' ? tR <= 1 : tR >= 7));
         if (must || confirm("成りますか？")) piece = side + PROMOTION_MAP[type];
     }
     board[tR][tC] = piece; board[fR][fC] = null;
-    if(checkCheckmate(side === 's' ? 'g' : 's')) alert("詰みです！" + (side==='s'?"先手":"後手") + "の勝ち！");
     endTurn();
 }
 
 function endTurn() { 
     turn = (turn === 's' ? 'g' : 's'); 
     updateStatus();
+    
+    // 詰みチェック
+    if (isCheckmate(turn)) {
+        alert("詰みです！" + (turn==='g'?"先手":"後手") + "の勝ち！");
+    }
 }
 
 function updateStatus() {
     statusEl.innerText = (turn === 's' ? "先手" : "後手") + "の番です";
-    statusEl.style.color = (turn === 's' ? '#000' : '#d32f2f');
 }
 
-// レンダリング（HTML生成）
+// HTML描画
 function render() {
     boardEl.innerHTML = '';
     for(let r=0; r<9; r++) {
@@ -398,20 +434,15 @@ function render() {
             sq.className = 'square';
             const p = board[r][c];
             if(p) {
-                // 駒の描画（DOM構造を変更してビジュアル要素を追加）
-                const pieceDiv = document.createElement('div');
-                pieceDiv.className = 'piece-visual';
-                pieceDiv.innerText = p.substring(1);
-                
-                if(p.startsWith('g')) pieceDiv.parentElement?.classList.add('gote');
-                // 親要素にクラスを付与するためにwrapperが必要だが、今回は簡易的にCSSで回転
                 const wrapper = document.createElement('div');
-                if(p.startsWith('g')) wrapper.className = 'gote';
-                else wrapper.className = 'sente';
-                
+                wrapper.className = (p.startsWith('g') ? 'gote' : 'sente');
                 if(Object.values(PROMOTION_MAP).includes(p.substring(1))) wrapper.classList.add('promoted');
                 
-                wrapper.appendChild(pieceDiv);
+                const visual = document.createElement('div');
+                visual.className = 'piece-visual';
+                visual.innerText = p.substring(1);
+                
+                wrapper.appendChild(visual);
                 sq.appendChild(wrapper);
             }
             if(selected && selected.type === 'board' && selected.r === r && selected.c === c) sq.classList.add('selected');
@@ -430,11 +461,11 @@ function renderHand(el, side) {
         wrapper.className = 'hand-piece ' + (side === 'g' ? 'gote' : 'sente');
         if (selected && selected.type === 'hand' && selected.side === side && selected.index === i) wrapper.classList.add('selected');
         
-        const pieceDiv = document.createElement('div');
-        pieceDiv.className = 'piece-visual';
-        pieceDiv.innerText = p;
+        const visual = document.createElement('div');
+        visual.className = 'piece-visual';
+        visual.innerText = p;
         
-        wrapper.appendChild(pieceDiv);
+        wrapper.appendChild(visual);
         wrapper.onclick = (e) => {
             e.stopPropagation();
             if (turn === side) selected = { type: 'hand', index: i, side };
