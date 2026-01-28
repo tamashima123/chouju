@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zen Sand - 砂紋描き</title>
+    <title>Zen Sand - 砂紋描き (熊手Ver.)</title>
     <style>
         :root {
+            /* 色設定：沈み込みを表現するために影色を調整 */
             --sand-color: #e6dbbf;
-            --sand-shadow: #cbb995;
-            --sand-highlight: #f7f2e4;
+            --sand-shadow: #bda985; /* 通常の影 */
+            --sand-deep-shadow: #9c8a69; /* 深い影（エッジ用） */
+            --sand-highlight: #ffffff; /* 強いハイライト */
             --ui-bg: rgba(255, 255, 255, 0.8);
             --ui-text: #5d5648;
         }
@@ -31,16 +33,18 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            opacity: 0.08;
-            background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+            opacity: 0.1; /* ノイズを少し強めに */
+            background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
             z-index: 10;
+            mix-blend-mode: multiply; /* 乗算で重ねて質感を深める */
         }
 
         #canvas-container {
             position: relative;
             width: 100%;
             height: 100%;
-            cursor: crosshair;
+            /* カーソルを熊手っぽく変更（オプション） */
+            cursor: url('data:image/svg+xml;utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="%235d5648" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M3 9l2-2v10M9 9l2-2v10M15 9l2-2v10M3 9h14M10 3v4"%3E%3C/svg%3E') 16 16, crosshair;
         }
 
         canvas {
@@ -103,7 +107,7 @@
 </head>
 <body>
 
-    <div class="title">砂紋</div>
+    <div class="title">砂紋 - 熊手</div>
     <div class="noise-overlay"></div>
 
     <div id="canvas-container">
@@ -111,9 +115,9 @@
     </div>
 
     <div class="controls">
-        <button id="drawBtn" class="active">熊手 (Draw)</button>
-        <button id="eraseBtn">平ら (Erase)</button>
-        <button id="clearBtn">整地 (Reset)</button>
+        <button id="drawBtn" class="active">熊手 (3本線)</button>
+        <button id="eraseBtn">ならす (消す)</button>
+        <button id="clearBtn">整地 (リセット)</button>
     </div>
 
     <script>
@@ -121,46 +125,77 @@
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('canvas-container');
         
-        // ボタン要素
         const drawBtn = document.getElementById('drawBtn');
         const eraseBtn = document.getElementById('eraseBtn');
         const clearBtn = document.getElementById('clearBtn');
 
-        // 設定
         let isDrawing = false;
-        let mode = 'draw'; // 'draw' or 'erase'
+        let mode = 'draw'; 
         let lastX = 0;
         let lastY = 0;
 
-        // カラー設定
+        // カラー設定（CSS変数を取得）
+        const style = getComputedStyle(document.documentElement);
         const COLORS = {
-            base: '#e6dbbf',
-            shadow: '#cbb995',
-            highlight: '#f7f2e4'
+            base: style.getPropertyValue('--sand-color').trim(),
+            shadow: style.getPropertyValue('--sand-shadow').trim(),
+            deepShadow: style.getPropertyValue('--sand-deep-shadow').trim(),
+            highlight: style.getPropertyValue('--sand-highlight').trim()
         };
 
-        // キャンバスサイズ設定
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             fillBackground();
         }
 
-        // 背景塗りつぶし
         function fillBackground() {
             ctx.fillStyle = COLORS.base;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // 初期化
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // 描画関数
+        // 1本の溝を描く関数（沈み込む表現）
+        function drawGroove(x1, y1, x2, y2) {
+            const size = 14; // 線の太さ
+            const offset = 3; // 影とハイライトのずらし幅
+
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // 光源を「左上」と仮定します。
+            
+            // 1. ハイライト（溝の右下のエッジに光が当たる）
+            ctx.beginPath();
+            ctx.moveTo(x1 + offset, y1 + offset);
+            ctx.lineTo(x2 + offset, y2 + offset);
+            ctx.lineWidth = size + 2; // 少し太めに
+            ctx.strokeStyle = COLORS.highlight;
+            ctx.stroke();
+
+            // 2. 深い影（溝の左上のエッジが暗くなる）
+            ctx.beginPath();
+            ctx.moveTo(x1 - offset, y1 - offset);
+            ctx.lineTo(x2 - offset, y2 - offset);
+            ctx.lineWidth = size + 2;
+            ctx.strokeStyle = COLORS.deepShadow;
+            ctx.stroke();
+
+            // 3. 溝の底（中央。ベース色より少し暗い色で凹みを表現）
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineWidth = size - 2; // エッジより少し細くして両端を見せる
+            ctx.strokeStyle = COLORS.shadow;
+            ctx.stroke();
+        }
+
         function draw(e) {
             if (!isDrawing) return;
 
-            // マウスまたはタッチの座標を取得
             let clientX, clientY;
             if(e.type.includes('touch')) {
                 clientX = e.touches[0].clientX;
@@ -174,48 +209,43 @@
             const x = clientX - rect.left;
             const y = clientY - rect.top;
 
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-
             if (mode === 'draw') {
-                // 熊手モード：立体感を出すために2本の線をずらして描く
-                const size = 30;
+                // --- 熊手モード：平行な3本線を描画 ---
+                const rakeGap = 28; // 歯の間隔
 
-                // 1. 影（太く、濃い色）
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.beginPath();
-                ctx.moveTo(lastX, lastY);
-                ctx.lineTo(x, y);
-                ctx.lineWidth = size;
-                ctx.strokeStyle = COLORS.shadow;
-                ctx.stroke();
+                // 線の進行方向の角度を計算
+                const angle = Math.atan2(y - lastY, x - lastX);
+                // 進行方向に対して垂直なベクトル（オフセット用）を計算
+                const offsetX = rakeGap * Math.cos(angle + Math.PI / 2);
+                const offsetY = rakeGap * Math.sin(angle + Math.PI / 2);
 
-                // 2. ハイライト（少し細く、明るい色、少しずらす）
-                // これにより「溝」のエッジが光っているように見せる
-                ctx.beginPath();
-                ctx.moveTo(lastX - 4, lastY - 4); // 左上にずらす
-                ctx.lineTo(x - 4, y - 4);
-                ctx.lineWidth = size * 0.7;
-                ctx.strokeStyle = COLORS.base; // ベース色で影を削ることで溝っぽくする
-                ctx.stroke();
+                // 中央の線
+                drawGroove(lastX, lastY, x, y);
                 
-                // 3. さらに明るいエッジ
-                ctx.beginPath();
-                ctx.moveTo(lastX - 10, lastY - 10);
-                ctx.lineTo(x - 10, y - 10);
-                ctx.lineWidth = 5;
-                ctx.strokeStyle = COLORS.highlight;
-                ctx.stroke();
+                // 右側の線（進行方向に対して右）
+                drawGroove(
+                    lastX + offsetX, lastY + offsetY,
+                    x + offsetX, y + offsetY
+                );
+                
+                // 左側の線（進行方向に対して左）
+                drawGroove(
+                    lastX - offsetX, lastY - offsetY,
+                    x - offsetX, y - offsetY
+                );
 
             } else if (mode === 'erase') {
-                // 平らモード：ベース色で塗りつぶす
+                // --- ならすモード ---
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.beginPath();
                 ctx.moveTo(lastX, lastY);
                 ctx.lineTo(x, y);
-                ctx.lineWidth = 60; // 消しゴムは大きめに
+                ctx.lineWidth = 80;
                 ctx.strokeStyle = COLORS.base;
-                ctx.shadowBlur = 10; // 少しぼかすと自然になじむ
+                // エッジをぼかして自然にならす
+                ctx.shadowBlur = 20;
                 ctx.shadowColor = COLORS.base;
                 ctx.stroke();
                 ctx.shadowBlur = 0; // リセット
@@ -225,14 +255,13 @@
             lastY = y;
         }
 
-        // イベントリスナー設定
         function startDrawing(e) {
             isDrawing = true;
             let clientX, clientY;
             if(e.type.includes('touch')) {
                 clientX = e.touches[0].clientX;
                 clientY = e.touches[0].clientY;
-                e.preventDefault(); // スクロール防止
+                e.preventDefault();
             } else {
                 clientX = e.clientX;
                 clientY = e.clientY;
@@ -241,41 +270,44 @@
             const rect = canvas.getBoundingClientRect();
             lastX = clientX - rect.left;
             lastY = clientY - rect.top;
+
+            // クリックした瞬間にも点を描画するために一度drawを呼ぶ
+            draw(e);
         }
 
         function stopDrawing() {
             isDrawing = false;
-            ctx.beginPath(); // パスをリセット
+            ctx.beginPath();
         }
 
-        // マウスイベント
+        // イベントリスナー
         canvas.addEventListener('mousedown', startDrawing);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDrawing);
         canvas.addEventListener('mouseout', stopDrawing);
 
-        // タッチイベント（スマホ対応）
         canvas.addEventListener('touchstart', startDrawing, {passive: false});
         canvas.addEventListener('touchmove', draw, {passive: false});
         canvas.addEventListener('touchend', stopDrawing);
 
-        // ボタン操作
+        // ボタン操作UI
         drawBtn.addEventListener('click', () => {
             mode = 'draw';
             drawBtn.classList.add('active');
             eraseBtn.classList.remove('active');
+            container.style.cursor = `url('data:image/svg+xml;utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="%235d5648" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M3 9l2-2v10M9 9l2-2v10M15 9l2-2v10M3 9h14M10 3v4"%3E%3C/svg%3E') 16 16, crosshair`;
         });
 
         eraseBtn.addEventListener('click', () => {
             mode = 'erase';
             eraseBtn.classList.add('active');
             drawBtn.classList.remove('active');
+            container.style.cursor = 'cell'; // ならす時はカーソルを変更
         });
 
         clearBtn.addEventListener('click', () => {
-            if(confirm('砂を整地してよろしいですか？')) {
-                fillBackground();
-            }
+            // 確認ダイアログを出すとおしゃれじゃないので、一瞬で消すスタイルに変更
+            fillBackground();
         });
 
     </script>
