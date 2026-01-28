@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS将棋 - 二人対戦版</title>
+    <style>
+        :root {
+            --board-color: #dcb35c;
+            --square-color: #ffce9e;
+            --selected-color: #ffeb3b;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        #status {
+            margin: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 10px 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(9, 55px);
+            grid-template-rows: repeat(9, 55px);
+            gap: 2px;
+            background-color: #333;
+            padding: 5px;
+            border: 5px solid #5d4037;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .square {
+            width: 55px;
+            height: 55px;
+            background-color: var(--square-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .square:hover {
+            opacity: 0.8;
+        }
+
+        .square.selected {
+            background-color: var(--selected-color);
+        }
+
+        /* 後手の駒を180度回転 */
+        .gote {
+            transform: rotate(180deg);
+            color: #d32f2f;
+        }
+
+        .sente {
+            color: #212121;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            background: #5d4037;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status">先手の番です</div>
+
+    <div id="board"></div>
+
+    <div class="controls">
+        <button onclick="resetGame()">盤面リセット</button>
+    </div>
+
+    <script>
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
+        
+        let turn = 's'; // 's' = sente, 'g' = gote
+        let selectedSquare = null;
+        let board = [];
+
+        // 初期配置の定義
+        function resetGame() {
+            turn = 's';
+            selectedSquare = null;
+            statusElement.innerText = "先手の番です";
+            board = [
+                ['g香','g桂','
