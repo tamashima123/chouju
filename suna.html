@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zen Sand - 砂紋描き</title>
+    <style>
+        :root {
+            --sand-color: #e6dbbf;
+            --sand-shadow: #cbb995;
+            --sand-highlight: #f7f2e4;
+            --ui-bg: rgba(255, 255, 255, 0.8);
+            --ui-text: #5d5648;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+            background-color: var(--sand-color);
+        }
+
+        /* 砂の質感を出すためのノイズフィルター */
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.08;
+            background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+            z-index: 10;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* UIパネル */
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--ui-bg);
+            padding: 10px 20px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 15px;
+            z-index: 20;
+            backdrop-filter: blur(5px);
+        }
+
+        button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+            color: var(--ui-text);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        button:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        button.active {
+            background-color: var(--ui-text);
+            color: var(--sand-color);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .title {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            font-size: 24px;
+            color: var(--ui-text);
+            opacity: 0.7;
+            writing-mode: vertical-rl;
+            letter-spacing: 5px;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="title">砂紋</div>
+    <div class="noise-overlay"></div>
+
+    <div id="canvas-container">
+        <canvas id="sandCanvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <button id="drawBtn" class="active">熊手 (Draw)</button>
+        <button id="eraseBtn">平ら (Erase)</button>
+        <button id="clearBtn">整地 (Reset)</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('sandCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        
+        // ボタン要素
+        const drawBtn = document.getElementById('drawBtn');
+        const eraseBtn = document.getElementById('eraseBtn');
+        const clearBtn = document.getElementById('clearBtn');
+
+        // 設定
+        let isDrawing = false;
+        let mode = 'draw'; // 'draw' or 'erase'
+        let lastX = 0;
+        let lastY = 0;
+
+        // カラー設定
+        const COLORS = {
+            base: '#e6dbbf',
+            shadow: '#cbb995',
+            highlight: '#f7f2e4'
+        };
+
+        // キャンバスサイズ設定
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            fillBackground();
+        }
+
+        // 背景塗りつぶし
+        function fillBackground() {
+            ctx.fillStyle = COLORS.base;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // 初期化
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 描画関数
+        function draw(e) {
+            if (!isDrawing) return;
+
+            // マウスまたはタッチの座標を取得
+            let clientX, clientY;
+            if(e.type.includes('touch')) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            const rect = canvas.getBoundingClientRect();
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            if (mode === 'draw') {
+                // 熊手モード：立体感を出すために2本の線をずらして描く
+                const size = 30;
+
+                // 1. 影（太く、濃い色）
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.lineWidth = size;
+                ctx.strokeStyle = COLORS.shadow;
+                ctx.stroke();
+
+                // 2. ハイライト（少し細く、明るい色、少しずらす）
+                // これにより「溝」のエッジが光っているように見せる
+                ctx.beginPath();
+                ctx.moveTo(lastX - 4, lastY - 4); // 左上にずらす
+                ctx.lineTo(x - 4, y - 4);
+                ctx.lineWidth = size * 0.7;
+                ctx.strokeStyle = COLORS.base; // ベース色で影を削ることで溝っぽくする
+                ctx.stroke();
+                
+                // 3. さらに明るいエッジ
+                ctx.beginPath();
+                ctx.moveTo(lastX - 10, lastY - 10);
+                ctx.lineTo(x - 10, y - 10);
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = COLORS.highlight;
+                ctx.stroke();
+
+            } else if (mode === 'erase') {
+                // 平らモード：ベース色で塗りつぶす
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.lineWidth = 60; // 消しゴムは大きめに
+                ctx.strokeStyle = COLORS.base;
+                ctx.shadowBlur = 10; // 少しぼかすと自然になじむ
+                ctx.shadowColor = COLORS.base;
+                ctx.stroke();
+                ctx.shadowBlur = 0; // リセット
+            }
+
+            lastX = x;
+            lastY = y;
+        }
+
+        // イベントリスナー設定
+        function startDrawing(e) {
+            isDrawing = true;
+            let clientX, clientY;
+            if(e.type.includes('touch')) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+                e.preventDefault(); // スクロール防止
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            const rect = canvas.getBoundingClientRect();
+            lastX = clientX - rect.left;
+            lastY = clientY - rect.top;
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath(); // パスをリセット
+        }
+
+        // マウスイベント
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // タッチイベント（スマホ対応）
+        canvas.addEventListener('touchstart', startDrawing, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', stopDrawing);
+
+        // ボタン操作
+        drawBtn.addEventListener('click', () => {
+            mode = 'draw';
+            drawBtn.classList.add('active');
+            eraseBtn.classList.remove('active');
+        });
+
+        eraseBtn.addEventListener('click', () => {
+            mode = 'erase';
+            eraseBtn.classList.add('active');
+            drawBtn.classList.remove('active');
+        });
+
+        clearBtn.addEventListener('click', () => {
+            if(confirm('砂を整地してよろしいですか？')) {
+                fillBackground();
+            }
+        });
+
+    </script>
+</body>
+</html>
