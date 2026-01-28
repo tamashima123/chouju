@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>長寿の庭園</title>
-    <link rel="icon" href="naga.gif">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -12,7 +11,7 @@
             margin: 0;
             padding: 0;
             height: 100vh;
-            overflow: hidden; /* スクロールバーを消して没入感を出す */
+            overflow: hidden;
             background-image: url('https://news.1242.com/wp-content/uploads/2023/05/2044016_sTR.jpg');
             background-size: cover;
             background-position: center;
@@ -27,10 +26,9 @@
             font-size: 4em;
             letter-spacing: 0.2em;
             font-weight: 700;
-            text-shadow: 2px 2px 10px rgba(0,0,0,0.6); /* 背景に負けない影 */
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.6);
             animation: fadeInSlow 2s ease-out;
-            /* 縦書きにしたい場合は以下を有効にしてください */
-            /* writing-mode: vertical-rl; */
+            cursor: default;
         }
 
         @keyframes fadeInSlow {
@@ -44,8 +42,10 @@
             top: 40px;
             right: 50px;
             display: flex;
-            gap: 40px; /* カテゴリー間の距離 */
+            gap: 20px; /* メニューが増えたので間隔を少し調整 */
             z-index: 1000;
+            flex-wrap: wrap; /* スマホなどで幅が足りない時に折り返す */
+            justify-content: flex-end;
         }
 
         /* カテゴリーの親要素 */
@@ -54,17 +54,18 @@
             cursor: default;
         }
 
-        /* カテゴリー名（学習、ゲーム） */
+        /* カテゴリー名ボタン */
         .category-name {
             color: #fff;
-            font-size: 1.2em;
+            font-size: 1.1em;
             padding: 10px 20px;
-            background-color: rgba(0, 0, 0, 0.4); /* 読みやすくするための薄い黒背景 */
+            background-color: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(5px);
             border-radius: 4px;
             transition: background-color 0.3s;
             letter-spacing: 0.1em;
             border: 1px solid rgba(255,255,255,0.3);
+            white-space: nowrap; /* 文字の折り返しを防ぐ */
         }
 
         .nav-item:hover .category-name {
@@ -72,26 +73,23 @@
             color: #333;
         }
 
-        /* ドロップダウンメニュー（初期状態は非表示） */
+        /* ドロップダウンメニュー */
         .dropdown {
             position: absolute;
-            top: 100%; /* カテゴリー名の下に配置 */
-            right: 0;  /* 右揃え */
+            top: 100%;
+            right: 0;
             width: 180px;
             background-color: rgba(255, 255, 255, 0.95);
             border-radius: 4px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             padding: 10px 0;
             margin-top: 10px;
-            
-            /* アニメーション用設定 */
             opacity: 0;
             visibility: hidden;
             transform: translateY(-10px);
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* マウスを乗せた時に展開 */
         .nav-item:hover .dropdown {
             opacity: 1;
             visibility: visible;
@@ -116,22 +114,24 @@
         .dropdown a:hover {
             background-color: #f0f0f0;
             color: #000;
-            padding-left: 25px; /* ホバー時に少し右に動く演出 */
+            padding-left: 25px;
         }
 
-        /* スマホ対応：右上に小さく表示 */
-        @media (max-width: 600px) {
+        /* スマホ対応 */
+        @media (max-width: 768px) {
             .main-title {
-                font-size: 2.5em;
+                font-size: 2.2em;
             }
             .top-nav {
                 top: 20px;
-                right: 20px;
-                gap: 15px;
+                right: 10px;
+                left: 10px; /* 画面幅いっぱいに使えるように */
+                gap: 10px;
+                justify-content: center; /* 中央寄せ */
             }
             .category-name {
                 padding: 8px 12px;
-                font-size: 1em;
+                font-size: 0.9em;
             }
         }
     </style>
@@ -150,10 +150,24 @@
         </div>
 
         <div class="nav-item">
+            <div class="category-name">道具</div>
+            <div class="dropdown">
+                <a href="timer.html">集中タイマー</a>
+            </div>
+        </div>
+
+        <div class="nav-item">
             <div class="category-name">ゲーム</div>
             <div class="dropdown">
                 <a href="shogi.html">将棋</a>
                 <a href="stg.html">シューティング</a>
+            </div>
+        </div>
+
+        <div class="nav-item">
+            <div class="category-name">憩い</div>
+            <div class="dropdown">
+                <a href="suna.html">枯山水</a>
             </div>
         </div>
 
