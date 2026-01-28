@@ -2,47 +2,196 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>将棋</title>
+    <title>将棋 v0.3</title>
     <style>
         :root {
-            --board-color: #dcb35c;
-            --square-color: #ffce9e;
-            --selected-color: #ffeb3b;
-            --promotion-color: #f44336;
+            /* 色の定義 */
+            --bg-gradient-start: #ffffff;
+            --bg-gradient-end: #ffcdd2; /* 薄い紅 */
+            --board-wood-light: #eecfa1;
+            --board-wood-dark: #cd853f;
+            --piece-wood: #f5deb3;
+            --piece-shadow: #8d6e63;
+            --accent-red: #b71c1c;
+            --line-color: #3e2723;
         }
-        body { display: flex; flex-direction: column; align-items: center; background-color: #f0f0f0; font-family: "Meiryo", sans-serif; user-select: none; }
-        
-        #status { font-size: 1.5rem; margin: 15px; font-weight: bold; background: white; padding: 5px 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        
-        .hand-area { width: 500px; height: 60px; background: #e0e0e0; margin: 10px; display: flex; align-items: center; padding: 0 10px; border-radius: 8px; border: 2px solid #999; }
-        .hand-piece { width: 45px; height: 45px; background: var(--square-color); margin: 0 5px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; border: 1px solid #333; border-radius: 4px; }
-        .hand-piece.selected { background-color: var(--selected-color); border: 2px solid #000; }
 
-        #board { display: grid; grid-template-columns: repeat(9, 55px); grid-template-rows: repeat(9, 55px); gap: 2px; background-color: #333; padding: 5px; border: 5px solid #5d4037; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .square { width: 55px; height: 55px; background-color: var(--square-color); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; }
-        .square.selected { background-color: var(--selected-color); box-shadow: inset 0 0 10px rgba(0,0,0,0.2); }
-        
-        .gote { transform: rotate(180deg); color: #d32f2f; } /* 後手は赤色＆逆さま */
-        .sente { color: #212121; }
-        .promoted { color: var(--promotion-color); }
+        body {
+            font-family: "HiraMinProN-W6", "Sawarabi Mincho", "Yu Mincho", "MS PMincho", serif; /* 和風フォント */
+            background: radial-gradient(circle, var(--bg-gradient-start), var(--bg-gradient-end), #e57373);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+        }
 
-        .controls { margin-top: 20px; }
-        button { padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #5d4037; color: white; border: none; border-radius: 4px; }
-        button:hover { background: #795548; }
+        h1 {
+            color: var(--accent-red);
+            text-shadow: 2px 2px 0 #fff;
+            margin: 10px 0;
+            font-size: 2.5rem;
+            letter-spacing: 0.2em;
+        }
+
+        /* ゲーム全体のコンテナ（横並びにするためFlexbox） */
+        #game-area {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.6);
+            border: 4px double var(--accent-red);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(183, 28, 28, 0.3);
+            align-items: flex-start;
+        }
+
+        /* --- 将棋盤のデザイン --- */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(9, 60px);
+            grid-template-rows: repeat(9, 65px);
+            border: 5px solid #5d4037;
+            background-color: var(--board-wood-light);
+            /* 木目風のテクスチャをCSSグラデーションで表現 */
+            background-image: 
+                linear-gradient(90deg, rgba(205,133,63,0.1) 50%, transparent 50%),
+                linear-gradient(rgba(205,133,63,0.1) 50%, transparent 50%);
+            background-size: 4px 4px;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+        }
+
+        .square {
+            width: 60px; height: 65px;
+            border: 1px solid rgba(62, 39, 35, 0.5); /* マスの線 */
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+        
+        /* 選択中のマス */
+        .square.selected { background-color: rgba(255, 235, 59, 0.5); }
+
+        /* --- 駒のデザイン --- */
+        .piece-visual {
+            width: 48px; height: 54px;
+            background: var(--piece-wood);
+            color: #000;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            /* 将棋の駒のような五角形にする */
+            clip-path: polygon(50% 0%, 90% 20%, 80% 100%, 20% 100%, 10% 20%);
+            /* 立体感の演出（影はclip-pathで切れるためfilterを使用） */
+            filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.5));
+            /* 木目の微細な線 */
+            background-image: linear-gradient(to bottom right, rgba(0,0,0,0.05), transparent);
+        }
+
+        .gote .piece-visual { transform: rotate(180deg); color: #000; } /* 後手の文字は黒 */
+        .sente .piece-visual { color: #000; }
+        .promoted .piece-visual { color: var(--accent-red) !important; } /* 成り駒は赤 */
+
+        /* --- 右側のエリア（駒台・情報） --- */
+        #sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 160px;
+        }
+
+        .hand-container {
+            background: #d7ccc8;
+            border: 3px solid #8d6e63;
+            border-radius: 4px;
+            padding: 5px;
+            min-height: 150px;
+            /* 木目調 */
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(141, 110, 99, 0.1) 10px, rgba(141, 110, 99, 0.1) 20px);
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2);
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 2px;
+        }
+
+        .hand-title {
+            text-align: center;
+            background: var(--line-color);
+            color: white;
+            padding: 4px;
+            font-size: 0.9rem;
+            border-radius: 2px;
+            margin-bottom: 5px;
+        }
+
+        .hand-piece {
+            transform: scale(0.8); /* 駒台の駒は少し小さく */
+            cursor: pointer;
+        }
+        .hand-piece.selected .piece-visual { background: #fff176; }
+
+        #status {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border: 2px solid var(--accent-red);
+            border-radius: 5px;
+            color: var(--accent-red);
+        }
+
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px;
+            font-size: 1rem;
+            font-family: inherit;
+            cursor: pointer;
+            background: var(--accent-red);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            box-shadow: 0 4px 0 #7f0000;
+            transition: all 0.1s;
+        }
+        button:active { transform: translateY(4px); box-shadow: none; }
+        button:disabled { background: #9e9e9e; box-shadow: none; cursor: not-allowed; }
+
     </style>
 </head>
 <body>
 
-<div id="status">先手の番です</div>
+<h1>🎍 迎春将棋 🎍</h1>
 
-<div id="gote-hand" class="hand-area"></div>
+<div id="game-area">
+    <div id="board"></div>
 
-<div id="board"></div>
+    <div id="sidebar">
+        <div>
+            <div class="hand-title">後手 持ち駒</div>
+            <div id="gote-hand" class="hand-container"></div>
+        </div>
 
-<div id="sente-hand" class="hand-area"></div>
+        <div id="status">先手の番です</div>
 
-<div class="controls">
-    <button onclick="initGame()">盤面を初期化</button>
+        <div class="controls">
+            <button onclick="undoMove()" id="undo-btn" disabled>待った！</button>
+            <button onclick="initGame()">最初から</button>
+        </div>
+
+        <div style="margin-top: auto;">
+            <div class="hand-title">先手 持ち駒</div>
+            <div id="sente-hand" class="hand-container"></div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -50,49 +199,74 @@ const boardEl = document.getElementById('board');
 const sHandEl = document.getElementById('sente-hand');
 const gHandEl = document.getElementById('gote-hand');
 const statusEl = document.getElementById('status');
+const undoBtn = document.getElementById('undo-btn');
 
 let board = [];
 let hands = { s: [], g: [] };
 let turn = 's';
 let selected = null; 
+let history = []; // 履歴保存用
 
 const PROMOTION_MAP = { '歩':'と', '香':'杏', '桂':'圭', '銀':'全', '角':'馬', '飛':'竜' };
 const REVERSE_MAP = { 'と':'歩', '杏':'香', '圭':'桂', '全':'銀', '馬':'角', '竜':'飛' };
+
+// 状態を履歴に保存
+function saveState() {
+    const state = {
+        board: JSON.parse(JSON.stringify(board)),
+        hands: JSON.parse(JSON.stringify(hands)),
+        turn: turn
+    };
+    history.push(state);
+    undoBtn.disabled = false;
+}
+
+// 待った（Undo）機能
+function undoMove() {
+    if (history.length === 0) return;
+    const lastState = history.pop();
+    board = lastState.board;
+    hands = lastState.hands;
+    turn = lastState.turn;
+    selected = null;
+    
+    if (history.length === 0) undoBtn.disabled = true;
+    updateStatus();
+    render();
+}
 
 function initGame() {
     turn = 's';
     selected = null;
     hands = { s: [], g: [] };
+    history = [];
     board = Array(9).fill(null).map(() => Array(9).fill(null));
     
-    // 1段目・9段目の並び
     const backRow = ['香','桂','銀','金','玉','金','銀','桂','香'];
     for(let i=0; i<9; i++) {
         board[0][i] = 'g' + backRow[i];
         board[8][i] = 's' + backRow[i];
     }
-
-    // 飛車・角の配置（修正済み）
-    board[1][1] = 'g飛'; board[1][7] = 'g角'; // 後手
-    board[7][1] = 's角'; board[7][7] = 's飛'; // 先手
-
-    // 歩の配置
+    // 飛車角の正しい配置
+    board[1][1] = 'g飛'; board[1][7] = 'g角';
+    board[7][1] = 's角'; board[7][7] = 's飛';
     for(let i=0; i<9; i++) {
         board[2][i] = 'g歩';
         board[6][i] = 's歩';
     }
-    statusEl.innerText = "先手の番です";
+    
+    undoBtn.disabled = true;
+    updateStatus();
     render();
 }
 
-// 移動バリデーション
+// --- ロジック部分は前回と同様 ---
+
 function isValidMove(fR, fC, tR, tC, piece, tempBoard = board) {
     const side = piece[0], type = piece.substring(1);
     const dr = tR - fR, dc = tC - fC;
     const dir = (side === 's') ? -1 : 1;
-
     if (tempBoard[tR][tC] && tempBoard[tR][tC][0] === side) return false;
-
     if (['金','と','杏','圭','全'].includes(type)) {
         if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) return !(dr === -dir && Math.abs(dc) === 1);
         return false;
@@ -118,7 +292,6 @@ function isPathClear(fR, fC, tR, tC, tempBoard) {
     return true;
 }
 
-// 詰み判定ロジック
 function isCheck(side, tempBoard = board) {
     let kingPos = null;
     for(let r=0; r<9; r++) for(let c=0; c<9; c++) if(tempBoard[r][c] === side + '玉') kingPos = {r, c};
@@ -133,7 +306,6 @@ function isCheck(side, tempBoard = board) {
 
 function checkCheckmate(side) {
     if (!isCheck(side)) return false;
-    // 全ての合法手を試す
     for(let fR=0; fR<9; fR++) for(let fC=0; fC<9; fC++) {
         const p = board[fR][fC];
         if(p && p[0] === side) {
@@ -147,19 +319,20 @@ function checkCheckmate(side) {
             }
         }
     }
+    // 持ち駒使用での回避判定は省略（完全版では本来必要）
     return true;
 }
 
-// 禁じ手チェック
 function checkKinjite(r, c, type, side) {
-    if ((type === '歩' || type === '香') && (side === 's' ? r === 0 : r === 8)) return "そこには進めません。";
-    if (type === '桂' && (side === 's' ? r <= 1 : r >= 7)) return "そこには進めません。";
+    if ((type === '歩' || type === '香') && (side === 's' ? r === 0 : r === 8)) return "そこには打てません（行き所なし）。";
+    if (type === '桂' && (side === 's' ? r <= 1 : r >= 7)) return "そこには打てません（行き所なし）。";
     if (type === '歩') {
         for (let row = 0; row < 9; row++) if (board[row][c] === side + '歩') return "二歩です。";
+        // 打ち歩詰めチェック
         const old = board[r][c]; board[r][c] = side + '歩';
         const zume = checkCheckmate(side === 's' ? 'g' : 's');
         board[r][c] = old;
-        if (zume) return "打ち歩詰めです。";
+        if (zume) return "打ち歩詰めは禁じ手です。";
     }
     return null;
 }
@@ -171,6 +344,7 @@ function handleBoardClick(r, c) {
         const err = checkKinjite(r, c, type, selected.side);
         if (err) { alert(err); selected = null; render(); return; }
         if (!piece) {
+            saveState(); // 変更前に保存
             board[r][c] = selected.side + type;
             hands[selected.side].splice(selected.index, 1);
             endTurn();
@@ -178,6 +352,7 @@ function handleBoardClick(r, c) {
         selected = null;
     } else if (selected && selected.type === 'board') {
         if (isValidMove(selected.r, selected.c, r, c, board[selected.r][selected.c])) {
+            saveState(); // 変更前に保存
             movePiece(selected.r, selected.c, r, c);
         }
         selected = null;
@@ -204,8 +379,17 @@ function movePiece(fR, fC, tR, tC) {
     endTurn();
 }
 
-function endTurn() { turn = (turn === 's' ? 'g' : 's'); statusEl.innerText = (turn === 's' ? "先手" : "後手") + "の番です"; }
+function endTurn() { 
+    turn = (turn === 's' ? 'g' : 's'); 
+    updateStatus();
+}
 
+function updateStatus() {
+    statusEl.innerText = (turn === 's' ? "先手" : "後手") + "の番です";
+    statusEl.style.color = (turn === 's' ? '#000' : '#d32f2f');
+}
+
+// レンダリング（HTML生成）
 function render() {
     boardEl.innerHTML = '';
     for(let r=0; r<9; r++) {
@@ -214,30 +398,52 @@ function render() {
             sq.className = 'square';
             const p = board[r][c];
             if(p) {
-                sq.innerText = p.substring(1);
-                sq.classList.add(p[0] === 's' ? 'sente' : 'gote');
-                if(Object.values(PROMOTION_MAP).includes(p.substring(1))) sq.classList.add('promoted');
+                // 駒の描画（DOM構造を変更してビジュアル要素を追加）
+                const pieceDiv = document.createElement('div');
+                pieceDiv.className = 'piece-visual';
+                pieceDiv.innerText = p.substring(1);
+                
+                if(p.startsWith('g')) pieceDiv.parentElement?.classList.add('gote');
+                // 親要素にクラスを付与するためにwrapperが必要だが、今回は簡易的にCSSで回転
+                const wrapper = document.createElement('div');
+                if(p.startsWith('g')) wrapper.className = 'gote';
+                else wrapper.className = 'sente';
+                
+                if(Object.values(PROMOTION_MAP).includes(p.substring(1))) wrapper.classList.add('promoted');
+                
+                wrapper.appendChild(pieceDiv);
+                sq.appendChild(wrapper);
             }
             if(selected && selected.type === 'board' && selected.r === r && selected.c === c) sq.classList.add('selected');
             sq.onclick = () => handleBoardClick(r, c);
             boardEl.appendChild(sq);
         }
     }
-    renderHand(sHandEl, 's'); renderHand(gHandEl, 'g');
+    renderHand(sHandEl, 's');
+    renderHand(gHandEl, 'g');
 }
 
 function renderHand(el, side) {
-    el.innerHTML = side === 's' ? '先手：' : '後手：';
+    el.innerHTML = '';
     hands[side].forEach((p, i) => {
-        const span = document.createElement('div');
-        span.className = 'hand-piece';
-        if (side === 'g') span.classList.add('gote');
-        if (selected && selected.type === 'hand' && selected.side === side && selected.index === i) span.classList.add('selected');
-        span.innerText = p;
-        span.onclick = (e) => { e.stopPropagation(); if (turn === side) selected = { type: 'hand', index: i, side }; render(); };
-        el.appendChild(span);
+        const wrapper = document.createElement('div');
+        wrapper.className = 'hand-piece ' + (side === 'g' ? 'gote' : 'sente');
+        if (selected && selected.type === 'hand' && selected.side === side && selected.index === i) wrapper.classList.add('selected');
+        
+        const pieceDiv = document.createElement('div');
+        pieceDiv.className = 'piece-visual';
+        pieceDiv.innerText = p;
+        
+        wrapper.appendChild(pieceDiv);
+        wrapper.onclick = (e) => {
+            e.stopPropagation();
+            if (turn === side) selected = { type: 'hand', index: i, side };
+            render();
+        };
+        el.appendChild(wrapper);
     });
 }
+
 initGame();
 </script>
 </body>
