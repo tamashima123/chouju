@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>長寿の庭園</title>
+    <title>マイポータル</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -14,70 +14,84 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #f8f9fa; /* 明るい背景色 */
-            color: #343a40; /* 基本の文字色 */
+            background-color: #f8f9fa;
+            color: #343a40;
         }
         .container {
             text-align: center;
             background-color: white;
-            padding: 40px 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            padding: 50px 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
             max-width: 600px;
             width: 90%;
-            animation: fadeIn 1s ease-out;
+            animation: fadeIn 0.8s ease-out;
         }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+            from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
         }
         h1 {
             color: #212529;
-            font-size: 2.8em;
+            font-size: 2.5em;
             margin-bottom: 10px;
             font-weight: 700;
         }
         p.subtitle {
             font-size: 1.1em;
             color: #6c757d;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
+        }
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
         }
         .link-button {
             display: inline-block;
-            margin: 15px 10px;
-            padding: 15px 30px;
-            background-color: #007bff; /* 青色のボタン */
-            color: white;
+            min-width: 160px;
+            padding: 16px 24px;
             text-decoration: none;
             font-weight: 700;
-            border-radius: 8px;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            font-size: 1.1em;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            font-size: 1.05em;
         }
-        .link-button:hover {
-            background-color: #0056b3; /* ホバーで少し濃く */
-            transform: translateY(-2px);
+        /* 将棋ボタン：落ち着いたネイビー */
+        .btn-shogi {
+            background-color: #34495e;
+            color: white;
+        }
+        .btn-shogi:hover {
+            background-color: #2c3e50;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+        }
+        /* STGボタン：爽やかなブルー */
+        .btn-stg {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-stg:hover {
+            background-color: #0056b3;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
         }
         .footer {
             margin-top: 40px;
-            font-size: 0.9em;
+            font-size: 0.85em;
             color: #adb5bd;
         }
-
-        /* レスポンシブ対応 */
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 2em;
-            }
-            p.subtitle {
-                font-size: 1em;
+        @media (max-width: 480px) {
+            .button-group {
+                flex-direction: column;
+                align-items: center;
             }
             .link-button {
-                width: calc(100% - 20px); /* スマホでボタンを横いっぱいに */
-                margin: 10px 0;
-                padding: 12px 20px;
-                font-size: 1em;
+                width: 100%;
+                box-sizing: border-box;
             }
         }
     </style>
@@ -85,13 +99,17 @@
 <body>
 
     <div class="container">
-        <h1>ようこそ！</h1>
-        <p class="subtitle">ここからあなたの世界を広げましょう。</p>
-        <a href="shogi.html" class="link-button">将棋サイトへ</a>
+        <h1>Welcome</h1>
+        <p class="subtitle">お好きなコンテンツを選択してください</p>
+        
+        <div class="button-group">
+            <a href="shogi.html" class="link-button btn-shogi">将棋サイトへ</a>
+            <a href="stg.html" class="link-button btn-stg">STGサイトへ</a>
         </div>
+    </div>
 
     <footer class="footer">
-        <p>&copy; 2026 あなたのウェブサイト</p>
+        <p>&copy; 2026 My Digital Portal</p>
     </footer>
 
 </body>
