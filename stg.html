@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Danmaku Game</title>
+    <style>
+        body { background: #111; color: white; display: flex; flex-direction: column; align-items: center; overflow: hidden; font-family: sans-serif; }
+        canvas { background: #000; border: 2px solid #555; cursor: crosshair; }
+        .ui { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h2>Gemini Danmaku Blast</h2>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div class="ui">移動: マウス / 自動射撃</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let player = { x: 200, y: 500, size: 5 };
+let bullets = [];
+let enemyBullets = [];
+let frame = 0;
+
+// ゲームループ
+function update() {
+    frame++;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 1. プレイヤー描画
+    ctx.fillStyle = '#0cf';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. 自機弾の生成 (一定間隔)
+    if (frame % 5 === 0) {
+        bullets.push({ x: player.x, y: player.y - 10 });
+    }
+
+    // 3. 敵弾の生成 (弾幕アルゴリズム)
+    // 360度方向に弾を飛ばす
+    if (frame % 20 === 0) {
+        for (let i = 0; i < 12; i++) {
+            let angle = (i * 30 + frame) * Math.PI / 180;
+            enemyBullets.push({
+                x: 200, y: 150,
+                vx: Math.cos(angle) * 2,
+                vy: Math.sin(angle) * 2
+            });
+        }
+    }
+
+    // 4. 自機弾の移動と描画
+    ctx.fillStyle = '#ff0';
+    bullets.forEach((b, i) => {
+        b.y -= 7;
+        ctx.fillRect(b.x - 2, b.y, 4, 10);
+        if (b.y < 0) bullets.splice(i, 1);
+    });
+
+    // 5. 敵弾の移動と描画
+    ctx.fillStyle = '#f0f';
+    enemyBullets.forEach((eb, i) => {
+        eb.x += eb.vx;
+        eb.y += eb.vy;
+        ctx.beginPath();
+        ctx.arc(eb.x, eb.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 当たり判定 (簡易版)
+        let dx = eb.x - player.x;
+        let dy = eb.y - player.y;
+        if (Math.sqrt(dx*dx + dy*dy) < player.size + 2) {
+            ctx.fillStyle = "white";
+            ctx.fillText("HIT!", player.x - 10, player.y - 20);
+        }
+
+        if (eb.x < 0 || eb.x > 400 || eb.y > 600) enemyBullets.splice(i, 1);
+    });
+
+    requestAnimationFrame(update);
+}
+
+// マウス移動イベント
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    player.x = e.clientX - rect.left;
+    player.y = e.clientY - rect.top;
+});
+
+update();
+</script>
+</body>
+</html>
