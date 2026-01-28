@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大学受験 古典単語帳</title>
+    <style>
+        :root {
+            --primary-color: #5D7266; /* 抹茶色 */
+            --accent-color: #D66C6C; /* 落ち着いた赤 */
+            --bg-color: #F4F1EA; /* 和紙のような白 */
+            --text-color: #333;
+            --card-width: 90%;
+            --card-max-width: 500px;
+            --card-height: 300px;
+        }
+
+        body {
+            font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; /* 明朝体で古典の雰囲気を */
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 0.5rem;
+        }
+
+        /* カードのコンテナ */
+        .card-container {
+            width: var(--card-width);
+            max-width: var(--card-max-width);
+            height: var(--card-height);
+            perspective: 1000px; /* 3D効果 */
+            cursor: pointer;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        /* カード本体 */
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            border-radius: 15px;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        /* 表と裏の共通設定 */
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden; /* 裏側を見せない */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 15px;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: white;
+            border: 2px solid var(--primary-color);
+        }
+
+        /* 表面 (単語) */
+        .front {
+            background-color: #fff;
+        }
+        
+        .word {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .sub-info {
+            font-size: 1rem;
+            color: #888;
+        }
+
+        /* 裏面 (意味) */
+        .back {
+            background-color: var(--primary-color);
+            color: white;
+            transform: rotateY(180deg);
+            text-align: center;
+        }
+
+        .meaning {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .example {
+            font-size: 1rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        /* コントロールボタン */
+        .controls {
+            display: flex;
+            gap: 1rem;
+            width: var(--card-width);
+            max-width: var(--card-max-width);
+            justify-content: space-between;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-family: sans-serif;
+            flex: 1;
+        }
+
+        button:active {
+            opacity: 0.7;
+        }
+
+        button.secondary {
+            background-color: #aaa;
+        }
+
+        .progress {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #666;
+            font-family: sans-serif;
+        }
+
+        .hint-text {
+            position: absolute;
+            bottom: -30px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #888;
+            opacity: 0.7;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>必修 古典単語帳</h1>
+
+    <div class="card-container" onclick="flipCard()">
+        <div class="card" id="card">
+            <div class="card-face front">
+                <div class="word" id="word-text">単語</div>
+                <div class="sub-info">タップして意味を表示</div>
+            </div>
+            <div class="card-face back">
+                <div class="meaning" id="meaning-text">意味</div>
+                <div class="example" id="note-text">解説</div>
+            </div>
+        </div>
+        <div class="hint-text">カードをタップ/クリックで裏返します</div>
+    </div>
+
+    <div class="controls">
+        <button class="secondary" onclick="prevCard(event)">← 前へ</button>
+        <button onclick="shuffleCards(event)">シャッフル</button>
+        <button onclick="nextCard(event)">次へ →</button>
+    </div>
+
+    <div class="progress" id="progress">1 / 10</div>
+
+    <script>
+        // === 単語データ（ここを自由に編集してください） ===
+        const vocabulary = [
+            { word: "いと", meaning: "とても・たいそう", note: "【副詞】下に打消語がくると「それほど（～ない）」" },
+            { word: "ゆかし", meaning: "見たい・聞きたい・知りたい", note: "「行く」＋形容詞化「し」＝心がひかれる" },
+            { word: "あはれなり", meaning: "しみじみと趣深い", note: "感動・悲哀・賞賛など文脈で判断" },
+            { word: "おどろく", meaning: "はっと気づく・目が覚める", note: "現代語の「びっくりする」とは違うので注意" },
+            { word: "うつくし", meaning: "かわいらしい", note: "小さいもの、幼いものへの愛着" },
+            { word: "かなし", meaning: "いとしい・かわいい", note: "身近な人への切ない愛情" },
+            { word: "ののしる", meaning: "大声で騒ぐ・評判になる", note: "「大声」が原義" },
+            { word: "おぼゆ", meaning: "思われる・似ている", note: "自然にそう思われる（自発）" },
+            { word: "やがて", meaning: "そのまま・すぐに", note: "超重要単語！" },
+            { word: "けしき", meaning: "様子・機嫌・意向", note: "「気色」と書く。人の顔色や自然の様子" },
+            { word: "ありがたし", meaning: "めったにない", note: "「有り」＋「難し」。生きていくのが難しい→貴重だ" },
+            { word: "つれなし", meaning: "平気だ・冷淡だ", note: "連れ無し＝関係ない顔をしている" },
+            { word: "ところせし", meaning: "窮屈だ・大げさだ", note: "所狭し。場所が狭く感じるほど人が多い/威張っている" },
+            { word: "あやし", meaning: "不思議だ・身分が低い", note: "「奇し」と「賤し」の2つの意味" },
+            { word: "わびし", meaning: "つらい・やりきれない", note: "思うようにならず気落ちする状態" },
+            { word: "あさまし", meaning: "驚きあきれるほどだ", note: "マイナスの驚きに使われることが多い" },
+            { word: "めづらし", meaning: "すばらしい・好ましい", note: "「愛づ」＋「らし」。賞賛に値する" },
+            { word: "くちをし", meaning: "残念だ", note: "期待外れでがっかりする気持ち" },
+            { word: "なつかし", meaning: "親しみが持てる", note: "「懐く」が語源。距離が近い感じ" },
+            { word: "おとなし", meaning: "分別がある・主だっている", note: "大人びている＝しっかりしている" },
+            { word: "しろしめす", meaning: "ご存じである・お治めになる", note: "「知る」「領る」の尊敬語" },
+            { word: "たてまつる", meaning: "差し上げる・（～し）申し上げる", note: "「与ふ」の謙譲語・謙譲の補助動詞" },
+            { word: "まもる", meaning: "じっと見つめる", note: "「目守る」が語源" },
+            { word: "わづらふ", meaning: "病気になる・～しかねる", note: "補助動詞としては「～するのに困る」" },
+            { word: "あく", meaning: "満足する", note: "「飽く」。嫌になるほどいっぱい" },
+            { word: "うし", meaning: "つらい・情けない", note: "自分自身の状況がつらい" },
+            { word: "むつかし", meaning: "不快だ・うっとうしい", note: "「難しい」ではない" },
+            { word: "すさまじ", meaning: "興ざめだ・殺風景だ", note: "寒々とした様子" },
+            { word: "びんなし", meaning: "不都合だ・気の毒だ", note: "便無し。具合が悪い" },
+            { word: "いふかひなし", meaning: "どうしようもない・つまらない", note: "言っても甲斐がない" }
+        ];
+
+        // === アプリの状態管理 ===
+        let currentIndex = 0;
+        let isFlipped = false;
+        
+        // DOM要素の取得
+        const cardElement = document.getElementById('card');
+        const wordText = document.getElementById('word-text');
+        const meaningText = document.getElementById('meaning-text');
+        const noteText = document.getElementById('note-text');
+        const progressText = document.getElementById('progress');
+
+        // 初期表示
+        updateCard();
+
+        // カードを裏返す
+        function flipCard() {
+            isFlipped = !isFlipped;
+            if (isFlipped) {
+                cardElement.classList.add('flipped');
+            } else {
+                cardElement.classList.remove('flipped');
+            }
+        }
+
+        // 次のカードへ
+        function nextCard(event) {
+            event.stopPropagation(); // 親要素のクリックイベント（フリップ）を防ぐ
+            if (currentIndex < vocabulary.length - 1) {
+                currentIndex++;
+            } else {
+                currentIndex = 0; // 最後までいったら最初に戻る
+            }
+            resetFlip();
+            setTimeout(updateCard, 200); // フリップが戻るのを少し待つ
+        }
+
+        // 前のカードへ
+        function prevCard(event) {
+            event.stopPropagation();
+            if (currentIndex > 0) {
+                currentIndex--;
+            } else {
+                currentIndex = vocabulary.length - 1;
+            }
+            resetFlip();
+            setTimeout(updateCard, 200);
+        }
+
+        // シャッフル機能
+        function shuffleCards(event) {
+            event.stopPropagation();
+            // フィッシャー–イェーツのシャッフル
+            for (let i = vocabulary.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [vocabulary[i], vocabulary[j]] = [vocabulary[j], vocabulary[i]];
+            }
+            currentIndex = 0;
+            resetFlip();
+            setTimeout(updateCard, 200);
+        }
+
+        // カードの状態をリセット
+        function resetFlip() {
+            isFlipped = false;
+            cardElement.classList.remove('flipped');
+        }
+
+        // 画面の更新
+        function updateCard() {
+            const item = vocabulary[currentIndex];
+            wordText.textContent = item.word;
+            meaningText.textContent = item.meaning;
+            noteText.textContent = item.note;
+            progressText.textContent = `${currentIndex + 1} / ${vocabulary.length}`;
+        }
+    </script>
+</body>
+</html>
