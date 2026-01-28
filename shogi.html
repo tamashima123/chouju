@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>将棋 完全版 - 正式配置＆禁じ手実装</title>
+    <style>
+        :root {
+            --board-color: #dcb35c;
+            --square-color: #ffce9e;
+            --selected-color: #ffeb3b;
+            --promotion-color: #f44336;
+        }
+        body { display: flex; flex-direction: column; align-items: center; background-color: #f0f0f0; font-family: "Meiryo", sans-serif; user-select: none; }
+        
+        #status { font-size: 1.5rem; margin: 15px; font-weight: bold; background: white; padding: 5px 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        .hand-area { width: 500px; height: 60px; background: #e0e0e0; margin: 10px; display: flex; align-items: center; padding: 0 10px; border-radius: 8px; border: 2px solid #999; }
+        .hand-piece { width: 45px; height: 45px; background: var(--square-color); margin: 0 5px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; border: 1px solid #333; border-radius: 4px; }
+        .hand-piece.selected { background-color: var(--selected-color); border: 2px solid #000; }
+
+        #board { display: grid; grid-template-columns: repeat(9, 55px); grid-template-rows: repeat(9, 55px); gap: 2px; background-color: #333; padding: 5px; border: 5px solid #5d4037; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .square { width: 55px; height: 55px; background-color: var(--square-color); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; }
+        .square.selected { background-color: var(--selected-color); box-shadow: inset 0 0 10px rgba(0,0,0,0.2); }
+        
+        .gote { transform: rotate(180deg); color: #d32f2f; } /* 後手は赤色＆逆さま */
+        .sente { color: #212121; }
+        .promoted { color: var(--promotion-color); }
+
+        .controls { margin-top: 20px; }
+        button { padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #5d4037; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #795548; }
+    </style>
+</head>
+<body>
+
+<div id="status">先手の番です</div>
+
+<div id="gote-hand" class="hand-area"></div>
+
+<div id="board"></div>
+
+<div id="sente-hand" class="hand-area"></div>
+
+<div class="controls">
+    <button onclick="initGame()">盤面を初期化</button>
+</div>
+
+<script>
+const boardEl = document.getElementById('board');
+const sHandEl = document.getElementById('sente-hand');
+const gHandEl = document.getElementById('gote-hand');
+const statusEl = document.getElementById('status');
+
+let board = [];
+let hands = { s: [], g: [] };
+let turn = 's';
+let selected = null; 
+
+const PROMOTION_MAP = { '歩':'と', '香':'杏', '桂':'圭', '銀':'全', '角':'馬', '飛':'竜' };
+const REVERSE_MAP = { 'と':'歩', '杏':'香', '圭':'桂', '全':'銀', '馬':'角', '竜':'飛' };
+
+function initGame() {
+    turn = 's';
+    selected = null;
+    hands = { s: [], g: [] };
+    board = Array(9).fill(null).map(() => Array(9).fill(null));
+    
+    // 1段目・9段目の並び
+    const backRow = ['香','桂','銀','金','玉','金','銀','桂','香'];
+    for(let i=0; i<9; i++) {
+        board[0][i] = 'g' + backRow[i];
+        board[8][i] = 's' + backRow[i];
+    }
+
+    // 飛車・角の配置（修正済み）
+    board[1][1] = 'g飛'; board[1][7] = 'g角'; // 後手
+    board[7][1] = 's角'; board[7][7] = 's飛'; // 先手
+
+    // 歩の配置
+    for(let i=0; i<9; i++) {
+        board[2][i] = 'g歩';
+        board[6][i] = 's歩';
+    }
+    statusEl.innerText = "先手の番です";
+    render();
+}
+
+// 移動バリデーション
+function isValidMove(fR, fC, tR, tC, piece, tempBoard = board) {
+    const side = piece[0], type = piece.substring(1);
+    const dr = tR - fR, dc = tC - fC;
+    const dir = (side === 's') ? -1 : 1;
+
+    if (tempBoard[tR][tC] && tempBoard[tR][tC][0] === side) return false;
+
+    if (['金','と','杏','圭','全'].includes(type)) {
+        if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) return !(dr === -dir && Math.abs(dc) === 1);
+        return false;
+    }
+    switch(type) {
+        case '歩': return dc === 0 && dr === dir;
+        case '香': return dc === 0 && Math.sign(dr) === dir && isPathClear(fR, fC, tR, tC, tempBoard);
+        case '桂': return Math.abs(dc) === 1 && dr === dir * 2;
+        case '銀': return (dr === dir && Math.abs(dc) <= 1) || (dr === -dir && Math.abs(dc) === 1);
+        case '玉': return Math.abs(dr) <= 1 && Math.abs(dc) <= 1;
+        case '飛': return (dr === 0 || dc === 0) && isPathClear(fR, fC, tR, tC, tempBoard);
+        case '角': return Math.abs(dr) === Math.abs(dc) && isPathClear(fR, fC, tR, tC, tempBoard);
+        case '竜': return (dr === 0 || dc === 0) ? isPathClear(fR, fC, tR, tC, tempBoard) : (Math.abs(dr) <= 1 && Math.abs(dc) <= 1);
+        case '馬': return (Math.abs(dr) === Math.abs(dc)) ? isPathClear(fR, fC, tR, tC, tempBoard) : (Math.abs(dr) <= 1 && Math.abs(dc) <= 1);
+    }
+    return false;
+}
+
+function isPathClear(fR, fC, tR, tC, tempBoard) {
+    const sR = Math.sign(tR - fR), sC = Math.sign(tC - fC);
+    let r = fR + sR, c = fC + sC;
+    while(r !== tR || c !== tC) { if(tempBoard[r][c]) return false; r += sR; c += sC; }
+    return true;
+}
+
+// 詰み判定ロジック
+function isCheck(side, tempBoard = board) {
+    let kingPos = null;
+    for(let r=0; r<9; r++) for(let c=0; c<9; c++) if(tempBoard[r][c] === side + '玉') kingPos = {r, c};
+    if (!kingPos) return false;
+    const opp = side === 's' ? 'g' : 's';
+    for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
+        const p = tempBoard[r][c];
+        if(p && p[0] === opp && isValidMove(r, c, kingPos.r, kingPos.c, p, tempBoard)) return true;
+    }
+    return false;
+}
+
+function checkCheckmate(side) {
+    if (!isCheck(side)) return false;
+    // 全ての合法手を試す
+    for(let fR=0; fR<9; fR++) for(let fC=0; fC<9; fC++) {
+        const p = board[fR][fC];
+        if(p && p[0] === side) {
+            for(let tR=0; tR<9; tR++) for(let tC=0; tC<9; tC++) {
+                if(isValidMove(fR, fC, tR, tC, p)) {
+                    const old = board[tR][tC]; board[tR][tC] = p; board[fR][fC] = null;
+                    const safe = !isCheck(side);
+                    board[fR][fC] = p; board[tR][tC] = old;
+                    if(safe) return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+// 禁じ手チェック
+function checkKinjite(r, c, type, side) {
+    if ((type === '歩' || type === '香') && (side === 's' ? r === 0 : r === 8)) return "そこには進めません。";
+    if (type === '桂' && (side === 's' ? r <= 1 : r >= 7)) return "そこには進めません。";
+    if (type === '歩') {
+        for (let row = 0; row < 9; row++) if (board[row][c] === side + '歩') return "二歩です。";
+        const old = board[r][c]; board[r][c] = side + '歩';
+        const zume = checkCheckmate(side === 's' ? 'g' : 's');
+        board[r][c] = old;
+        if (zume) return "打ち歩詰めです。";
+    }
+    return null;
+}
+
+function handleBoardClick(r, c) {
+    const piece = board[r][c];
+    if (selected && selected.type === 'hand') {
+        const type = hands[selected.side][selected.index];
+        const err = checkKinjite(r, c, type, selected.side);
+        if (err) { alert(err); selected = null; render(); return; }
+        if (!piece) {
+            board[r][c] = selected.side + type;
+            hands[selected.side].splice(selected.index, 1);
+            endTurn();
+        }
+        selected = null;
+    } else if (selected && selected.type === 'board') {
+        if (isValidMove(selected.r, selected.c, r, c, board[selected.r][selected.c])) {
+            movePiece(selected.r, selected.c, r, c);
+        }
+        selected = null;
+    } else if (piece && piece[0] === turn) {
+        selected = { type: 'board', r, c };
+    }
+    render();
+}
+
+function movePiece(fR, fC, tR, tC) {
+    let piece = board[fR][fC];
+    const side = piece[0], type = piece.substring(1), target = board[tR][tC];
+    if (target) {
+        let cap = target.substring(1);
+        hands[side].push(REVERSE_MAP[cap] || cap);
+    }
+    const isToIn = (side === 's' ? tR <= 2 : tR >= 6), isFromIn = (side === 's' ? fR <= 2 : fR >= 6);
+    if (PROMOTION_MAP[type] && (isToIn || isFromIn)) {
+        const must = (type === '歩' || type === '香') && (side === 's' ? tR === 0 : tR === 8) || (type === '桂' && (side === 's' ? tR <= 1 : tR >= 7));
+        if (must || confirm("成りますか？")) piece = side + PROMOTION_MAP[type];
+    }
+    board[tR][tC] = piece; board[fR][fC] = null;
+    if(checkCheckmate(side === 's' ? 'g' : 's')) alert("詰みです！" + (side==='s'?"先手":"後手") + "の勝ち！");
+    endTurn();
+}
+
+function endTurn() { turn = (turn === 's' ? 'g' : 's'); statusEl.innerText = (turn === 's' ? "先手" : "後手") + "の番です"; }
+
+function render() {
+    boardEl.innerHTML = '';
+    for(let r=0; r<9; r++) {
+        for(let c=0; c<9; c++) {
+            const sq = document.createElement('div');
+            sq.className = 'square';
+            const p = board[r][c];
+            if(p) {
+                sq.innerText = p.substring(1);
+                sq.classList.add(p[0] === 's' ? 'sente' : 'gote');
+                if(Object.values(PROMOTION_MAP).includes(p.substring(1))) sq.classList.add('promoted');
+            }
+            if(selected && selected.type === 'board' && selected.r === r && selected.c === c) sq.classList.add('selected');
+            sq.onclick = () => handleBoardClick(r, c);
+            boardEl.appendChild(sq);
+        }
+    }
+    renderHand(sHandEl, 's'); renderHand(gHandEl, 'g');
+}
+
+function renderHand(el, side) {
+    el.innerHTML = side === 's' ? '先手：' : '後手：';
+    hands[side].forEach((p, i) => {
+        const span = document.createElement('div');
+        span.className = 'hand-piece';
+        if (side === 'g') span.classList.add('gote');
+        if (selected && selected.type === 'hand' && selected.side === side && selected.index === i) span.classList.add('selected');
+        span.innerText = p;
+        span.onclick = (e) => { e.stopPropagation(); if (turn === side) selected = { type: 'hand', index: i, side }; render(); };
+        el.appendChild(span);
+    });
+}
+initGame();
+</script>
+</body>
+</html>
