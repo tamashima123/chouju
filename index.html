@@ -3,119 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="naga.gif">
     <title>長寿の庭園</title>
+    <link rel="icon" href="naga.gif">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Noto Serif JP', serif; /* 和風に合う明朝体 */
+            font-family: 'Noto Serif JP', serif;
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            /* 背景画像の設定 */
+            height: 100vh;
+            overflow: hidden; /* スクロールバーを消して没入感を出す */
             background-image: url('https://news.1242.com/wp-content/uploads/2023/05/2044016_sTR.jpg');
             background-size: cover;
             background-position: center;
-            background-attachment: fixed;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 画面中央のタイトル */
+        .main-title {
+            color: #fff;
+            font-size: 4em;
+            letter-spacing: 0.2em;
+            font-weight: 700;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.6); /* 背景に負けない影 */
+            animation: fadeInSlow 2s ease-out;
+            /* 縦書きにしたい場合は以下を有効にしてください */
+            /* writing-mode: vertical-rl; */
+        }
+
+        @keyframes fadeInSlow {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* 右上のナビゲーションエリア */
+        .top-nav {
+            position: absolute;
+            top: 40px;
+            right: 50px;
+            display: flex;
+            gap: 40px; /* カテゴリー間の距離 */
+            z-index: 1000;
+        }
+
+        /* カテゴリーの親要素 */
+        .nav-item {
+            position: relative;
+            cursor: default;
+        }
+
+        /* カテゴリー名（学習、ゲーム） */
+        .category-name {
+            color: #fff;
+            font-size: 1.2em;
+            padding: 10px 20px;
+            background-color: rgba(0, 0, 0, 0.4); /* 読みやすくするための薄い黒背景 */
+            backdrop-filter: blur(5px);
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            letter-spacing: 0.1em;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .nav-item:hover .category-name {
+            background-color: rgba(255, 255, 255, 0.9);
             color: #333;
         }
 
-        /* コンテンツを囲む白い枠（半透明） */
-        .container {
-            text-align: center;
-            background-color: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(5px); /* 背景を少しぼかす */
-            padding: 60px 40px;
-            border-radius: 2px; /* あえて角を落としすぎず上品に */
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-            max-width: 600px;
-            width: 90%;
-            border-top: 5px solid #5d6d7e; /* アクセントライン */
-            animation: fadeIn 1.2s ease-in-out;
+        /* ドロップダウンメニュー（初期状態は非表示） */
+        .dropdown {
+            position: absolute;
+            top: 100%; /* カテゴリー名の下に配置 */
+            right: 0;  /* 右揃え */
+            width: 180px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 4px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            padding: 10px 0;
+            margin-top: 10px;
+            
+            /* アニメーション用設定 */
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        /* マウスを乗せた時に展開 */
+        .nav-item:hover .dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
         }
 
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 15px;
-            letter-spacing: 0.2em; /* 文字の間隔を広げて優雅に */
-            color: #2c3e50;
-        }
-
-        p.subtitle {
-            font-size: 1.1em;
-            margin-bottom: 40px;
-            color: #555;
-        }
-
-        .button-group {
-            display: flex;
-            justify-content: center;
-            gap: 25px;
-            flex-wrap: wrap;
-        }
-
-        .link-button {
-            display: inline-block;
-            min-width: 180px;
-            padding: 15px 20px;
+        /* ドロップダウン内のリンク */
+        .dropdown a {
+            display: block;
+            padding: 12px 20px;
+            color: #333;
             text-decoration: none;
-            font-weight: 700;
-            border: 1px solid #2c3e50;
-            background-color: transparent;
-            color: #2c3e50;
-            transition: all 0.4s ease;
-            letter-spacing: 0.1em;
+            font-size: 0.95em;
+            transition: background-color 0.2s;
+            border-bottom: 1px dotted #ccc;
         }
 
-        /* ホバー時の挙動 */
-        .link-button:hover {
-            background-color: #2c3e50;
-            color: #fff;
-            transform: scale(1.05);
+        .dropdown a:last-child {
+            border-bottom: none;
         }
 
-        .footer {
-            margin-top: 30px;
-            font-size: 0.8em;
-            color: #fff;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.8); /* 背景が明るくても読めるように */
+        .dropdown a:hover {
+            background-color: #f0f0f0;
+            color: #000;
+            padding-left: 25px; /* ホバー時に少し右に動く演出 */
         }
 
-        @media (max-width: 480px) {
-            .button-group {
-                flex-direction: column;
-                align-items: center;
+        /* スマホ対応：右上に小さく表示 */
+        @media (max-width: 600px) {
+            .main-title {
+                font-size: 2.5em;
             }
-            .link-button {
-                width: 100%;
+            .top-nav {
+                top: 20px;
+                right: 20px;
+                gap: 15px;
+            }
+            .category-name {
+                padding: 8px 12px;
+                font-size: 1em;
             }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>長寿の庭園</h1>
-        <p class="subtitle">静謐なひとときをお楽しみください</p>
-        
-        <div class="button-group">
-            <a href="shogi.html" class="link-button">将棋</a>
-            <a href="stg.html" class="link-button">STG</a>
-        </div>
-    </div>
+    <div class="main-title">長寿の庭園</div>
 
-    <footer class="footer">
-        <p>&copy; 2026 長寿の庭園</p>
-    </footer>
+    <nav class="top-nav">
+        
+        <div class="nav-item">
+            <div class="category-name">学習</div>
+            <div class="dropdown">
+                <a href="cobun_card.html">古典単語帳</a>
+            </div>
+        </div>
+
+        <div class="nav-item">
+            <div class="category-name">ゲーム</div>
+            <div class="dropdown">
+                <a href="shogi.html">将棋</a>
+                <a href="stg.html">シューティング</a>
+            </div>
+        </div>
+
+    </nav>
 
 </body>
 </html>
