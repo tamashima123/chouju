@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>弾幕・夢幻 - MUGEN (Fixed)</title>
+    <title>弾幕遊戯・夢幻</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@700&display=swap');
         
@@ -37,15 +37,11 @@
             text-align: right; font-size: 20px; color: #ffd;
             text-shadow: 2px 2px 0 #500;
         }
-        .life-box {
+        .info-box {
             position: absolute; bottom: 10px; left: 10px;
-            font-size: 20px; color: #faa;
-            text-shadow: 1px 1px 0 #500;
-        }
-        .bomb-box {
-            position: absolute; bottom: 35px; left: 10px;
-            font-size: 16px; color: #aaf;
+            font-size: 18px; color: #fff;
             text-shadow: 1px 1px 0 #005;
+            line-height: 1.4;
         }
         .stage-title {
             position: absolute; top: 30%; width: 100%;
@@ -78,23 +74,23 @@
     <div class="hud">
         <div class="boss-hp-bar" id="bossContainer"><div class="hp-fill" id="bossBar"></div></div>
         <div class="score-box" id="scoreText">点数: 0</div>
-        <div class="life-box" id="lifeText">残機: 霊霊霊</div>
-        <div class="bomb-box" id="bombText">霊撃: ★★★</div>
+        <div class="info-box" id="infoText">
+            残機: 霊霊霊<br>
+            霊撃: ★★★
+        </div>
         <div class="stage-title" id="stageMsg">第一幕</div>
     </div>
 </div>
 
 <script>
 /**
- * 弾幕・夢幻 (Fixed Version)
- * 修正点: ループ内のsplice処理を逆順ループに変更し、クラッシュを回避
+ * 弾幕・夢幻 (Difficulty Select Version)
  */
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const uiScore = document.getElementById('scoreText');
-const uiLife = document.getElementById('lifeText');
-const uiBomb = document.getElementById('bombText');
+const uiInfo = document.getElementById('infoText');
 const stageMsg = document.getElementById('stageMsg');
 const bossContainer = document.getElementById('bossContainer');
 const bossBar = document.getElementById('bossBar');
@@ -103,20 +99,30 @@ const W = canvas.width;
 const H = canvas.height;
 const COLORS = {
     bg: "#120512",
-    bullet_a: "#f55", // 赤札
-    bullet_b: "#aaf", // 青札
-    bullet_c: "#fff", // 白針
+    bullet_a: "#f55",
+    bullet_b: "#aaf",
+    bullet_c: "#fff",
     gold: "#fd0"
 };
 
+// 難易度設定
+const DIFFICULTIES = [
+    { name: "凡人 (Easy)",   rankMult: 0.6, spawnRate: 1.5, scoreMult: 0.5 },
+    { name: "達人 (Normal)", rankMult: 1.0, spawnRate: 1.0, scoreMult: 1.0 },
+    { name: "修羅 (Hard)",   rankMult: 1.5, spawnRate: 0.7, scoreMult: 2.0 }
+];
+
 // ゲーム変数
-let state = "TITLE"; 
+let state = "TITLE"; // TITLE, PLAYING, GAMEOVER, CLEAR
+let diffIndex = 1;   // 0:Easy, 1:Normal, 2:Hard
+let currentDiff = DIFFICULTIES[1];
+
 let frame = 0;
 let score = 0;
 let stage = 1;
 let stageTimer = 0;
 
-let player = { x: W/2, y: H-100, speed: 5, lives: 3, bombs: 3, power: 1, invincible: 0, slow: false };
+let player = { x: W/2, y: H-100, lives: 3, bombs: 3, invincible: 0, slow: false };
 let keys = {};
 let bullets = [];
 let enemies = [];
@@ -136,11 +142,31 @@ let sakuras = Array(80).fill().map(() => ({
 window.addEventListener('keydown', e => {
     keys[e.code] = true;
     if(e.code === "ShiftLeft") player.slow = true;
-    if(e.code === "KeyZ") useBomb();
-    if(e.code === "Space") {
-        if(state !== "PLAYING") initGame();
+
+    // タイトル画面の操作
+    if(state === "TITLE") {
+        if(e.code === "ArrowUp") {
+            diffIndex = (diffIndex - 1 + 3) % 3;
+        }
+        if(e.code === "ArrowDown") {
+            diffIndex = (diffIndex + 1) % 3;
+        }
+        if(e.code === "KeyZ" || e.code === "Enter" || e.code === "Space") {
+            initGame();
+        }
+    } 
+    // ゲーム中の操作
+    else if (state === "PLAYING") {
+        if(e.code === "KeyZ") useBomb();
+    }
+    // リザルト画面
+    else if (state === "GAMEOVER" || state === "CLEAR") {
+        if(e.code === "KeyZ" || e.code === "Space") {
+            state = "TITLE";
+        }
     }
 });
+
 window.addEventListener('keyup', e => {
     keys[e.code] = false;
     if(e.code === "ShiftLeft") player.slow = false;
@@ -148,7 +174,6 @@ window.addEventListener('keyup', e => {
 
 /* --- メインループ --- */
 function loop() {
-    // 画面クリアと背景
     ctx.fillStyle = COLORS.bg;
     ctx.fillRect(0, 0, W, H);
     updateSakura();
@@ -157,7 +182,7 @@ function loop() {
         updateGame();
         drawGame();
     } else {
-        drawGame(); // 背景としてゲーム画面を描画
+        if(state !== "TITLE") drawGame(); // 背景としてゲーム画面維持
         drawOverlay();
     }
     frame++;
@@ -165,7 +190,8 @@ function loop() {
 }
 
 function initGame() {
-    player = { x: W/2, y: H-100, speed: 5, lives: 3, bombs: 3, power: 1, invincible: 0, slow: false };
+    currentDiff = DIFFICULTIES[diffIndex];
+    player = { x: W/2, y: H-100, lives: 3, bombs: 3, invincible: 0, slow: false };
     score = 0; stage = 1; stageTimer = 0;
     bullets = []; enemies = []; enemyBullets = []; particles = [];
     boss.active = false; bossContainer.style.display = 'none';
@@ -179,7 +205,7 @@ function updateGame() {
     stageTimer++;
 
     // 自機移動
-    let spd = player.slow ? 2.5 : 5; // 低速移動の調整
+    let spd = player.slow ? 2 : 5;
     if(keys['ArrowLeft'] && player.x > 10) player.x -= spd;
     if(keys['ArrowRight'] && player.x < W-10) player.x += spd;
     if(keys['ArrowUp'] && player.y > 10) player.y -= spd;
@@ -190,9 +216,9 @@ function updateGame() {
     if(keys['KeyX'] && frame % 4 === 0) {
         bullets.push({x: player.x-8, y: player.y, vx: 0, vy: -15});
         bullets.push({x: player.x+8, y: player.y, vx: 0, vy: -15});
-        if(player.slow) { // 低速時は集中ショット
+        if(player.slow) {
              bullets.push({x: player.x, y: player.y-5, vx: 0, vy: -15});
-        } else { // 通常時は拡散
+        } else {
              bullets.push({x: player.x-12, y: player.y, vx: -1, vy: -13});
              bullets.push({x: player.x+12, y: player.y, vx: 1, vy: -13});
         }
@@ -203,36 +229,38 @@ function updateGame() {
     checkCollision();
 }
 
-/* --- ステージ進行 --- */
+/* --- ステージ進行（難易度適用） --- */
 function manageStages() {
     if(boss.active) { updateBoss(); return; }
 
-    let rank = 1 + (stage * 0.2); 
+    // 難易度によるランク補正
+    let rank = (1 + (stage * 0.2)) * currentDiff.rankMult;
+    let rate = currentDiff.spawnRate; // 出現頻度係数（小さいほど頻繁）
 
     // ステージ1: 雑魚散らし
     if(stage === 1) {
-        if(stageTimer > 60 && stageTimer % 50 === 0 && stageTimer < 1200) {
+        if(stageTimer > 60 && stageTimer % Math.floor(50 * rate) === 0 && stageTimer < 1200) {
             spawnEnemy(Math.random()*(W-40)+20, -20, 'fairy', rank);
         }
         if(stageTimer > 1300) nextStage("第二幕 疾風怒濤");
     }
     // ステージ2: 突撃
     else if(stage === 2) {
-        if(stageTimer % 40 === 0 && stageTimer < 1200) {
+        if(stageTimer % Math.floor(40 * rate) === 0 && stageTimer < 1200) {
             spawnEnemy(Math.random()*(W-40)+20, -20, 'rusher', rank);
         }
         if(stageTimer > 1300) nextStage("第三幕 幾何学ノ舞");
     }
     // ステージ3: 回転弾
     else if(stage === 3) {
-        if(stageTimer % 80 === 0 && stageTimer < 1200) {
+        if(stageTimer % Math.floor(80 * rate) === 0 && stageTimer < 1200) {
             spawnEnemy(W/2 + Math.sin(stageTimer)*100, -20, 'spinner', rank);
         }
         if(stageTimer > 1300) nextStage("第四幕 百鬼夜行");
     }
     // ステージ4: 混合
     else if(stage === 4) {
-        if(stageTimer % 30 === 0 && stageTimer < 1500) {
+        if(stageTimer % Math.floor(30 * rate) === 0 && stageTimer < 1500) {
             let type = Math.random() < 0.5 ? 'fairy' : 'rusher';
             spawnEnemy(Math.random()*(W-40)+20, -20, type, rank + 0.5);
         }
@@ -242,7 +270,8 @@ function manageStages() {
     else if(stage === 5) {
         if(stageTimer === 100) {
             boss.active = true;
-            boss.hp = 3000; boss.maxHp = 3000;
+            boss.hp = 3000 * currentDiff.rankMult; 
+            boss.maxHp = boss.hp;
             boss.y = -50;
             bossContainer.style.display = "block";
             enemies.forEach(e => explode(e.x, e.y));
@@ -255,12 +284,12 @@ function nextStage(title) {
     stage++;
     stageTimer = 0;
     showStageTitle(title);
-    enemyBullets = []; // 弾消し
+    enemyBullets = [];
 }
 
-/* --- エンティティ管理（逆順ループで安全に削除） --- */
+/* --- エンティティ管理 --- */
 function spawnEnemy(x, y, type, rank) {
-    enemies.push({ x, y, type, hp: type==='rusher'?2:5, rank, time: 0 });
+    enemies.push({ x, y, type, hp: (type==='rusher'?2:5)*rank, rank, time: 0 });
 }
 
 function updateEntities() {
@@ -275,24 +304,26 @@ function updateEntities() {
     for(let i = enemies.length - 1; i >= 0; i--) {
         let e = enemies[i];
         e.time++;
-        e.y += 2; 
+        e.y += 2 * (e.type==='rusher' ? currentDiff.rankMult : 1); // Hardは敵も速い
 
-        // 敵の行動
         if(e.type === 'fairy') {
             e.x += Math.sin(e.time * 0.05) * 2;
-            if(e.time % 70 === 0) fireAimed(e, 4 * e.rank, COLORS.bullet_a);
+            if(e.time % Math.floor(70 * currentDiff.spawnRate) === 0) 
+                fireAimed(e, 4 * e.rank, COLORS.bullet_a);
         }
         else if(e.type === 'rusher') {
             if(e.time === 40) {
                 let a = Math.atan2(player.y - e.y, player.x - e.x);
-                e.vx = Math.cos(a) * (5 * e.rank);
-                e.vy = Math.sin(a) * (5 * e.rank);
+                let spd = 5 * e.rank;
+                e.vx = Math.cos(a) * spd;
+                e.vy = Math.sin(a) * spd;
             }
             if(e.time > 40) { e.x += e.vx; e.y += e.vy; }
         }
         else if(e.type === 'spinner') {
             e.y = 100 + Math.sin(e.time*0.02)*50;
-            if(e.time % 30 === 0) fireNWay(e, 5 + Math.floor(e.rank), 3, COLORS.bullet_b, e.time*0.1);
+            if(e.time % Math.floor(30 * currentDiff.spawnRate) === 0) 
+                fireNWay(e, 5 + Math.floor(e.rank), 3 * currentDiff.rankMult, COLORS.bullet_b, e.time*0.1);
         }
 
         if(e.y > H+50 || e.x < -50 || e.x > W+50) enemies.splice(i, 1);
@@ -302,7 +333,7 @@ function updateEntities() {
     for(let i = enemyBullets.length - 1; i >= 0; i--) {
         let b = enemyBullets[i];
         b.x += b.vx; b.y += b.vy;
-        b.angle = Math.atan2(b.vy, b.vx); // 回転用
+        b.angle = Math.atan2(b.vy, b.vx);
         if(b.x < -50 || b.x > W+50 || b.y < -50 || b.y > H+50) enemyBullets.splice(i, 1);
     }
 
@@ -319,27 +350,29 @@ function updateBoss() {
     if(boss.y < 120) boss.y++;
     boss.timer++;
     boss.x = W/2 + Math.sin(boss.timer * 0.015) * 120;
-
     bossBar.style.width = (boss.hp / boss.maxHp * 100) + "%";
-    let fury = boss.hp < boss.maxHp/2; // 発狂モード
+    
+    let fury = boss.hp < boss.maxHp/2;
+    let rank = currentDiff.rankMult;
 
-    // 1. 螺旋の札
-    if(boss.timer % 10 === 0) {
+    // 攻撃頻度も難易度依存
+    let freq = Math.floor(10 * currentDiff.spawnRate);
+    if(freq < 4) freq = 4;
+
+    if(boss.timer % freq === 0) {
         let a = boss.timer * 0.2;
-        fire(boss.x, boss.y, Math.cos(a)*4, Math.sin(a)*4, COLORS.bullet_a, 'fuda');
-        fire(boss.x, boss.y, Math.cos(a+Math.PI)*4, Math.sin(a+Math.PI)*4, COLORS.bullet_a, 'fuda');
+        let s = 4 * rank;
+        fire(boss.x, boss.y, Math.cos(a)*s, Math.sin(a)*s, COLORS.bullet_a, 'fuda');
+        fire(boss.x, boss.y, Math.cos(a+Math.PI)*s, Math.sin(a+Math.PI)*s, COLORS.bullet_a, 'fuda');
     }
-    // 2. 追尾針
-    if(fury && boss.timer % 40 === 0) {
-        fireAimed(boss, 6, COLORS.bullet_c, 'needle');
+    if(fury && boss.timer % Math.floor(40 * currentDiff.spawnRate) === 0) {
+        fireAimed(boss, 6 * rank, COLORS.bullet_c, 'needle');
     }
-    // 3. 全方位
-    if(boss.timer % 150 === 0) {
-        fireNWay(boss, 20, 3, COLORS.gold, 0, 'orb');
+    if(boss.timer % Math.floor(150 * currentDiff.spawnRate) === 0) {
+        fireNWay(boss, 20 + (diffIndex*10), 3 * rank, COLORS.gold, 0, 'orb');
     }
 }
 
-/* --- 弾生成 --- */
 function fire(x, y, vx, vy, color, type) {
     enemyBullets.push({ x, y, vx, vy, color, type });
 }
@@ -354,97 +387,80 @@ function fireNWay(origin, count, speed, color, offset=0, shape='orb') {
     }
 }
 
-/* --- 衝突判定 (バグ修正済み) --- */
+/* --- 衝突判定 --- */
 function checkCollision() {
     // 敵 vs 自機弾
-    // 逆順ループで安全に削除
     for(let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
         let hit = false;
         
-        // 対 雑魚
         for(let j = enemies.length - 1; j >= 0; j--) {
             let e = enemies[j];
             if(Math.hypot(b.x - e.x, b.y - e.y) < 20) {
-                e.hp--; 
-                hit = true;
+                e.hp--; hit = true;
                 explode(b.x, b.y, "#fff", 2);
                 if(e.hp <= 0) {
                     enemies.splice(j, 1);
-                    score += 100 * stage;
+                    score += 100 * stage * currentDiff.scoreMult;
                     explode(e.x, e.y, COLORS.gold);
                 }
-                break; // 1発につき1体のみヒット
+                break;
             }
         }
-        
-        // 対 ボス
         if(!hit && boss.active && Math.hypot(b.x - boss.x, b.y - boss.y) < 50) {
-            boss.hp -= 2; // ボスへのダメージ
-            hit = true;
+            boss.hp -= 2; hit = true;
             explode(b.x, b.y, "#fff", 1);
             if(boss.hp <= 0) {
                 state = "CLEAR";
                 explode(boss.x, boss.y, COLORS.gold, 100);
             }
         }
-
         if(hit) bullets.splice(i, 1);
     }
 
-    // 自機被弾判定
+    // 自機被弾
     if(player.invincible <= 0 && state === "PLAYING") {
         let hit = false;
-        // 敵本体
         for(let e of enemies) { if(Math.hypot(e.x-player.x, e.y-player.y) < 15) hit = true; }
-        // 敵弾 (判定を少し小さく: radius 3)
         for(let b of enemyBullets) { 
-            let dist = Math.hypot(b.x-player.x, b.y-player.y);
-            let safeDist = (player.slow ? 1 : 3) + 3; // かなり避けやすく調整
-            if(dist < safeDist) hit = true; 
+            let safeDist = (player.slow ? 1 : 3) + 3;
+            if(Math.hypot(b.x-player.x, b.y-player.y) < safeDist) hit = true; 
         }
-        // ボス
         if(boss.active && Math.hypot(boss.x-player.x, boss.y-player.y) < 40) hit = true;
 
         if(hit) {
             player.lives--;
             player.bombs = 3;
             player.invincible = 120;
-            enemyBullets = []; // 弾消し
+            enemyBullets = [];
             explode(player.x, player.y, "red", 30);
             if(player.lives < 0) state = "GAMEOVER";
             updateUI();
         }
     }
-    
-    // スコア表示更新
     if(frame % 10 === 0) updateUI();
 }
 
 function useBomb() {
     if(player.bombs > 0 && state === "PLAYING") {
         player.bombs--;
-        // 画面内の敵弾全消去 & ダメージ
         enemyBullets = [];
-        enemies.forEach(e => { explode(e.x, e.y); e.hp = 0; score+=500; });
+        enemies.forEach(e => { explode(e.x, e.y); e.hp = 0; score+=500*currentDiff.scoreMult; });
         enemies = [];
         if(boss.active) { boss.hp -= 400; explode(boss.x, boss.y, "#fff", 50); }
         
-        // 演出
         let flash = document.createElement('div');
         flash.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;background:white;opacity:0.8;pointer-events:none;z-index:100;transition:opacity 0.5s;";
         document.getElementById('gameContainer').appendChild(flash);
         setTimeout(() => flash.style.opacity = 0, 50);
         setTimeout(() => flash.remove(), 500);
-        
         updateUI();
     }
 }
 
 function updateUI() {
-    uiScore.innerText = `点数: ${score}`;
-    uiLife.innerText = `残機: ${"霊".repeat(Math.max(0, player.lives))}`;
-    uiBomb.innerText = `霊撃: ${"★".repeat(Math.max(0, player.bombs))}`;
+    uiScore.innerText = `点数: ${Math.floor(score)}`;
+    uiInfo.innerHTML = `残機: ${"霊".repeat(Math.max(0, player.lives))}<br>霊撃: ${"★".repeat(Math.max(0, player.bombs))}`;
 }
 
 function showStageTitle(text) {
@@ -453,7 +469,7 @@ function showStageTitle(text) {
     setTimeout(() => stageMsg.style.opacity = 0, 3000);
 }
 
-// 描画関連
+// 描画
 function drawGame() {
     // プレイヤー
     if(player.invincible % 10 < 5) {
@@ -461,26 +477,20 @@ function drawGame() {
         ctx.rotate(frame * 0.1);
         ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
         ctx.fillStyle = "#d00"; ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
-        
-        // 当たり判定ドット（低速時のみ表示）
         if(player.slow) {
             ctx.fillStyle = "#f00"; ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill();
             ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.arc(0,0,30,0,Math.PI*2); ctx.stroke();
         }
         ctx.restore();
     }
-
-    // 敵
+    // 敵・ボス・弾・パーティクル (省略なし)
     enemies.forEach(e => {
         ctx.fillStyle = e.type==='rusher' ? '#f84' : '#48f';
         ctx.save(); ctx.translate(e.x, e.y);
         ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
         ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.restore();
+        ctx.shadowBlur = 0; ctx.restore();
     });
-
-    // ボス
     if(boss.active) {
         ctx.save(); ctx.translate(boss.x, boss.y);
         ctx.fillStyle = "rgba(100,0,0,0.3)"; ctx.beginPath(); ctx.arc(0,0,80,0,Math.PI*2); ctx.fill();
@@ -488,31 +498,22 @@ function drawGame() {
         ctx.strokeStyle = "#fff"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.stroke();
         ctx.restore();
     }
-
-    // 弾
     ctx.fillStyle = "#ffeda0";
     bullets.forEach(b => ctx.fillRect(b.x-3, b.y-10, 6, 20));
-
     enemyBullets.forEach(b => {
         ctx.save(); ctx.translate(b.x, b.y);
         if(b.type === 'fuda') {
-            ctx.rotate(b.angle || 0);
-            ctx.fillStyle = b.color;
-            ctx.fillRect(-4, -8, 8, 16);
-            ctx.fillStyle = "#fff"; ctx.fillRect(-2, -6, 4, 12);
+            ctx.rotate(b.angle || 0); ctx.fillStyle = b.color;
+            ctx.fillRect(-4, -8, 8, 16); ctx.fillStyle = "#fff"; ctx.fillRect(-2, -6, 4, 12);
         } else if(b.type === 'needle') {
-            ctx.rotate(Math.atan2(b.vy, b.vx));
-            ctx.fillStyle = "#fff";
+            ctx.rotate(Math.atan2(b.vy, b.vx)); ctx.fillStyle = "#fff";
             ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-10,2); ctx.lineTo(-10,-2); ctx.fill();
         } else {
-            ctx.fillStyle = b.color;
-            ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
             ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill();
         }
         ctx.restore();
     });
-
-    // パーティクル
     particles.forEach(p => {
         ctx.fillStyle = p.color; ctx.globalAlpha = p.life/30;
         ctx.fillRect(p.x, p.y, 4, 4); ctx.globalAlpha = 1;
@@ -527,27 +528,46 @@ function updateSakura() {
         ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle);
         ctx.beginPath(); 
         ctx.moveTo(0,0); ctx.quadraticCurveTo(5, -5, 10, 0); ctx.quadraticCurveTo(5, 5, 0, 0);
-        ctx.fill();
-        ctx.restore();
+        ctx.fill(); ctx.restore();
     });
 }
 
 function drawOverlay() {
-    ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0,0,W,H);
     ctx.fillStyle = "#fff"; ctx.textAlign = "center";
-    ctx.font = "bold 40px 'Shippori Mincho', serif";
+    ctx.font = "bold 40px 'Shippori Mincho'";
     
     if(state === "TITLE") {
-        ctx.fillText("弾幕・夢幻", W/2, H/2 - 40);
-        ctx.font = "20px serif";
-        ctx.fillText("SPACEキーで開始", W/2, H/2 + 40);
-        ctx.fillText("移動:矢印 / ショット:X / ボム:Z / 低速:Shift", W/2, H/2 + 80);
+        ctx.shadowColor = "#f00"; ctx.shadowBlur = 15;
+        ctx.fillText("弾幕・夢幻", W/2, 180);
+        ctx.shadowBlur = 0;
+        
+        ctx.font = "24px 'Shippori Mincho'";
+        // 難易度選択メニュー描画
+        DIFFICULTIES.forEach((d, i) => {
+            if(i === diffIndex) {
+                ctx.fillStyle = "#ff0";
+                ctx.fillText(`▶ ${d.name}`, W/2, 300 + i*50);
+            } else {
+                ctx.fillStyle = "#888";
+                ctx.fillText(d.name, W/2, 300 + i*50);
+            }
+        });
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "18px serif";
+        ctx.fillText("選択: ↑↓ / 決定: Z", W/2, 500);
+        ctx.fillText("操作: 矢印(移動) X(弾) Shift(低速)", W/2, 530);
+
     } else if(state === "GAMEOVER") {
         ctx.fillStyle = "#f00"; ctx.fillText("無念...", W/2, H/2);
-        ctx.fillStyle = "#fff"; ctx.font = "20px serif"; ctx.fillText("再挑戦: SPACE", W/2, H/2 + 60);
+        ctx.fillStyle = "#fff"; ctx.font = "20px serif"; ctx.fillText("再挑戦: Zキー", W/2, H/2 + 60);
     } else if(state === "CLEAR") {
         ctx.fillStyle = "#ff0"; ctx.fillText("完全制覇", W/2, H/2);
-        ctx.fillStyle = "#fff"; ctx.font = "20px serif"; ctx.fillText(`最終点数: ${score}`, W/2, H/2 + 60);
+        ctx.font = "24px serif";
+        ctx.fillStyle = "#fff"; ctx.fillText(`難易度: ${currentDiff.name}`, W/2, H/2 + 50);
+        ctx.fillText(`最終点数: ${Math.floor(score)}`, W/2, H/2 + 90);
+        ctx.font = "16px serif"; ctx.fillText("タイトルへ: Zキー", W/2, H/2 + 150);
     }
 }
 
@@ -555,7 +575,6 @@ function explode(x,y,c="orange",n=10) {
     for(let i=0;i<n;i++) particles.push({x, y, vx:(Math.random()-.5)*10, vy:(Math.random()-.5)*10, life:30, color:c}); 
 }
 
-// ゲーム開始
 loop();
 
 </script>
