@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逆アキネイター：大学推論 Pro</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f4f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        #game-box { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); width: 100%; max-width: 700px; }
+        .ai-message { background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 20px; font-weight: bold; color: #0d47a1; border-left: 5px solid #2196f3; }
+        .question-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; max-height: 300px; overflow-y: auto; padding: 10px; border: 1px solid #eee; border-radius: 8px; }
+        button { padding: 10px; border: none; border-radius: 6px; cursor: pointer; background: #3498db; color: white; font-size: 0.85rem; transition: 0.2s; }
+        button:hover { background: #2980b9; }
+        button:disabled { background: #ccc; cursor: not-allowed; opacity: 0.6; }
+        .guess-area { border-top: 2px solid #eee; padding-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        input[type="text"] { padding: 12px; width: 60%; border-radius: 8px; border: 2px solid #ddd; outline: none; }
+        input[type="text"]:focus { border-color: #3498db; }
+        #log { font-size: 0.85rem; color: #555; max-height: 150px; overflow-y: auto; background: #fff; border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 8px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div id="game-box">
+    <div class="header">
+        <strong style="color:#555;">逆アキネイター 🎓 大学編</strong>
+        <button onclick="location.reload()" style="background:#95a5a6; padding: 5px 10px;">リセット</button>
+    </div>
+    <div class="ai-message" id="ai-response">私が思い浮かべている大学を当ててください。左の質問ボタンで絞り込めます。</div>
+    
+    <div class="question-grid" id="questions"></div>
+
+    <div class="guess-area">
+        <input type="text" id="final-answer" placeholder="大学名を入力（例：日本大学）">
+        <button onclick="makeGuess()" style="background: #27ae60; width: 100px; font-weight: bold;">回答！</button>
+    </div>
+
+    <div id="log">【質問履歴】<br></div>
+</div>
+
+<script>
+    const universities = [
+        { name: "東京大学", region: "関東", national: true, empire: true, medicine: true, art: false, science: true, woman: false, march: false, kankan: false, box_ekiden: true, sea: false, sports: true },
+        { name: "京都大学", region: "近畿", national: true, empire: true, medicine: true, art: false, science: true, woman: false, march: false, kankan: false, box_ekiden: false, sea: false, sports: true },
+        { name: "早稲田大学", region: "関東", national: false, empire: false, medicine: false, art: false, science: true, woman: false, march: false, kankan: false, box_ekiden: true, sea: false, sports: true },
+        { name: "慶應義塾大学", region: "関東", national: false, empire: false, medicine: true, art: false, science: true, woman: false, march: false, kankan: false, box_ekiden: true, sea: false, sports: true },
+        { name: "明治大学", region: "関東", national: false, empire: false, medicine: false, art: false, science: true, woman: false, march: true, kankan: false, box_ekiden: true, sea: false, sports: true },
+        { name: "同志社大学", region: "近畿", national: false, empire: false, medicine: false, art: false, science: true, woman: false, march: false, kankan: true, box_ekiden: false, sea: false, sports: true },
+        { name: "東京藝術大学", region: "関東", national: true, empire: false, medicine: false, art: true, science: false, woman: false, march: false, kankan: false, box_ekiden: false, sea: false, sports: false },
+        { name: "お茶の水女子大学", region: "関東", national: true, empire: false, medicine: false, art: false, science: true, woman: true, march: false, kankan: false, box_ekiden: false, sea: false, sports: false },
+        { name: "近畿大学", region: "近畿", national: false, empire: false, medicine: true, art: false, science: true, woman: false, march: false, kankan: false, box_ekiden: false, sea: true, sports: true },
+        { name: "日本大学", region: "関東", national: false, empire: false, medicine: true, art: true, science: true, woman: false, march: false, kankan: false, box_ekiden: true, sea: false, sports: true },
+        { name: "琉球大学", region: "沖縄", national: true, empire: false, medicine: true, art: false, science: true, woman: false, march: false, kankan: false, box_ekiden: false, sea: true, sports: false },
+        { name: "一橋大学", region: "関東", national: true, empire: false, medicine: false, art: false, science: false, woman: false, march: false, kankan: false, box_ekiden: false, sea: false, sports: false }
+    ];
+
+    const questionMaster = [
+        // 地域・属性
+        { text: "国立・公立大学ですか？", check: (u) => u.national },
+        { text: "私立大学ですか？", check: (u) => !u.national },
+        { text: "関東地方にありますか？", check: (u) => u.region === "関東" },
+        { text: "近畿地方にありますか？", check: (u) => u.region === "近畿" },
+        { text: "女子大ですか？", check: (u) => u.woman },
+        // 大学群
+        { text: "旧帝国大学（旧帝大）ですか？", check: (u) => u.empire },
+        { text: "MARCHの一角ですか？", check: (u) => u.march },
+        { text: "関関同立の一角ですか？", check: (u) => u.kankan },
+        // 学部・特色
+        { text: "医学部はありますか？", check: (u) => u.medicine },
+        { text: "理系学部（工学・理学など）はありますか？", check: (u) => u.science },
+        { text: "芸術系の学部（美術・音楽）が有名ですか？", check: (u) => u.art },
+        { text: "水産系・海に近いイメージがありますか？", check: (u) => u.sea },
+        // その他・スポーツ
+        { text: "箱根駅伝に出場したことがありますか？", check: (u) => u.box_ekiden },
+        { text: "スポーツ推薦や部活動が非常に盛んですか？", check: (u) => u.sports },
+        { text: "本部は東京都内にありますか？", check: (u) => u.region === "関東" && !u.name.includes("琉球") && !u.name.includes("筑波") }
+    ];
+
+    let target = universities[Math.floor(Math.random() * universities.length)];
+
+    function init() {
+        const qContainer = document.getElementById("questions");
+        questionMaster.forEach((q, index) => {
+            const btn = document.createElement("button");
+            btn.textContent = q.text;
+            btn.onclick = () => ask(index, btn);
+            qContainer.appendChild(btn);
+        });
+    }
+
+    function ask(index, btn) {
+        const q = questionMaster[index];
+        const isYes = q.check(target);
+        const response = isYes ? "はい、そうです。" : "いいえ、違います。";
+        
+        document.getElementById("ai-response").innerHTML = `質問：${q.text}<br>回答：<span style="color:${isYes?'#27ae60':'#e74c3c'}">${response}</span>`;
+        addLog(q.text, response);
+        btn.disabled = true;
+    }
+
+    function addLog(q, res) {
+        const log = document.getElementById("log");
+        const entry = document.createElement("div");
+        entry.innerHTML = `・${q} → <b>${res}</b>`;
+        log.prepend(entry);
+    }
+
+    function makeGuess() {
+        const input = document.getElementById("final-answer");
+        const val = input.value.trim();
+        if (val === target.name) {
+            document.getElementById("ai-response").innerHTML = `<span style="font-size:1.5rem">正解！🎉</span><br>私が考えていたのは「${target.name}」です。`;
+            document.getElementById("questions").style.pointerEvents = "none";
+        } else {
+            document.getElementById("ai-response").textContent = `「${val}」ではありません。残念！`;
+        }
+    }
+
+    init();
+</script>
+
+</body>
+</html>
