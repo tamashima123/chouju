@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>難読漢字クイズ 60連発</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        #quiz-container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 500px; text-align: center; }
+        h1 { color: #2c3e50; font-size: 1.5rem; margin-bottom: 1rem; border-bottom: 2px solid #3498db; display: inline-block; padding-bottom: 5px; }
+        #kanji { font-size: 4.5rem; font-weight: bold; margin: 15px 0; color: #333; min-height: 120px; display: flex; align-items: center; justify-content: center; }
+        input[type="text"] { width: 85%; padding: 12px; font-size: 1.2rem; border: 2px solid #ddd; border-radius: 8px; outline: none; transition: border-color 0.3s; text-align: center; }
+        input[type="text"]:focus { border-color: #3498db; }
+        button { background: #3498db; color: white; border: none; padding: 12px 30px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin-top: 15px; width: 90%; font-weight: bold; }
+        button:hover { background: #2980b9; }
+        #feedback { margin-top: 20px; font-weight: bold; height: 1.5rem; font-size: 1.1rem; }
+        .correct { color: #27ae60; }
+        .wrong { color: #e74c3c; }
+        #score-info { margin-top: 10px; font-size: 0.9rem; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+
+<div id="quiz-container">
+    <h1>難読漢字クイズ</h1>
+    <div id="score-info">第 <span id="current-num">1</span> 問 / 全 60 問</div>
+    <div id="kanji">---</div>
+    <input type="text" id="answer-input" placeholder="よみがなを入力" autocomplete="off">
+    <br>
+    <button onclick="checkAnswer()">回答する</button>
+    <div id="feedback"></div>
+</div>
+
+<script>
+    // 追加分を含めた全60問のデータ
+    const masterQuestions = [
+        { q: "海栗", a: "うに" }, { q: "微塵", a: "みじん" }, { q: "躑躅", a: "つつじ" }, { q: "抽出", a: "ちゅうしゅつ" }, { q: "一入", a: "ひとしお" },
+        { q: "不織布", a: "ふしょくふ" }, { q: "強か", a: "したたか" }, { q: "塩梅", a: "あんばい" }, { q: "綻びる", a: "ほころびる" }, { q: "所謂", a: "いわゆる" },
+        { q: "既視感", a: "きしかん" }, { q: "身勝手", a: "みがって" }, { q: "未曾有", a: "みぞう" }, { q: "雰囲気", a: "ふんいき" }, { q: "出納", a: "すいとう" },
+        { q: "汎用", a: "はんよう" }, { q: "相殺", a: "そうさい" }, { q: "間髪", a: "かんぱつ" }, { q: "稀有", a: "けう" }, { q: "進捗", a: "しんちょく" },
+        { q: "建立", a: "こんりゅう" }, { q: "会釈", a: "えしゃく" }, { q: "祝詞", a: "のりと" }, { q: "知己", a: "ちき" }, { q: "境内", a: "けいだい" },
+        { q: "訃報", a: "ふほう" }, { q: "遊説", a: "ゆうぜい" }, { q: "破綻", a: "はたん" }, { q: "早急", a: "さっきゅう" }, { q: "遵守", a: "じゅんしゅ" },
+        { q: "暫く", a: "しばらく" }, { q: "流石", a: "さすが" }, { q: "欠伸", a: "あくび" }, { q: "炬燵", a: "こたつ" }, { q: "暖簾", a: "のれん" },
+        { q: "案山子", a: "かかし" }, { q: "心太", a: "ところてん" }, { q: "時雨", a: "しぐれ" }, { q: "五月雨", a: "さみだれ" }, { q: "向日葵", a: "ひまわり" },
+        { q: "紫陽花", a: "あじさい" }, { q: "蒲公英", a: "たんぽぽ" }, { q: "仙人掌", a: "さぼてん" }, { q: "土竜", a: "もぐら" }, { q: "秋刀魚", a: "さんま" },
+        { q: "烏賊", a: "いか" }, { q: "章魚", a: "たこ" }, { q: "大熊猫", a: "ぱんだ" }, { q: "河馬", a: "かば" }, { q: "馴鹿", a: "となかい" },
+        { q: "翻車魚", a: "まんぼう" }, { q: "金魚", a: "きんぎょ" }, { q: "雲呑", a: "わんたん" }, { q: "心算", a: "つもり" }, { q: "羊羹", a: "ようかん" },
+        { q: "最中", a: "もなか" }, { q: "外郎", a: "ういろう" }, { q: "煎餅", a: "せんべい" }, { q: "太刀魚", a: "たちうお" }, { q: "柳葉魚", a: "ししゃも" }
+    ];
+
+    // 配列をシャッフルする
+    let questions = [...masterQuestions].sort(() => Math.random() - 0.5);
+
+    let currentIndex = 0;
+    let score = 0;
+
+    const kanjiElem = document.getElementById("kanji");
+    const inputElem = document.getElementById("answer-input");
+    const feedbackElem = document.getElementById("feedback");
+    const currentNumElem = document.getElementById("current-num");
+
+    function loadQuestion() {
+        if (currentIndex < questions.length) {
+            kanjiElem.textContent = questions[currentIndex].q;
+            inputElem.value = "";
+            feedbackElem.textContent = "";
+            currentNumElem.textContent = currentIndex + 1;
+            inputElem.focus();
+        } else {
+            showResult();
+        }
+    }
+
+    function checkAnswer() {
+        const userAnswer = inputElem.value.trim();
+        const correctAnswer = questions[currentIndex].a;
+
+        if (userAnswer === correctAnswer) {
+            feedbackElem.textContent = "正解！";
+            feedbackElem.className = "correct";
+            score++;
+        } else {
+            feedbackElem.textContent = `正解は「${correctAnswer}」`;
+            feedbackElem.className = "wrong";
+        }
+
+        currentIndex++;
+        // 判定が見えるように少し待ってから次へ
+        setTimeout(loadQuestion, 1200);
+    }
+
+    function showResult() {
+        document.getElementById("quiz-container").innerHTML = `
+            <h1>結果発表</h1>
+            <p style="font-size: 1.5rem; margin: 20px 0;">${score} / ${questions.length} 問正解</p>
+            <p>${score === questions.length ? "完璧です！漢字マスター！" : "お疲れ様でした！"}</p>
+            <button onclick="location.reload()">もう一度プレイ</button>
+        `;
+    }
+
+    inputElem.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") checkAnswer();
+    });
+
+    loadQuestion();
+</script>
+
+</body>
+</html>
