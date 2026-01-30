@@ -2,257 +2,155 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>和風クリッカー - 宵の社</title>
+    <title>第九曼荼羅 - The 9th Mandala</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap');
-
-        /* --- 和風デザイン設定 (CSS) --- */
         body {
-            /* 和風フォントの指定 (明朝体系) */
-            font-family: 'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
-            /* 藍色のグラデーション背景 */
-            background: linear-gradient(to bottom, #0f172a, #1e293b);
-            color: #e2e8f0;
-            text-align: center;
+            background-color: #0d0d0d;
+            color: #d4af37; /* Gold */
+            font-family: 'serif';
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
+            height: 100vh;
             margin: 0;
-            user-select: none;
-            /* 和紙のような微細なテクスチャを重ねる（任意） */
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E"), linear-gradient(to bottom, #0f172a, #1e293b);
-        }
-
-        h1 {
-            margin-bottom: 10px;
-            font-size: 28px;
-            color: #d4af37; /* 金色 */
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            letter-spacing: 0.2em;
-        }
-
-        /* スコア表示（魂の数） */
-        #score-container {
-            font-size: 48px;
-            font-weight: bold;
-            margin: 20px 0;
-            color: #f59e0b; /* 明るい金色 */
-            text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
-        }
-        
-        .unit { font-size: 24px; margin-left: 5px; color: #ccc; }
-
-        #sps-display {
-            font-size: 16px;
-            color: #94a3b8;
-            margin-bottom: 40px;
-        }
-
-        /* メインのクリックボタン（御神体） */
-        #click-btn {
-            width: 220px;
-            height: 220px;
-            border-radius: 50%;
-            /* 朱色のグラデーション */
-            background: radial-gradient(circle at 30% 30%, #ef4444, #991b1b);
-            border: 4px solid #d4af37; /* 金の枠線 */
-            box-shadow: 0 0 30px rgba(220, 38, 38, 0.6), inset 0 0 20px rgba(0,0,0,0.2);
-            font-size: 32px;
-            font-family: 'Noto Serif JP', serif;
-            font-weight: bold;
-            color: #fff;
-            cursor: pointer;
-            transition: transform 0.1s, box-shadow 0.1s;
-            outline: none;
-            text-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            position: relative;
             overflow: hidden;
         }
 
-        /* ボタンの装飾（和柄っぽい光沢） */
-        #click-btn::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(transparent, rgba(255,255,255,0.2), transparent);
-            transform: rotate(45deg);
-            pointer-events: none;
-        }
-
-        #click-btn:active {
-            transform: scale(0.97);
-            box-shadow: 0 0 15px rgba(220, 38, 38, 0.8);
-        }
-
-        /* ショップエリア（授与所） */
-        .shop {
-            margin-top: 50px;
-            width: 90%;
-            max-width: 450px;
-            background: rgba(30, 41, 59, 0.9); /* 半透明の深い藍色 */
-            padding: 25px;
-            border-radius: 15px;
-            border: 2px solid #334155;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-
-        .shop h2 {
-            margin-top: 0;
-            font-size: 22px;
-            color: #d4af37;
-            border-bottom: 1px solid #d4af37;
-            padding-bottom: 10px;
-            display: inline-block;
-        }
-
-        .upgrade-btn {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            padding: 15px 20px;
-            margin-bottom: 12px;
-            /* 漆塗りのような深い赤茶色 */
-            background: linear-gradient(to right, #451a03, #78350f);
-            border: 1px solid #a16207;
-            border-radius: 8px;
-            color: #fde68a;
+        #mandala-container {
+            position: relative;
             cursor: pointer;
-            transition: all 0.2s;
-            font-family: 'Noto Serif JP', serif;
-            text-align: left;
+            transition: transform 0.1s;
         }
 
-        .upgrade-btn:hover {
-            background: linear-gradient(to right, #78350f, #92400e);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        #mandala-container:active {
+            transform: scale(0.95);
         }
 
-        .upgrade-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            background: #334155;
-            border-color: #475569;
-            color: #94a3b8;
-            transform: none;
-            box-shadow: none;
+        #mandala-circle {
+            width: 300px;
+            height: 300px;
+            border: 5px double #d4af37;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            box-shadow: 0 0 20px #d4af37;
+            animation: rotate 20s linear infinite;
         }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        #status {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .stats { font-size: 1.5rem; margin: 5px 0; }
         
-        .btn-title { font-size: 18px; font-weight: bold; }
-        .btn-desc { font-size: 14px; opacity: 0.8; }
+        #shop {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+        }
 
-        .cost { color: #f59e0b; font-weight: bold; font-size: 18px; }
-        .upgrade-btn:disabled .cost { color: #94a3b8; }
+        button {
+            background: transparent;
+            color: #d4af37;
+            border: 1px solid #d4af37;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: 'serif';
+        }
 
+        button:hover {
+            background: #d4af37;
+            color: #000;
+        }
+
+        button:disabled {
+            color: #444;
+            border-color: #444;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
 
-    <h1>宵の社</h1>
+    <div id="status">
+        <h1 id="rank-name">第一曼荼羅：胎蔵界</h1>
+        <div class="stats">徳: <span id="virtue">0</span></div>
+        <div class="stats">毎秒の功徳: <span id="per-sec">0</span></div>
+    </div>
 
-    <div id="score-container"><span id="score">0</span><span class="unit">魂</span></div>
-    <div id="sps-display">自然集魂: <span id="auto-rate">0</span> 魂 / 秒</div>
+    <div id="mandala-container" onclick="clickMandala()">
+        <div id="mandala-circle">卍</div>
+    </div>
 
-    <button id="click-btn" onclick="handleClick()">祈願</button>
-
-    <div class="shop">
-        <h2>授与所</h2>
-        
-        <button id="btn-power" class="upgrade-btn" onclick="buyPower()">
-            <div>
-                <div class="btn-title">打ち出の小槌</div>
-                <div class="btn-desc">祈願の力 +1</div>
-            </div>
-            <div class="cost" id="cost-power">10 魂</div>
-        </button>
-
-        <button id="btn-auto" class="upgrade-btn" onclick="buyAuto()">
-            <div>
-                <div class="btn-title">招き猫</div>
-                <div class="btn-desc">毎秒 +1 魂</div>
-            </div>
-            <div class="cost" id="cost-auto">50 魂</div>
-        </button>
+    <div id="shop">
+        <button id="btn-monk" onclick="buyMonk()">修行僧を雇う (コスト: 15)</button>
+        <button id="btn-chant" onclick="buyChant()">念仏を唱える (コスト: 100)</button>
     </div>
 
     <script>
-        // --- ゲームの変数 (仕組みは前回と同じ) ---
-        let score = 0;           // 現在の魂
-        let clickValue = 1;      // 1クリックの力
-        let autoRate = 0;        // 1秒あたりの自動入手量
+        let virtue = 0;
+        let monkCount = 0;
+        let chantPower = 0;
+        let rank = 1;
 
-        let costPower = 10;
-        let costAuto = 50;
+        const rankNames = [
+            "第一曼荼羅：胎蔵界", "第二曼荼羅：金剛界", "第三曼荼羅：阿弥陀", 
+            "第四曼荼羅：蓮華", "第五曼荼羅：虚空", "第六曼荼羅：寂静", 
+            "第七曼荼羅：遍照", "第八曼荼羅：解脱", "第九曼荼羅：解脱の先へ"
+        ];
 
-        // --- HTML要素の取得 ---
-        const elScore = document.getElementById('score');
-        const elAutoRate = document.getElementById('auto-rate');
-        const elCostPower = document.getElementById('cost-power');
-        const elCostAuto = document.getElementById('cost-auto');
-        const btnPower = document.getElementById('btn-power');
-        const btnAuto = document.getElementById('btn-auto');
-
-        // --- メイン機能 ---
-
-        // クリック時の処理
-        function handleClick() {
-            score += clickValue;
-            updateDisplay();
-            
-            const btn = document.getElementById('click-btn');
-            btn.style.transform = 'scale(0.97)';
-            setTimeout(() => btn.style.transform = 'scale(1)', 50);
-        }
-
-        // パワーアップ購入
-        function buyPower() {
-            if (score >= costPower) {
-                score -= costPower;
-                clickValue++;
-                costPower = Math.floor(costPower * 1.5);
-                updateDisplay();
-            }
-        }
-
-        // オートクリッカー購入
-        function buyAuto() {
-            if (score >= costAuto) {
-                score -= costAuto;
-                autoRate++;
-                costAuto = Math.floor(costAuto * 1.5);
-                updateDisplay();
-            }
-        }
-
-        // 画面表示の更新
         function updateDisplay() {
-            elScore.textContent = score.toLocaleString();
-            elAutoRate.textContent = autoRate.toLocaleString();
+            document.getElementById('virtue').innerText = Math.floor(virtue);
+            document.getElementById('per-sec').innerText = chantPower;
+            document.getElementById('btn-monk').innerText = `修行僧を雇う (コスト: ${Math.floor(15 * Math.pow(1.15, monkCount))})`;
+            document.getElementById('btn-chant').innerText = `念仏を唱える (コスト: ${Math.floor(100 * Math.pow(1.15, chantPower))})`;
             
-            elCostPower.textContent = costPower.toLocaleString() + " 魂";
-            elCostAuto.textContent = costAuto.toLocaleString() + " 魂";
-
-            btnPower.disabled = (score < costPower);
-            btnAuto.disabled = (score < costAuto);
+            // ランクアップチェック
+            let nextRankThreshold = Math.pow(10, rank + 1);
+            if (virtue >= nextRankThreshold && rank < 9) {
+                rank++;
+                document.getElementById('rank-name').innerText = rankNames[rank-1];
+                document.getElementById('mandala-circle').style.boxShadow = `0 0 ${rank * 10}px #d4af37`;
+            }
         }
 
-        // --- ゲームループ ---
-        setInterval(() => {
-            if (autoRate > 0) {
-                score += autoRate;
+        function clickMandala() {
+            virtue += (1 + monkCount);
+            updateDisplay();
+        }
+
+        function buyMonk() {
+            let cost = Math.floor(15 * Math.pow(1.15, monkCount));
+            if (virtue >= cost) {
+                virtue -= cost;
+                monkCount++;
                 updateDisplay();
             }
-        }, 1000);
+        }
 
-        // 初期表示更新
-        updateDisplay();
+        function buyChant() {
+            let cost = Math.floor(100 * Math.pow(1.15, chantPower));
+            if (virtue >= cost) {
+                virtue -= cost;
+                chantPower++;
+                updateDisplay();
+            }
+        }
+
+        // 自動加算
+        setInterval(() => {
+            virtue += chantPower / 10;
+            updateDisplay();
+        }, 100);
     </script>
 </body>
 </html>
