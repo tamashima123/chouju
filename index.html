@@ -19,154 +19,306 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            flex-direction: column;
         }
 
-        /* 画面中央のタイトル */
+        /* 中央コンテナ */
+        .center-container {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            z-index: 10;
+            width: 100%;
+            max-width: 800px;
+        }
+
         .main-title {
             color: #fff;
             font-size: 4em;
             letter-spacing: 0.2em;
             font-weight: 700;
             text-shadow: 2px 2px 10px rgba(0,0,0,0.6);
-            animation: fadeInSlow 2s ease-out;
             cursor: default;
+            margin: 0;
+            animation: fadeInSlow 1.5s ease-out;
+        }
+
+        .clock-display {
+            color: #fff;
+            font-size: 1.8em;
+            letter-spacing: 0.1em;
+            text-shadow: 1px 1px 5px rgba(0,0,0,0.5);
+            font-weight: 400;
+            animation: fadeInSlow 2s ease-out;
+        }
+
+        /* 検索ボックス */
+        .search-box {
+            margin-top: 5px;
+            animation: fadeInSlow 2.5s ease-out;
+            position: relative;
+            z-index: 20;
+        }
+
+        .search-input {
+            width: 300px;
+            padding: 12px 20px;
+            border-radius: 30px;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(5px);
+            font-family: 'Noto Serif JP', serif;
+            font-size: 1em;
+            text-align: center;
+            color: #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            background-color: rgba(255, 255, 255, 0.95);
+            width: 350px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+
+        /* --- ブックマークエリア --- */
+        .bookmark-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            animation: fadeInSlow 3s ease-out;
+            max-width: 600px;
+        }
+
+        .bookmark-item {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: rgba(0, 0, 0, 0.4);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .bookmark-item:hover {
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #333;
+            transform: translateY(-2px);
+        }
+
+        /* 追加ボタン */
+        .add-btn {
+            padding: 8px 16px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 1px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: 0.2s;
+        }
+        .add-btn:hover {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* 入力モーダル（隠しておく） */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            width: 300px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .modal-box input {
+            width: 90%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .modal-box button {
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
         }
 
         @keyframes fadeInSlow {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* 右上のナビゲーションエリア */
+        /* 右上メニュー */
         .top-nav {
             position: absolute;
-            top: 40px;
-            right: 50px;
-            display: flex;
-            gap: 20px;
-            z-index: 1000;
-            flex-wrap: wrap;
-            justify-content: flex-end;
+            top: 40px; right: 50px;
+            display: flex; gap: 20px; z-index: 1000;
+            flex-wrap: wrap; justify-content: flex-end;
         }
-
-        /* カテゴリーの親要素 */
-        .nav-item {
-            position: relative;
-            cursor: default;
-        }
-
-        /* カテゴリー名ボタン */
+        .nav-item { position: relative; cursor: default; }
         .category-name {
-            color: #fff;
-            font-size: 1.1em;
-            padding: 10px 20px;
-            background-color: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(5px);
-            border-radius: 4px;
-            transition: background-color 0.3s;
-            letter-spacing: 0.1em;
-            border: 1px solid rgba(255,255,255,0.3);
-            white-space: nowrap;
+            color: #fff; font-size: 1.1em; padding: 10px 20px;
+            background-color: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px);
+            border-radius: 4px; border: 1px solid rgba(255,255,255,0.3);
+            transition: 0.3s; white-space: nowrap;
         }
-
-        .nav-item:hover .category-name {
-            background-color: rgba(255, 255, 255, 0.9);
-            color: #333;
-        }
-
-        /* ドロップダウンメニュー */
+        .nav-item:hover .category-name { background-color: rgba(255, 255, 255, 0.9); color: #333; }
         .dropdown {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            width: 180px;
+            position: absolute; top: 100%; right: 0; width: 180px;
             background-color: rgba(255, 255, 255, 0.95);
-            border-radius: 4px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            padding: 10px 0;
-            margin-top: 10px;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 4px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            padding: 10px 0; margin-top: 10px;
+            opacity: 0; visibility: hidden;
+            transform: translateY(-10px); transition: 0.4s;
         }
-
-        .nav-item:hover .dropdown {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-
-        /* ドロップダウン内のリンク */
+        .nav-item:hover .dropdown { opacity: 1; visibility: visible; transform: translateY(0); }
         .dropdown a {
-            display: block;
-            padding: 12px 20px;
-            color: #333;
-            text-decoration: none;
-            font-size: 0.95em;
-            transition: background-color 0.2s;
-            border-bottom: 1px dotted #ccc;
+            display: block; padding: 12px 20px; color: #333;
+            text-decoration: none; font-size: 0.95em;
+            border-bottom: 1px dotted #ccc; transition: 0.2s;
         }
+        .dropdown a:last-child { border-bottom: none; }
+        .dropdown a:hover { background-color: #f0f0f0; padding-left: 25px; }
 
-        .dropdown a:last-child {
-            border-bottom: none;
-        }
-
-        .dropdown a:hover {
-            background-color: #f0f0f0;
-            color: #000;
-            padding-left: 25px;
-        }
-
-        /* スマホ対応 */
         @media (max-width: 768px) {
-            .main-title {
-                font-size: 2.2em;
-            }
-            .top-nav {
-                top: 20px;
-                right: 10px;
-                left: 10px;
-                gap: 10px;
-                justify-content: center;
-            }
-            .category-name {
-                padding: 8px 12px;
-                font-size: 0.9em;
-            }
+            .main-title { font-size: 2.2em; }
+            .top-nav { top: 20px; right: 10px; left: 10px; justify-content: center; }
         }
     </style>
 </head>
 <body>
 
-    <div class="main-title">長寿の庭園</div>
+    <div class="center-container">
+        <div class="main-title">長寿の庭園</div>
+        <div id="clock" class="clock-display">00:00:00</div>
+        
+        <form action="https://www.google.com/search" method="get" target="_blank" class="search-box">
+            <input type="text" name="q" class="search-input" placeholder="Google 検索" autocomplete="off">
+        </form>
+
+        <div class="bookmark-area" id="bookmark-list">
+            <div class="add-btn" onclick="openModal()">＋ 追加</div>
+        </div>
+    </div>
 
     <nav class="top-nav">
-        
-        <div class="nav-item">
-            <div class="category-name">学習</div>
-            <div class="dropdown">
-                <a href="cobun_card.html">古典単語帳</a>
-                <a href="kanji_quiz.html">漢字クイズ</a> <a href="daigaku_quiz.html">大学クイズ</a> </div>
-        </div>
-
-        <div class="nav-item">
-            <div class="category-name">道具</div>
-            <div class="dropdown">
-                <a href="timer.html">集中タイマー</a>
-            </div>
-        </div>
-
-        <div class="nav-item">
-            <div class="category-name">ゲーム</div>
-            <div class="dropdown">
-                <a href="shogi.html">将棋</a>
-                <a href="stg.html">シューティング</a>
-                <a href="click.html">クリッカー</a>
-            </div>
-        </div>
-
+        <div class="nav-item"><div class="category-name">学習</div><div class="dropdown"><a href="cobun_card.html">古典単語帳</a><a href="kanji_quiz.html">漢字クイズ</a><a href="daigaku_quiz.html">大学クイズ</a></div></div>
+        <div class="nav-item"><div class="category-name">道具</div><div class="dropdown"><a href="timer.html">集中タイマー</a></div></div>
+        <div class="nav-item"><div class="category-name">ゲーム</div><div class="dropdown"><a href="shogi.html">将棋</a><a href="stg.html">シューティング</a><a href="click.html">クリッカー</a></div></div>
     </nav>
 
+    <div id="modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3>ショートカットを追加</h3>
+            <input type="text" id="bm-name" placeholder="サイト名（例：Youtube）">
+            <input type="text" id="bm-url" placeholder="URL（例：https://youtube.com）">
+            <div style="margin-top:10px;">
+                <button onclick="closeModal()">キャンセル</button>
+                <button onclick="addBookmark()" style="background:#4a5c6a; color:white; border:none;">追加</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 時計処理 ---
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // --- ブックマーク処理 ---
+        const bookmarkList = document.getElementById('bookmark-list');
+        const modal = document.getElementById('modal');
+        const nameInput = document.getElementById('bm-name');
+        const urlInput = document.getElementById('bm-url');
+
+        // 保存されたデータを読み込む
+        let bookmarks = JSON.parse(localStorage.getItem('myBookmarks')) || [];
+
+        function renderBookmarks() {
+            // 追加ボタン以外を一旦削除
+            const items = bookmarkList.querySelectorAll('.bookmark-item');
+            items.forEach(e => e.remove());
+
+            bookmarks.forEach((bm, index) => {
+                const a = document.createElement('a');
+                a.href = bm.url;
+                a.className = 'bookmark-item';
+                a.textContent = bm.name;
+                a.target = "_blank"; // 別タブで開く
+                
+                // 右クリックで削除
+                a.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    if(confirm(`「${bm.name}」を削除しますか？`)) {
+                        deleteBookmark(index);
+                    }
+                });
+
+                // 「＋追加」ボタンの直前に挿入
+                const addBtn = bookmarkList.querySelector('.add-btn');
+                bookmarkList.insertBefore(a, addBtn);
+            });
+        }
+
+        function addBookmark() {
+            const name = nameInput.value;
+            let url = urlInput.value;
+
+            if(!name || !url) {
+                alert('名前とURLを入力してください');
+                return;
+            }
+
+            // httpがない場合は自動付与
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+
+            bookmarks.push({ name: name, url: url });
+            saveBookmarks();
+            renderBookmarks();
+            closeModal();
+            nameInput.value = '';
+            urlInput.value = '';
+        }
+
+        function deleteBookmark(index) {
+            bookmarks.splice(index, 1);
+            saveBookmarks();
+            renderBookmarks();
+        }
+
+        function saveBookmarks() {
+            localStorage.setItem('myBookmarks', JSON.stringify(bookmarks));
+        }
+
+        // モーダル操作
+        function openModal() { modal.style.display = 'flex'; }
+        function closeModal() { modal.style.display = 'none'; }
+
+        // 初期表示
+        renderBookmarks();
+    </script>
 </body>
 </html>
