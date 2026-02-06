@@ -3,67 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Functionary | Simple Graphing Tool</title>
+    <title>Functionary | Fullscreen Math Plotter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <style>
         :root {
-            --primary-color: #2d3436;
-            --accent-color: #0984e3;
-            --bg-color: #dfe6e9;
+            --ui-bg: rgba(255, 255, 255, 0.9);
+            --accent: #0984e3;
         }
-        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; align-items: center; background: var(--bg-color); margin: 0; padding: 20px; color: var(--primary-color); }
-        .header { text-align: center; margin-bottom: 20px; }
-        h1 { margin: 0; font-size: 2.5rem; letter-spacing: -1px; color: var(--primary-color); }
-        h1 span { color: var(--accent-color); }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         
-        .controls { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 25px; width: 100%; max-width: 700px; box-sizing: border-box; }
-        .input-group { display: flex; gap: 10px; margin-top: 15px; }
-        input { flex-grow: 1; padding: 12px 15px; border: 2px solid #eee; border-radius: 8px; font-size: 16px; transition: border-color 0.2s; outline: none; font-family: monospace; }
-        input:focus { border-color: var(--accent-color); }
-        button { padding: 12px 25px; background: var(--accent-color); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: transform 0.1s, background 0.2s; }
-        button:hover { background: #0773c5; transform: translateY(-1px); }
-        button:active { transform: translateY(0); }
-        
-        .canvas-container { position: relative; background: white; padding: 10px; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
-        canvas { display: block; border-radius: 8px; background-image: 
-            linear-gradient(#f0f0f0 1px, transparent 1px),
-            linear-gradient(90deg, #f0f0f0 1px, transparent 1px);
-            background-size: 20px 20px; /* 方眼紙風の背景 */
+        /* 画面全体のキャンバス */
+        #graphCanvas { position: absolute; top: 0; left: 0; background: #fff; cursor: crosshair; }
+
+        /* UIパネル */
+        .ui-panel {
+            position: absolute; top: 20px; left: 20px; width: 320px;
+            background: var(--ui-bg); backdrop-filter: blur(10px);
+            padding: 20px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            z-index: 10; max-height: 80vh; overflow-y: auto;
         }
-        .hint { font-size: 13px; color: #636e72; margin-top: 15px; line-height: 1.6; }
-        code { background: #f1f2f6; padding: 2px 5px; border-radius: 4px; font-weight: bold; }
+        h1 { margin: 0 0 15px 0; font-size: 24px; letter-spacing: -1px; }
+        h1 span { color: var(--accent); }
+
+        .formula-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .color-indicator { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        input { flex-grow: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; }
+        
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
+        button { 
+            padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; 
+            font-weight: bold; transition: 0.2s; background: #eee;
+        }
+        button.add-btn { background: var(--accent); color: white; flex-grow: 1; }
+        button.remove-btn { background: #ff7675; color: white; padding: 5px 10px; }
+        button:hover { opacity: 0.8; }
+
+        .controls-hint { font-size: 11px; color: #636e72; margin-top: 15px; }
     </style>
 </head>
 <body>
 
-    <div class="header">
+    <canvas id="graphCanvas"></canvas>
+
+    <div class="ui-panel">
         <h1>Function<span>ary</span></h1>
-        <p>Simple & Elegant Function Plotter</p>
-    </div>
-
-    <div class="controls">
-        <div class="input-group">
-            <input type="text" id="formula" value="Math.sin(x) * Math.cos(x / 2)" placeholder="例: Math.sin(x)">
-            <button onclick="draw()">描画</button>
+        <div id="formulaContainer">
+            </div>
+        <div class="btn-group">
+            <button class="add-btn" onclick="addFormulaRow()">+ グラフを追加</button>
         </div>
-        <div class="hint">
-            <strong>Usage:</strong> JavaScript記法で入力してください。 <br>
-            例: <code>Math.pow(x, 2)</code> ($x^2$), <code>Math.sqrt(x)</code> ($\sqrt{x}$), <code>Math.PI</code> ($\pi$)
+        <div class="controls-hint">
+            <strong>入力例:</strong><br>
+            <code>x^2</code>, <code>sin(x)</code>, <code>sqrt(x)</code>, <code>abs(x)</code><br>
+            ※マウス操作（ズーム・移動）は今後の拡張機能です。
         </div>
-    </div>
-
-    <div class="canvas-container">
-        <canvas id="graphCanvas"></canvas>
     </div>
 
     <script>
         const canvas = document.getElementById('graphCanvas');
         const ctx = canvas.getContext('2d');
-        const formulaInput = document.getElementById('formula');
-        const scale = 50; 
+        const container = document.getElementById('formulaContainer');
+        
+        let formulas = ["x^2", "sin(x)"]; // 初期表示用
+        const colors = ["#0984e3", "#ff7675", "#2ecc71", "#f1c40f", "#9b59b6", "#e67e22"];
+        let scale = 50; 
 
-        function initCanvas() {
-            canvas.width = Math.min(window.innerWidth - 60, 800);
-            canvas.height = 450;
+        function init() {
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            // 初期表示の生成
+            formulas.forEach((f, i) => createRowUI(f, i));
+            draw();
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+
+        function createRowUI(value, index) {
+            const div = document.createElement('div');
+            div.className = 'formula-row';
+            div.innerHTML = `
+                <div class="color-indicator" style="background: ${colors[index % colors.length]}"></div>
+                <input type="text" value="${value}" oninput="updateFormula(${index}, this.value)" placeholder="数式を入力...">
+                ${index > 0 ? `<button class="remove-btn" onclick="removeRow(${index})">×</button>` : ''}
+            `;
+            container.appendChild(div);
+        }
+
+        function addFormulaRow() {
+            formulas.push("x");
+            refreshUI();
+        }
+
+        function removeRow(index) {
+            formulas.splice(index, 1);
+            refreshUI();
+        }
+
+        function updateFormula(index, val) {
+            formulas[index] = val;
+            draw();
+        }
+
+        function refreshUI() {
+            container.innerHTML = '';
+            formulas.forEach((f, i) => createRowUI(f, i));
             draw();
         }
 
@@ -72,44 +120,68 @@
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
 
-            // 軸の描画
-            ctx.strokeStyle = '#b2bec3';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(0, centerY); ctx.lineTo(canvas.width, centerY);
-            ctx.moveTo(centerX, 0); ctx.lineTo(centerX, canvas.height);
-            ctx.stroke();
+            // グリッドと軸の描画
+            drawGrid(centerX, centerY);
 
-            // グラフ本体
-            ctx.strokeStyle = '#0984e3';
-            ctx.lineWidth = 3;
-            ctx.lineJoin = 'round';
-            ctx.beginPath();
-
-            let first = true;
-            for (let i = 0; i <= canvas.width; i++) {
-                const x = (i - centerX) / scale;
+            // 各数式の描画
+            formulas.forEach((formulaStr, idx) => {
                 try {
-                    const y = eval(formulaInput.value);
-                    const screenY = centerY - (y * scale);
+                    const compiled = math.compile(formulaStr);
+                    ctx.beginPath();
+                    ctx.strokeStyle = colors[idx % colors.length];
+                    ctx.lineWidth = 3;
 
-                    if (isNaN(screenY) || !isFinite(screenY)) continue;
+                    let first = true;
+                    for (let i = 0; i <= canvas.width; i++) {
+                        const x = (i - centerX) / scale;
+                        const y = compiled.evaluate({ x: x });
+                        const screenY = centerY - (y * scale);
 
-                    if (first) {
-                        ctx.moveTo(i, screenY);
-                        first = false;
-                    } else {
-                        ctx.lineTo(i, screenY);
+                        if (isNaN(screenY) || !isFinite(screenY)) {
+                            first = true;
+                            continue;
+                        }
+
+                        if (first) {
+                            ctx.moveTo(i, screenY);
+                            first = false;
+                        } else {
+                            ctx.lineTo(i, screenY);
+                        }
                     }
+                    ctx.stroke();
                 } catch (e) {
-                    // エラー時は描画をスキップ
+                    // 入力中の不完全な数式は無視
                 }
+            });
+        }
+
+        function drawGrid(cx, cy) {
+            ctx.strokeStyle = '#f0f0f0';
+            ctx.lineWidth = 1;
+
+            // 垂直・水平線
+            for (let x = cx % scale; x < canvas.width; x += scale) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
+                ctx.stroke();
             }
+            for (let y = cy % scale; y < canvas.height; y += scale) {
+                ctx.beginPath();
+                ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // メインの軸
+            ctx.strokeStyle = '#aaa';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy);
+            ctx.moveTo(cx, 0); ctx.lineTo(cx, canvas.height);
             ctx.stroke();
         }
 
-        window.addEventListener('resize', initCanvas);
-        initCanvas();
+        init();
     </script>
 </body>
 </html>
