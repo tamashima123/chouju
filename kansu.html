@@ -3,42 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Functionary | Fullscreen Math Plotter</title>
+    <title>Functionary | Interactive Grapher</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <style>
         :root {
-            --ui-bg: rgba(255, 255, 255, 0.9);
+            --ui-bg: rgba(255, 255, 255, 0.92);
             --accent: #0984e3;
         }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         
-        /* 画面全体のキャンバス */
-        #graphCanvas { position: absolute; top: 0; left: 0; background: #fff; cursor: crosshair; }
+        #graphCanvas { position: absolute; top: 0; left: 0; background: #fff; cursor: grab; }
+        #graphCanvas:active { cursor: grabbing; }
 
-        /* UIパネル */
         .ui-panel {
             position: absolute; top: 20px; left: 20px; width: 320px;
             background: var(--ui-bg); backdrop-filter: blur(10px);
             padding: 20px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            z-index: 10; max-height: 80vh; overflow-y: auto;
+            z-index: 10; max-height: 85vh; overflow-y: auto;
+            user-select: none;
         }
-        h1 { margin: 0 0 15px 0; font-size: 24px; letter-spacing: -1px; }
+        h1 { margin: 0 0 5px 0; font-size: 24px; letter-spacing: -1px; }
         h1 span { color: var(--accent); }
+        .subtitle { font-size: 11px; color: #636e72; margin-bottom: 15px; }
 
         .formula-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-        .color-indicator { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-        input { flex-grow: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; }
+        .color-indicator { width: 4px; height: 24px; border-radius: 2px; flex-shrink: 0; }
+        input { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Fira Code', monospace; font-size: 14px; }
         
-        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-        button { 
-            padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; 
-            font-weight: bold; transition: 0.2s; background: #eee;
-        }
-        button.add-btn { background: var(--accent); color: white; flex-grow: 1; }
-        button.remove-btn { background: #ff7675; color: white; padding: 5px 10px; }
+        button { padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .add-btn { background: var(--accent); color: white; width: 100%; margin-top: 10px; }
+        .remove-btn { background: #ff7675; color: white; width: 30px; height: 38px; }
         button:hover { opacity: 0.8; }
 
-        .controls-hint { font-size: 11px; color: #636e72; margin-top: 15px; }
+        .controls-hint { font-size: 11px; color: #636e72; margin-top: 20px; padding-top: 10px; border-top: 1px solid #eee; }
     </style>
 </head>
 <body>
@@ -47,15 +44,17 @@
 
     <div class="ui-panel">
         <h1>Function<span>ary</span></h1>
-        <div id="formulaContainer">
-            </div>
-        <div class="btn-group">
-            <button class="add-btn" onclick="addFormulaRow()">+ グラフを追加</button>
-        </div>
+        <div class="subtitle">Interactive Math Plotter</div>
+        
+        <div id="formulaContainer"></div>
+        
+        <button class="add-btn" onclick="addFormulaRow()">+ Add Graph</button>
+        
         <div class="controls-hint">
-            <strong>入力例:</strong><br>
-            <code>x^2</code>, <code>sin(x)</code>, <code>sqrt(x)</code>, <code>abs(x)</code><br>
-            ※マウス操作（ズーム・移動）は今後の拡張機能です。
+            <strong>Controls:</strong><br>
+            • ドラッグ: 画面移動<br>
+            • スクロール: 拡大・縮小<br>
+            • <code>x^2</code>, <code>sin(x)</code>, <code>log(x)</code> 等が使用可能
         </div>
     </div>
 
@@ -64,17 +63,30 @@
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('formulaContainer');
         
-        let formulas = ["x^2", "sin(x)"]; // 初期表示用
-        const colors = ["#0984e3", "#ff7675", "#2ecc71", "#f1c40f", "#9b59b6", "#e67e22"];
-        let scale = 50; 
+        let formulas = ["x^2", "sin(x) * 3"];
+        const colors = ["#0984e3", "#d63031", "#00b894", "#fdcb6e", "#6c5ce7", "#e67e22"];
+        
+        // 表示状態
+        let scale = 60; // 1単位あたりのピクセル
+        let offsetX = 0; // 中心からのズレX
+        let offsetY = 0; // 中心からのズレY
+        
+        // マウス操作用
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
 
         function init() {
             window.addEventListener('resize', resizeCanvas);
-            resizeCanvas();
             
-            // 初期表示の生成
-            formulas.forEach((f, i) => createRowUI(f, i));
-            draw();
+            // マウスイベント
+            canvas.addEventListener('mousedown', startDrag);
+            window.addEventListener('mousemove', drag);
+            window.addEventListener('mouseup', endDrag);
+            canvas.addEventListener('wheel', handleZoom, { passive: false });
+
+            resizeCanvas();
+            refreshUI();
         }
 
         function resizeCanvas() {
@@ -83,15 +95,60 @@
             draw();
         }
 
-        function createRowUI(value, index) {
-            const div = document.createElement('div');
-            div.className = 'formula-row';
-            div.innerHTML = `
-                <div class="color-indicator" style="background: ${colors[index % colors.length]}"></div>
-                <input type="text" value="${value}" oninput="updateFormula(${index}, this.value)" placeholder="数式を入力...">
-                ${index > 0 ? `<button class="remove-btn" onclick="removeRow(${index})">×</button>` : ''}
-            `;
-            container.appendChild(div);
+        /* --- マウス操作ロジック --- */
+
+        function startDrag(e) {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            offsetX += e.clientX - lastMouseX;
+            offsetY += e.clientY - lastMouseY;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            draw();
+        }
+
+        function endDrag() {
+            isDragging = false;
+        }
+
+        function handleZoom(e) {
+            e.preventDefault();
+            const zoomSpeed = 1.1;
+            const mouseX = e.clientX - canvas.width / 2 - offsetX;
+            const mouseY = e.clientY - canvas.height / 2 - offsetY;
+
+            const oldScale = scale;
+            if (e.deltaY < 0) scale *= zoomSpeed;
+            else scale /= zoomSpeed;
+
+            // マウス位置を中心にズームするためのオフセット調整
+            const ratio = scale / oldScale;
+            offsetX -= mouseX * (ratio - 1);
+            offsetY -= mouseY * (ratio - 1);
+
+            draw();
+        }
+
+        /* --- UI管理 --- */
+
+        function refreshUI() {
+            container.innerHTML = '';
+            formulas.forEach((f, i) => {
+                const div = document.createElement('div');
+                div.className = 'formula-row';
+                div.innerHTML = `
+                    <div class="color-indicator" style="background: ${colors[i % colors.length]}"></div>
+                    <input type="text" value="${f}" oninput="updateFormula(${i}, this.value)">
+                    ${i > 0 ? `<button class="remove-btn" onclick="removeRow(${i})">×</button>` : '<div style="width:38px"></div>'}
+                `;
+                container.appendChild(div);
+            });
+            draw();
         }
 
         function addFormulaRow() {
@@ -109,33 +166,28 @@
             draw();
         }
 
-        function refreshUI() {
-            container.innerHTML = '';
-            formulas.forEach((f, i) => createRowUI(f, i));
-            draw();
-        }
+        /* --- 描画ロジック --- */
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
+            const cx = canvas.width / 2 + offsetX;
+            const cy = canvas.height / 2 + offsetY;
 
-            // グリッドと軸の描画
-            drawGrid(centerX, centerY);
+            drawGrid(cx, cy);
 
-            // 各数式の描画
             formulas.forEach((formulaStr, idx) => {
                 try {
                     const compiled = math.compile(formulaStr);
                     ctx.beginPath();
                     ctx.strokeStyle = colors[idx % colors.length];
-                    ctx.lineWidth = 3;
+                    ctx.lineWidth = 2.5;
 
                     let first = true;
-                    for (let i = 0; i <= canvas.width; i++) {
-                        const x = (i - centerX) / scale;
+                    // パフォーマンスのため2ピクセルごとに計算
+                    for (let i = 0; i <= canvas.width; i += 2) {
+                        const x = (i - cx) / scale;
                         const y = compiled.evaluate({ x: x });
-                        const screenY = centerY - (y * scale);
+                        const screenY = cy - (y * scale);
 
                         if (isNaN(screenY) || !isFinite(screenY)) {
                             first = true;
@@ -150,30 +202,30 @@
                         }
                     }
                     ctx.stroke();
-                } catch (e) {
-                    // 入力中の不完全な数式は無視
-                }
+                } catch (e) {}
             });
         }
 
         function drawGrid(cx, cy) {
+            // 方眼のサイズをスケールに合わせて調整
+            let gridSize = scale;
+            while (gridSize < 40) gridSize *= 5;
+            while (gridSize > 200) gridSize /= 5;
+
             ctx.strokeStyle = '#f0f0f0';
             ctx.lineWidth = 1;
 
-            // 垂直・水平線
-            for (let x = cx % scale; x < canvas.width; x += scale) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
-                ctx.stroke();
+            // 垂直線
+            for (let x = cx % gridSize; x < canvas.width; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
             }
-            for (let y = cy % scale; y < canvas.height; y += scale) {
-                ctx.beginPath();
-                ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
-                ctx.stroke();
+            // 水平線
+            for (let y = cy % gridSize; y < canvas.height; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
 
-            // メインの軸
-            ctx.strokeStyle = '#aaa';
+            // メイン軸
+            ctx.strokeStyle = '#bdc3c7';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy);
