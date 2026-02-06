@@ -3,106 +3,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>難読漢字クイズ 60連発</title>
+    <title>難読漢字 究極の500問サバイバル</title>
     <style>
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        #quiz-container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 500px; text-align: center; }
-        h1 { color: #2c3e50; font-size: 1.5rem; margin-bottom: 1rem; border-bottom: 2px solid #3498db; display: inline-block; padding-bottom: 5px; }
-        #kanji { font-size: 4.5rem; font-weight: bold; margin: 15px 0; color: #333; min-height: 120px; display: flex; align-items: center; justify-content: center; }
-        input[type="text"] { width: 85%; padding: 12px; font-size: 1.2rem; border: 2px solid #ddd; border-radius: 8px; outline: none; transition: border-color 0.3s; text-align: center; }
-        input[type="text"]:focus { border-color: #3498db; }
-        button { background: #3498db; color: white; border: none; padding: 12px 30px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin-top: 15px; width: 90%; font-weight: bold; }
-        button:hover { background: #2980b9; }
-        #feedback { margin-top: 20px; font-weight: bold; height: 1.5rem; font-size: 1.1rem; }
-        .correct { color: #27ae60; }
-        .wrong { color: #e74c3c; }
-        #score-info { margin-top: 10px; font-size: 0.9rem; color: #7f8c8d; }
+        :root { --bg: #1a1a2e; --card: #ffffff; --primary: #4361ee; --accent: #e74c3c; --success: #2ec4b6; }
+        body { font-family: 'Helvetica Neue', Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background: var(--bg); color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        #app { background: var(--card); width: 100%; max-width: 700px; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); padding: 30px; text-align: center; overflow: hidden; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
+        .score-box { font-weight: bold; color: var(--primary); font-size: 1.1rem; }
+        #kanji-area { font-size: 6rem; font-weight: bold; margin: 40px 0; color: #2d3436; min-height: 160px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; }
+        .input-group { margin-bottom: 20px; }
+        input[type="text"] { width: 80%; padding: 18px; font-size: 1.8rem; border: 3px solid #dfe6e9; border-radius: 12px; text-align: center; outline: none; transition: 0.3s; }
+        input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(67,97,238,0.2); }
+        .controls { display: flex; gap: 15px; justify-content: center; }
+        button { padding: 15px 35px; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.2s; color: white; }
+        .btn-check { background: var(--primary); }
+        .btn-check:hover { background: #3046c5; transform: translateY(-2px); }
+        .btn-skip { background: #95a5a6; }
+        #result-msg { margin-top: 25px; font-size: 1.4rem; font-weight: bold; min-height: 1.6rem; }
+        .correct { color: var(--success); }
+        .wrong { color: var(--accent); }
+        #progress-bar { width: 100%; height: 8px; background: #eee; border-radius: 4px; margin-top: 20px; position: relative; }
+        #progress-fill { height: 100%; background: var(--primary); border-radius: 4px; width: 0%; transition: 0.3s; }
     </style>
 </head>
 <body>
 
-<div id="quiz-container">
-    <h1>難読漢字クイズ</h1>
-    <div id="score-info">第 <span id="current-num">1</span> 問 / 全 60 問</div>
-    <div id="kanji">---</div>
-    <input type="text" id="answer-input" placeholder="よみがなを入力" autocomplete="off">
-    <br>
-    <button onclick="checkAnswer()">回答する</button>
-    <div id="feedback"></div>
+<div id="app">
+    <div class="header">
+        <div class="score-box">正解: <span id="score">0</span> / 500</div>
+        <div style="color: #636e72;">残り <span id="remain">500</span> 問</div>
+    </div>
+    
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+
+    <div id="kanji-area">準備中</div>
+
+    <div class="input-group">
+        <input type="text" id="answer-input" placeholder="よみがなを入力" autocomplete="off">
+    </div>
+
+    <div class="controls">
+        <button class="btn-check" onclick="processAnswer()">回答する</button>
+        <button class="btn-skip" onclick="skipQuestion()">降参・パス</button>
+    </div>
+
+    <div id="result-msg"></div>
 </div>
 
 <script>
-    // 追加分を含めた全60問のデータ
-    const masterQuestions = [
-        { q: "海栗", a: "うに" }, { q: "微塵", a: "みじん" }, { q: "躑躅", a: "つつじ" }, { q: "抽出", a: "ちゅうしゅつ" }, { q: "一入", a: "ひとしお" },
-        { q: "不織布", a: "ふしょくふ" }, { q: "強か", a: "したたか" }, { q: "塩梅", a: "あんばい" }, { q: "綻びる", a: "ほころびる" }, { q: "所謂", a: "いわゆる" },
-        { q: "既視感", a: "きしかん" }, { q: "身勝手", a: "みがって" }, { q: "未曾有", a: "みぞう" }, { q: "雰囲気", a: "ふんいき" }, { q: "出納", a: "すいとう" },
-        { q: "汎用", a: "はんよう" }, { q: "相殺", a: "そうさい" }, { q: "間髪", a: "かんぱつ" }, { q: "稀有", a: "けう" }, { q: "進捗", a: "しんちょく" },
-        { q: "建立", a: "こんりゅう" }, { q: "会釈", a: "えしゃく" }, { q: "祝詞", a: "のりと" }, { q: "知己", a: "ちき" }, { q: "境内", a: "けいだい" },
-        { q: "訃報", a: "ふほう" }, { q: "遊説", a: "ゆうぜい" }, { q: "破綻", a: "はたん" }, { q: "早急", a: "さっきゅう" }, { q: "遵守", a: "じゅんしゅ" },
-        { q: "暫く", a: "しばらく" }, { q: "流石", a: "さすが" }, { q: "欠伸", a: "あくび" }, { q: "炬燵", a: "こたつ" }, { q: "暖簾", a: "のれん" },
-        { q: "案山子", a: "かかし" }, { q: "心太", a: "ところてん" }, { q: "時雨", a: "しぐれ" }, { q: "五月雨", a: "さみだれ" }, { q: "向日葵", a: "ひまわり" },
-        { q: "紫陽花", a: "あじさい" }, { q: "蒲公英", a: "たんぽぽ" }, { q: "仙人掌", a: "さぼてん" }, { q: "土竜", a: "もぐら" }, { q: "秋刀魚", a: "さんま" },
-        { q: "烏賊", a: "いか" }, { q: "章魚", a: "たこ" }, { q: "大熊猫", a: "ぱんだ" }, { q: "河馬", a: "かば" }, { q: "馴鹿", a: "となかい" },
-        { q: "翻車魚", a: "まんぼう" }, { q: "金魚", a: "きんぎょ" }, { q: "雲呑", a: "わんたん" }, { q: "心算", a: "つもり" }, { q: "羊羹", a: "ようかん" },
-        { q: "最中", a: "もなか" }, { q: "外郎", a: "ういろう" }, { q: "煎餅", a: "せんべい" }, { q: "太刀魚", a: "たちうお" }, { q: "柳葉魚", a: "ししゃも" }
+    const fullMasterData = [
+        // 動物・魚・鳥 (1-100)
+        {q:"海栗",a:"うに"},{q:"百足",a:"むかで"},{q:"河馬",a:"かば"},{q:"馴鹿",a:"となかい"},{q:"膃肭臍",a:"おっとせい"},{q:"海象",a:"せいうち"},{q:"鼬",a:"いたち"},{q:"鼯鼠",a:"むささび"},{q:"翻車魚",a:"まんぼう"},{q:"海鼠",a:"なまこ"},
+        {q:"土竜",a:"もぐら"},{q:"飛蝗",a:"ばった"},{q:"蜻蛉",a:"とんぼ"},{q:"蜘蛛",a:"くも"},{q:"秋刀魚",a:"さんま"},{q:"柳葉魚",a:"ししゃも"},{q:"太刀魚",a:"たちうお"},{q:"金糸魚",a:"いとより"},{q:"鰈",a:"かれい"},{q:"鮃",a:"ひらめ"},
+        {q:"烏賊",a:"いか"},{q:"章魚",a:"たこ"},{q:"河豚",a:"ふぐ"},{q:"栄螺",a:"さざえ"},{q:"鮑",a:"あわび"},{q:"海老",a:"えび"},{q:"蟹",a:"かに"},{q:"鯨",a:"くじら"},{q:"鯱",a:"しゃち"},{q:"海豹",a:"あざらし"},
+        {q:"駱駝",a:"らくだ"},{q:"麒麟",a:"きりん"},{q:"縞馬",a:"しまうま"},{q:"豹",a:"ひょう"},{q:"狼",a:"おおかみ"},{q:"狐",a:"きつね"},{q:"狸",a:"たぬき"},{q:"狢",a:"むじな"},{q:"猿",a:"さる"},{q:"羚羊",a:"かもしか"},
+        {q:"家鴨",a:"あひる"},{q:"鶩",a:"あひる"},{q:"鴛鴦",a:"おしどり"},{q:"鴉",a:"からす"},{q:"梟",a:"ふくろう"},{q:"木菟",a:"みみずく"},{q:"啄木鳥",a:"きつつき"},{q:"燕",a:"つばめ"},{q:"雀",a:"すずめ"},{q:"雲雀",a:"ひばり"},
+        {q:"鴎",a:"かもめ"},{q:"鳶",a:"とび"},{q:"隼",a:"はやぶさ"},{q:"鷲",a:"わし"},{q:"鷹",a:"たか"},{q:"鶏",a:"にわとり"},{q:"鶉",a:"うずら"},{q:"雉",a:"きじ"},{q:"鳩",a:"はと"},{q:"鴇",a:"とき"},
+        {q:"蛙",a:"かえる"},{q:"蟇",a:"がま"},{q:"蛇",a:"へび"},{q:"蜥蜴",a:"とかげ"},{q:"守宮",a:"やもり"},{q:"鼈",a:"すっぽん"},{q:"亀",a:"かめ"},{q:"鰐",a:"わに"},{q:"蝌蚪",a:"おたまじゃくし"},{q:"蜷",a:"にな"},
+        {q:"蜆",a:"しじみ"},{q:"浅蜊",a:"あさり"},{q:"蛤",a:"はまぐり"},{q:"牡蠣",a:"かき"},{q:"帆立",a:"ほたて"},{q:"海胆",a:"うに"},{q:"水母",a:"くらげ"},{q:"海葵",a:"いそぎんちゃく"},{q:"珊瑚",a:"さんご"},{q:"真珠",a:"しんじゅ"},
+        {q:"蜜蜂",a:"みつばち"},{q:"虻",a:"あぶ"},{q:"蚊",a:"か"},{q:"蠅",a:"はえ"},{q:"蛾",a:"が"},{q:"蝶",a:"ちょう"},{q:"蝉",a:"せみ"},{q:"蟋蟀",a:"こおろぎ"},{q:"轡虫",a:"くつわむし"},{q:"鈴虫",a:"すずむし"},
+        {q:"蛍",a:"ほたる"},{q:"天道虫",a:"てんとうむし"},{q:"鍬形虫",a:"くわがた"},{q:"兜虫",a:"かぶとむし"},{q:"蟷螂",a:"かまきり"},{q:"百合鴎",a:"ゆりかもめ"},{q:"金魚",a:"きんぎょ"},{q:"鯉",a:"こい"},{q:"鮒",a:"ふな"},{q:"鮎",a:"あゆ"},
+
+        // 植物・食べ物 (101-200)
+        {q:"向日葵",a:"ひまわり"},{q:"紫陽花",a:"あじさい"},{q:"蒲公英",a:"たんぽぽ"},{q:"鳳仙花",a:"ほうせんか"},{q:"朝顔",a:"あさがお"},{q:"昼顔",a:"ひるがお"},{q:"夕顔",a:"ゆうがお"},{q:"鉄線",a:"てっせん"},{q:"菖蒲",a:"あやめ"},{q:"杜若",a:"かきつばた"},
+        {q:"牡丹",a:"ぼたん"},{q:"芍薬",a:"しゃくやく"},{q:"百合",a:"ゆり"},{q:"桔梗",a:"ききょう"},{q:"撫子",a:"なでしこ"},{q:"葛",a:"くず"},{q:"萩",a:"はぎ"},{q:"薄",a:"すすき"},{q:"女郎花",a:"おみなえし"},{q:"藤",a:"ふじ"},
+        {q:"椿",a:"つばき"},{q:"山茶花",a:"さざんか"},{q:"梅",a:"うめ"},{q:"桜",a:"さくら"},{q:"桃",a:"もも"},{q:"李",a:"すもも"},{q:"杏",a:"あんず"},{q:"柿",a:"かき"},{q:"栗",a:"くり"},{q:"苺",a:"いちご"},
+        {q:"玉蜀黍",a:"とうもろこし"},{q:"南瓜",a:"かぼちゃ"},{q:"甘蕉",a:"ばなな"},{q:"葡萄",a:"ぶどう"},{q:"林檎",a:"りんご"},{q:"無花果",a:"いちじく"},{q:"檸檬",a:"れもん"},{q:"大蒜",a:"にんにく"},{q:"生姜",a:"しょうが"},{q:"山葵",a:"わさび"},
+        {q:"独活",a:"うど"},{q:"蕨",a:"わらび"},{q:"薇",a:"ぜんまい"},{q:"土筆",a:"つくし"},{q:"蓬",a:"よもぎ"},{q:"芹",a:"せり"},{q:"薺",a:"なずな"},{q:"繁縷",a:"はこべら"},{q:"仏の座",a:"ほとけのざ"},{q:"菘",a:"すずな"},
+        {q:"蘿蔔",a:"すずしろ"},{q:"牛蒡",a:"ごぼう"},{q:"蓮根",a:"れんこん"},{q:"胡瓜",a:"きゅうり"},{q:"茄子",a:"なす"},{q:"西瓜",a:"すいか"},{q:"甜瓜",a:"めろん"},{q:"枇杷",a:"びわ"},{q:"石榴",a:"ざくろ"},{q:"鳳梨",a:"ぱいなっぷる"},
+        {q:"羊羹",a:"ようかん"},{q:"最中",a:"もなか"},{q:"外郎",a:"ういろう"},{q:"心太",a:"ところてん"},{q:"餛飩",a:"うどん"},{q:"蕎麦",a:"そば"},{q:"素麺",a:"そうめん"},{q:"御強",a:"おこわ"},{q:"粥",a:"かゆ"},{q:"餅",a:"もち"},
+        {q:"煎餅",a:"せんべい"},{q:"飴",a:"あめ"},{q:"砂糖",a:"さとう"},{q:"醤油",a:"しょうゆ"},{q:"味噌",a:"みそ"},{q:"味醂",a:"みりん"},{q:"油",a:"あぶら"},{q:"酢",a:"す"},{q:"塩",a:"しお"},{q:"胡椒",a:"こしょう"},
+        {q:"唐辛子",a:"とうがらし"},{q:"芥子",a:"からし"},{q:"茗荷",a:"みょうが"},{q:"紫蘇",a:"しそ"},{q:"葱",a:"ねぎ"},{q:"韮",a:"にら"},{q:"菠薐草",a:"ほうれんそう"},{q:"萵苣",a:"れたす"},{q:"甘藍",a:"きゃべつ"},{q:"白菜",a:"はくさい"},
+        {q:"蕪",a:"かぶ"},{q:"小豆",a:"あずき"},{q:"大豆",a:"だいず"},{q:"豌豆",a:"えんどう"},{q:"蚕豆",a:"そらまめ"},{q:"落花生",a:"らっかせい"},{q:"銀杏",a:"ぎんなん"},{q:"胡桃",a:"くるみ"},{q:"胡麻",a:"ごま"},{q:"蒟蒻",a:"こんにゃく"},
+
+        // 生活・熟語・日常 (201-350)
+        {q:"所謂",a:"いわゆる"},{q:"流石",a:"さすが"},{q:"欠伸",a:"あくび"},{q:"炬燵",a:"こたつ"},{q:"暖簾",a:"のれん"},{q:"一入",a:"ひとしお"},{q:"健か",a:"したたか"},{q:"強か",a:"したたか"},{q:"然も",a:"しかも"},{q:"剰え",a:"あまつさえ"},
+        {q:"漸く",a:"ようやく"},{q:"悉く",a:"ことごとく"},{q:"態々",a:"わざわざ"},{q:"偶々",a:"たまたま"},{q:"銘々",a:"めいめい"},{q:"建立",a:"こんりゅう"},{q:"境内",a:"けいだい"},{q:"祝詞",a:"のりと"},{q:"会釈",a:"えしゃく"},{q:"殺陣",a:"たて"},
+        {q:"行脚",a:"あんぎゃ"},{q:"遊説",a:"ゆうぜい"},{q:"出納",a:"すいとう"},{q:"汎用",a:"はんよう"},{q:"進捗",a:"しんちょく"},{q:"御利益",a:"ごりやく"},{q:"一段落",a:"いちだんらく"},{q:"依存心",a:"いそんしん"},{q:"貼付",a:"ちょうふ"},{q:"捏造",a:"ねつぞう"},
+        {q:"更待月",a:"ふけまちづき"},{q:"十六夜",a:"いざよい"},{q:"晦日",a:"みそか"},{q:"大晦日",a:"おおみそか"},{q:"元日",a:"がんじつ"},{q:"如月",a:"きさらぎ"},{q:"弥生",a:"やよい"},{q:"皐月",a:"さつき"},{q:"水無月",a:"みなづき"},{q:"文月",a:"ふみづき"},
+        {q:"葉月",a:"はづき"},{q:"長月",a:"ながつき"},{q:"神無月",a:"かんなづき"},{q:"霜月",a:"しもつき"},{q:"師走",a:"しわす"},{q:"睦月",a:"むつき"},{q:"端午",a:"たんご"},{q:"重陽",a:"ちょうよう"},{q:"彼岸",a:"ひがん"},{q:"盆",a:"ぼん"},
+        {q:"炬火",a:"きょか"},{q:"狼煙",a:"のろし"},{q:"篝火",a:"かがりび"},{q:"漁火",a:"いさりび"},{q:"不知火",a:"しらぬい"},{q:"五月雨",a:"さみだれ"},{q:"時雨",a:"しぐれ"},{q:"氷柱",a:"つらら"},{q:"氷雨",a:"ひさめ"},{q:"吹雪",a:"ふぶき"},
+        {q:"霙",a:"みぞれ"},{q:"霰",a:"あられ"},{q:"雹",a:"ひょう"},{q:"雷",a:"かみなり"},{q:"稲妻",a:"いなずま"},{q:"虹",a:"にじ"},{q:"霞",a:"かすみ"},{q:"霧",a:"きり"},{q:"靄",a:"もや"},{q:"露",a:"つゆ"},
+        {q:"霜",a:"しも"},{q:"風車",a:"かざぐるま"},{q:"風鈴",a:"ふうりん"},{q:"団扇",a:"うちわ"},{q:"扇子",a:"せんす"},{q:"蚊帳",a:"かや"},{q:"行燈",a:"あんどん"},{q:"提灯",a:"ちょうちん"},{q:"炬燵",a:"こたつ"},{q:"火鉢",a:"ひばち"},
+        {q:"薬缶",a:"やかん"},{q:"徳利",a:"とっくり"},{q:"猪口",a:"ちょこ"},{q:"箸",a:"はし"},{q:"茶碗",a:"ちゃわん"},{q:"湯呑",a:"ゆのみ"},{q:"杓文字",a:"しゃもじ"},{q:"俎板",a:"まないた"},{q:"包丁",a:"ほうちょう"},{q:"笊",a:"ざる"},
+        {q:"箒",a:"ほうき"},{q:"塵取",a:"ちりとり"},{q:"雑巾",a:"ぞうきん"},{q:"束子",a:"たわし"},{q:"蚊取線香",a:"かとりせんこう"},{q:"浴衣",a:"ゆかた"},{q:"羽織",a:"はおり"},{q:"袴",a:"はかま"},{q:"足袋",a:"たび"},{q:"草履",a:"ぞうり"},
+        {q:"下駄",a:"げた"},{q:"巾着",a:"きんちゃく"},{q:"財布",a:"さいふ"},{q:"鏡",a:"かがみ"},{q:"櫛",a:"くし"},{q:"簪",a:"かんざし"},{q:"炬燵",a:"こたつ"},{q:"座布団",a:"ざぶとん"},{q:"枕",a:"まくら"},{q:"蚊帳",a:"かや"},
+        {q:"閂",a:"かんぬき"},{q:"鴨居",a:"かもい"},{q:"敷居",a:"しきい"},{q:"襖",a:"ふすま"},{q:"障子",a:"しょうじ"},{q:"欄間",a:"らんま"},{q:"土間",a:"どま"},{q:"縁側",a:"えんがわ"},{q:"蔵",a:"くら"},{q:"東屋",a:"あずまや"},
+        {q:"瓦",a:"かわら"},{q:"石畳",a:"いしだたみ"},{q:"鳥居",a:"とりい"},{q:"参道",a:"さんどう"},{q:"狛犬",a:"こまいぬ"},{q:"灯籠",a:"とうろう"},{q:"賽銭",a:"さいせん"},{q:"数珠",a:"じゅず"},{q:"位牌",a:"いはい"},{q:"香炉",a:"こうろ"},
+        {q:"木魚",a:"もくぎょ"},{q:"般若心経",a:"はんにゃしんぎょう"},{q:"曼荼羅",a:"まんだら"},{q:"菩提樹",a:"ぼだいじゅ"},{q:"彼岸花",a:"ひがんばな"},{q:"三途の川",a:"さんずのかわ"},{q:"閻魔",a:"えんま"},{q:"地獄",a:"じごく"},{q:"極楽",a:"ごくらく"},{q:"仏陀",a:"ぶっだ"},
+        {q:"巫女",a:"みこ"},{q:"宮司",a:"ぐうじ"},{q:"神主",a:"かんぬし"},{q:"玉串",a:"たまぐし"},{q:"注連縄",a:"しめなわ"},{q:"門松",a:"かどまつ"},{q:"鏡餅",a:"かがみもち"},{q:"羽子板",a:"はごいた"},{q:"独楽",a:"こま"},{q:"凧",a:"たこ"},
+
+        // 地名・国名・その他 (351-500)
+        {q:"飛鳥",a:"あすか"},{q:"太秦",a:"うずまさ"},{q:"神海",a:"こうみ"},{q:"十五里ヶ原",a:"じゅうごりがはら"},{q:"吹田",a:"すいた"},{q:"各務原",a:"かかみがはら"},{q:"放出",a:"はなてん"},{q:"特牛",a:"こっとい"},{q:"及位",a:"のぞき"},{q:"宍道",a:"しんじ"},
+        {q:"葛飾",a:"かつしか"},{q:"石神井",a:"しゃくじい"},{q:"烏山",a:"からすやま"},{q:"砧",a:"きぬた"},{q:"代々木",a:"よよぎ"},{q:"日暮里",a:"にっぽり"},{q:"御徒町",a:"おかちまち"},{q:"錦糸町",a:"きんしちょう"},{q:"亀戸",a:"かめいど"},{q:"木場",a:"きば"},
+        {q:"月島",a:"つきしま"},{q:"麻布",a:"あざぶ"},{q:"六本木",a:"ろっぽんぎ"},{q:"高輪",a:"たかなわ"},{q:"蒲田",a:"かまた"},{q:"大井町",a:"おおいまち"},{q:"等々力",a:"とどろき"},{q:"洗足",a:"せんぞく"},{q:"自由が丘",a:"じゆうがおか"},{q:"成城",a:"せいじょう"},
+        {q:"調布",a:"ちょうふ"},{q:"府中",a:"ふちゅう"},{q:"昭島",a:"あきしま"},{q:"羽村",a:"はむら"},{q:"清瀬",a:"きよせ"},{q:"東久留米",a:"ひがしくるめ"},{q:"多摩",a:"たま"},{q:"稲城",a:"いなぎ"},{q:"青梅",a:"おうめ"},{q:"五日市",a:"いつかいち"},
+        {q:"箱根",a:"はこね"},{q:"小田原",a:"おだわら"},{q:"鎌倉",a:"かまくら"},{q:"逗子",a:"ずし"},{q:"葉山",a:"はやま"},{q:"横須賀",a:"よこすか"},{q:"三浦",a:"みうら"},{q:"藤沢",a:"ふじさわ"},{q:"茅ヶ崎",a:"ちがさき"},{q:"平塚",a:"ひらつか"},
+        {q:"厚木",a:"あつぎ"},{q:"大和",a:"やまと"},{q:"海老名",a:"えびな"},{q:"座間",a:"ざま"},{q:"綾瀬",a:"あやせ"},{q:"相模原",a:"さがみはら"},{q:"伊勢原",a:"いせはら"},{q:"秦野",a:"はだの"},{q:"南足柄",a:"みなみあしがら"},{q:"愛川",a:"あいかわ"},
+        {q:"千葉",a:"ちば"},{q:"市川",a:"いちかわ"},{q:"船橋",a:"ふなばし"},{q:"松戸",a:"まつど"},{q:"野田",a:"のだ"},{q:"成田",a:"なりた"},{q:"佐倉",a:"さくら"},{q:"習志野",a:"ならしの"},{q:"柏",a:"かしわ"},{q:"流山",a:"ながれやま"},
+        {q:"八千代",a:"やちよ"},{q:"我孫子",a:"あびこ"},{q:"鎌ヶ谷",a:"かまがや"},{q:"君津",a:"きみつ"},{q:"富津",a:"ふっつ"},{q:"浦安",a:"うらやす"},{q:"印西",a:"いんざい"},{q:"白井",a:"しろい"},{q:"酒々井",a:"しすい"},{q:"九十九里",a:"くじゅうくり"},
+        {q:"大宮",a:"おおみや"},{q:"浦和",a:"うらわ"},{q:"与野",a:"よの"},{q:"川越",a:"かわごえ"},{q:"熊谷",a:"くまがや"},{q:"川口",a:"かわぐち"},{q:"行田",a:"ぎょうだ"},{q:"秩父",a:"ちちぶ"},{q:"所沢",a:"ところざわ"},{q:"飯能",a:"はんのう"},
+        {q:"加須",a:"かぞ"},{q:"本庄",a:"ほんじょう"},{q:"東松山",a:"ひがしまつやま"},{q:"春日部",a:"かすかべ"},{q:"狭山",a:"さやま"},{q:"羽生",a:"はにゅう"},{q:"鴻巣",a:"こうのす"},{q:"深谷",a:"ふかや"},{q:"上尾",a:"あげお"},{q:"草加",a:"そうか"},
+        {q:"越谷",a:"こしがや"},{q:"蕨",a:"わらび"},{q:"戸田",a:"とだ"},{q:"入間",a:"いるま"},{q:"朝霞",a:"あさか"},{q:"志木",a:"しき"},{q:"和光",a:"わこう"},{q:"新座",a:"にいざ"},{q:"久喜",a:"くき"},{q:"北本",a:"きたもと"},
+        {q:"八潮",a:"やしお"},{q:"富士見",a:"ふじみ"},{q:"三郷",a:"みさと"},{q:"蓮田",a:"はすだ"},{q:"坂戸",a:"さかど"},{q:"幸手",a:"さって"},{q:"鶴ヶ島",a:"つるがしま"},{q:"日高",a:"ひだか"},{q:"吉川",a:"よしかわ"},{q:"ふじみ野",a:"ふじみの"},
+        {q:"白岡",a:"しらおか"},{q:"亜細亜",a:"あじあ"},{q:"欧羅巴",a:"よーろっぱ"},{q:"北米",a:"ほくめい"},{q:"南米",a:"なんべい"},{q:"豪州",a:"ごうしゅう"},{q:"阿弗利加",a:"あふりか"},{q:"米国",a:"べいこく"},{q:"英国",a:"えいこく"},{q:"独逸",a:"どいつ"},
+        {q:"仏蘭西",a:"ふらんす"},{q:"伊太利亜",a:"いたりあ"},{q:"露西亜",a:"ろしあ"},{q:"中国",a:"ちゅうごく"},{q:"韓国",a:"かんこく"},{q:"印度",a:"いんど"},{q:"伯剌西爾",a:"ぶらじる"},{q:"埃及",a:"えじぷと"},{q:"希臘",a:"ぎりしゃ"},{q:"西班牙",a:"すぺいん"},
+        {q:"葡萄牙",a:"ぽるとがる"},{q:"和蘭",a:"おらんだ"},{q:"土耳古",a:"とるこ"},{q:"越南",a:"べとなむ"},{q:"泰",a:"たい"},{q:"比律賓",a:"ふぃりぴん"},{q:"新嘉坡",a:"しんがぽーる"},{q:"馬来西亜",a:"まれーしあ"},{q:"芬蘭",a:"ふぃんらんど"},{q:"瑞西",a:"すいす"}
     ];
 
-    // 配列をシャッフルする
-    let questions = [...masterQuestions].sort(() => Math.random() - 0.5);
-
+    let currentQuestions = [];
     let currentIndex = 0;
     let score = 0;
 
-    const kanjiElem = document.getElementById("kanji");
-    const inputElem = document.getElementById("answer-input");
-    const feedbackElem = document.getElementById("feedback");
-    const currentNumElem = document.getElementById("current-num");
+    const kanjiArea = document.getElementById('kanji-area');
+    const inputField = document.getElementById('answer-input');
+    const resultMsg = document.getElementById('result-msg');
+    const scoreDisplay = document.getElementById('score');
+    const remainDisplay = document.getElementById('remain');
+    const progressFill = document.getElementById('progress-fill');
 
-    function loadQuestion() {
-        if (currentIndex < questions.length) {
-            kanjiElem.textContent = questions[currentIndex].q;
-            inputElem.value = "";
-            feedbackElem.textContent = "";
-            currentNumElem.textContent = currentIndex + 1;
-            inputElem.focus();
-        } else {
-            showResult();
-        }
+    function initGame() {
+        // データをシャッフル
+        currentQuestions = [...fullMasterData].sort(() => Math.random() - 0.5);
+        currentIndex = 0;
+        score = 0;
+        updateUI();
+        showNextQuestion();
     }
 
-    function checkAnswer() {
-        const userAnswer = inputElem.value.trim();
-        const correctAnswer = questions[currentIndex].a;
+    function showNextQuestion() {
+        if (currentIndex >= currentQuestions.length) {
+            kanjiArea.textContent = "完全制覇！";
+            inputField.disabled = true;
+            resultMsg.textContent = "全500問クリアしました。おめでとうございます！";
+            return;
+        }
+        
+        const q = currentQuestions[currentIndex];
+        kanjiArea.textContent = q.q;
+        inputField.value = "";
+        resultMsg.textContent = "";
+        inputField.focus();
+    }
 
-        if (userAnswer === correctAnswer) {
-            feedbackElem.textContent = "正解！";
-            feedbackElem.className = "correct";
+    function processAnswer() {
+        const userVal = inputField.value.trim();
+        const correctVal = currentQuestions[currentIndex].a;
+
+        if (userVal === correctVal) {
             score++;
+            resultMsg.textContent = "正解！";
+            resultMsg.className = "correct";
+            currentIndex++;
+            updateUI();
+            setTimeout(showNextQuestion, 800);
         } else {
-            feedbackElem.textContent = `正解は「${correctAnswer}」`;
-            feedbackElem.className = "wrong";
+            resultMsg.textContent = "残念！もう一度";
+            resultMsg.className = "wrong";
+            // 入力欄を揺らす演出
+            inputField.style.transform = "translateX(10px)";
+            setTimeout(() => inputField.style.transform = "translateX(0)", 100);
         }
+    }
 
+    function skipQuestion() {
+        const correctVal = currentQuestions[currentIndex].a;
+        resultMsg.textContent = `正解は「${correctVal}」でした`;
+        resultMsg.className = "wrong";
         currentIndex++;
-        // 判定が見えるように少し待ってから次へ
-        setTimeout(loadQuestion, 1200);
+        updateUI();
+        setTimeout(showNextQuestion, 2000);
     }
 
-    function showResult() {
-        document.getElementById("quiz-container").innerHTML = `
-            <h1>結果発表</h1>
-            <p style="font-size: 1.5rem; margin: 20px 0;">${score} / ${questions.length} 問正解</p>
-            <p>${score === questions.length ? "完璧です！漢字マスター！" : "お疲れ様でした！"}</p>
-            <button onclick="location.reload()">もう一度プレイ</button>
-        `;
+    function updateUI() {
+        scoreDisplay.textContent = score;
+        remainDisplay.textContent = currentQuestions.length - currentIndex;
+        const percent = (currentIndex / currentQuestions.length) * 100;
+        progressFill.style.width = percent + "%";
     }
 
-    inputElem.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") checkAnswer();
+    inputField.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') processAnswer();
     });
 
-    loadQuestion();
+    // 起動
+    initGame();
 </script>
 
 </body>
