@@ -140,9 +140,86 @@
         .dropdown a:last-child { border-bottom: none; }
         .dropdown a:hover { background-color: #f0f0f0; padding-left: 25px; }
 
+        /* --- おみくじ機能のスタイル --- */
+        .omikuji-container {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            z-index: 1500;
+            display: flex;
+            flex-direction: column-reverse; /* 結果をボタンの上に表示するため */
+            align-items: center;
+        }
+
+        .omikuji-btn {
+            font-size: 2em;
+            cursor: pointer;
+            padding: 10px;
+            background-color: rgba(0,0,0,0.4);
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: transform 0.2s, background-color 0.2s;
+            backdrop-filter: blur(5px);
+        }
+        .omikuji-btn:hover {
+            transform: scale(1.1) rotate(-10deg);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .omikuji-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* おみくじ結果のフキダシ */
+        .omikuji-result {
+            background-color: rgba(255, 250, 240, 0.95); /* 和紙っぽい色 */
+            color: #333;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            text-align: center;
+            position: relative;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* 跳ねるような動き */
+            border: 1px solid #d4c4b4;
+        }
+        /* フキダシの三角部分 */
+        .omikuji-result::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 10px 10px 0 10px;
+            border-style: solid;
+            border-color: rgba(255, 250, 240, 0.95) transparent transparent transparent;
+        }
+
+        .omikuji-result.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .result-unsei {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #d35400; /* 朱色 */
+            display: block;
+            margin-bottom: 5px;
+        }
+        .result-kotoba {
+            font-size: 0.9em;
+            color: #555;
+        }
+
         @media (max-width: 768px) {
             .main-title { font-size: 2.2em; }
             .top-nav { top: 20px; right: 10px; left: 10px; justify-content: center; }
+            .omikuji-container { bottom: 20px; left: 20px; } /* スマホでの位置調整 */
         }
     </style>
 </head>
@@ -162,29 +239,19 @@
     </div>
 
     <nav class="top-nav">
-        <div class="nav-item">
-            <div class="category-name">学習</div>
-            <div class="dropdown">
-                <a href="cobun_card.html">古典単語帳</a>
-                <a href="kanji_quiz.html">漢字クイズ</a>
-                <a href="daigaku_quiz.html">大学クイズ</a>
-            </div>
-        </div>
-        <div class="nav-item">
-            <div class="category-name">道具</div>
-            <div class="dropdown">
-                <a href="timer.html">集中タイマー</a>
-                <a href="kansu.html">関数表示アプリ</a> </div>
-        </div>
-        <div class="nav-item">
-            <div class="category-name">ゲーム</div>
-            <div class="dropdown">
-                <a href="shogi.html">将棋</a>
-                <a href="stg.html">シューティング</a>
-                <a href="click.html">クリッカー</a>
-            </div>
-        </div>
+        <div class="nav-item"><div class="category-name">学習</div><div class="dropdown"><a href="cobun_card.html">古典単語帳</a><a href="kanji_quiz.html">漢字クイズ</a><a href="daigaku_quiz.html">大学クイズ</a></div></div>
+        <div class="nav-item"><div class="category-name">道具</div><div class="dropdown"><a href="timer.html">集中タイマー</a><a href="kansu.html">関数表示アプリ</a></div></div>
+        <div class="nav-item"><div class="category-name">ゲーム</div><div class="dropdown"><a href="shogi.html">将棋</a><a href="stg.html">シューティング</a><a href="click.html">クリッカー</a></div></div>
     </nav>
+
+    <div class="omikuji-container">
+        <div id="omikuji-result" class="omikuji-result">
+            <span id="result-unsei" class="result-unsei"></span>
+            <span id="result-kotoba" class="result-kotoba"></span>
+        </div>
+        <div class="omikuji-btn" onclick="drawOmikuji()">⛩️</div>
+    </div>
+
 
     <div id="modal" class="modal-overlay">
         <div class="modal-box">
@@ -209,6 +276,56 @@
         setInterval(updateClock, 1000);
         updateClock();
 
+        // --- おみくじ処理 ---
+        const omikujiData = [
+            { unsei: "大吉", kotoba: "笑う門には福来たる。今日は最高の笑顔で。" },
+            { unsei: "中吉", kotoba: "焦らずとも機は熟す。ゆったりと構えよ。" },
+            { unsei: "小吉", kotoba: "小さな幸せを見つけられそう。道端の花に目を向けて。" },
+            { unsei: "吉", kotoba: "平穏無事こそが最大の幸福なり。" },
+            { unsei: "末吉", kotoba: "終わりよければ全て良し。最後まで気を抜かずに。" },
+            { unsei: "凶", kotoba: "今日は静かに過ごすが吉。無理は禁物。" },
+            { unsei: "大吉", kotoba: "思いがけない幸運が舞い込む予感。素直な心で。" }
+        ];
+
+        function drawOmikuji() {
+            const resultBox = document.getElementById('omikuji-result');
+            const resultUnsei = document.getElementById('result-unsei');
+            const resultKotoba = document.getElementById('result-kotoba');
+            const btn = document.querySelector('.omikuji-btn');
+
+            // 表示中なら閉じる
+            if (resultBox.classList.contains('show')) {
+                resultBox.classList.remove('show');
+                return;
+            }
+
+            // ボタンを少し揺らす演出
+            btn.animate([
+                { transform: 'rotate(0deg)' },
+                { transform: 'rotate(-15deg)' },
+                { transform: 'rotate(15deg)' },
+                { transform: 'rotate(0deg)' }
+            ], { duration: 300 });
+
+            // ランダム選出
+            const randomIndex = Math.floor(Math.random() * omikujiData.length);
+            const result = omikujiData[randomIndex];
+
+            // 結果をセットして表示
+            resultUnsei.textContent = result.unsei;
+            resultKotoba.textContent = result.kotoba;
+            
+            setTimeout(() => {
+                resultBox.classList.add('show');
+            }, 100); // 少し遅らせて表示
+
+            // 5秒後に自動で閉じる
+            setTimeout(() => {
+                resultBox.classList.remove('show');
+            }, 5000);
+        }
+
+
         // --- ブックマーク処理 ---
         const bookmarkList = document.getElementById('bookmark-list');
         const modal = document.getElementById('modal');
@@ -217,98 +334,45 @@
         const urlInput = document.getElementById('bm-url');
         const deleteBtn = document.getElementById('btn-delete');
 
-        // 現在編集中のインデックス (-1は新規追加)
         let editingIndex = -1;
         let bookmarks = JSON.parse(localStorage.getItem('myBookmarks')) || [];
 
         function renderBookmarks() {
-            // 追加ボタン以外を削除
             const items = bookmarkList.querySelectorAll('.bookmark-item');
             items.forEach(e => e.remove());
-
             bookmarks.forEach((bm, index) => {
                 const a = document.createElement('a');
-                a.href = bm.url;
-                a.className = 'bookmark-item';
-                a.textContent = bm.name;
-                a.target = "_blank"; 
-                
-                // 右クリックで編集モードを開く
-                a.addEventListener('contextmenu', function(e) {
-                    e.preventDefault(); // 右クリックメニューを抑制
-                    openEditModal(index); // 編集モーダルを開く
-                });
-
+                a.href = bm.url; a.className = 'bookmark-item'; a.textContent = bm.name; a.target = "_blank"; 
+                a.addEventListener('contextmenu', function(e) { e.preventDefault(); openEditModal(index); });
                 const addBtn = bookmarkList.querySelector('.add-btn');
                 bookmarkList.insertBefore(a, addBtn);
             });
         }
 
-        // 新規追加モードで開く
         function openAddModal() {
-            editingIndex = -1;
-            modalTitle.textContent = "ショートカットを追加";
-            nameInput.value = '';
-            urlInput.value = '';
-            deleteBtn.style.display = 'none'; // 削除ボタンは隠す
-            modal.style.display = 'flex';
-            nameInput.focus();
+            editingIndex = -1; modalTitle.textContent = "ショートカットを追加";
+            nameInput.value = ''; urlInput.value = ''; deleteBtn.style.display = 'none';
+            modal.style.display = 'flex'; nameInput.focus();
         }
-
-        // 編集モードで開く
         function openEditModal(index) {
-            editingIndex = index;
-            modalTitle.textContent = "ショートカットを編集";
-            nameInput.value = bookmarks[index].name;
-            urlInput.value = bookmarks[index].url;
-            deleteBtn.style.display = 'inline-block'; // 削除ボタンを表示
-            modal.style.display = 'flex';
+            editingIndex = index; modalTitle.textContent = "ショートカットを編集";
+            nameInput.value = bookmarks[index].name; urlInput.value = bookmarks[index].url;
+            deleteBtn.style.display = 'inline-block'; modal.style.display = 'flex';
         }
-
         function saveBookmark() {
-            const name = nameInput.value;
-            let url = urlInput.value;
-
-            if(!name || !url) {
-                alert('名前とURLを入力してください');
-                return;
-            }
-
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                url = 'https://' + url;
-            }
-
-            if (editingIndex === -1) {
-                // 新規追加
-                bookmarks.push({ name: name, url: url });
-            } else {
-                // 編集更新
-                bookmarks[editingIndex] = { name: name, url: url };
-            }
-
-            saveToStorage();
-            renderBookmarks();
-            closeModal();
+            const name = nameInput.value; let url = urlInput.value;
+            if(!name || !url) { alert('名前とURLを入力してください'); return; }
+            if (!url.startsWith('http://') && !url.startsWith('https://')) { url = 'https://' + url; }
+            if (editingIndex === -1) { bookmarks.push({ name: name, url: url }); } else { bookmarks[editingIndex] = { name: name, url: url }; }
+            saveToStorage(); renderBookmarks(); closeModal();
         }
-
         function deleteCurrentBookmark() {
-            if(editingIndex !== -1) {
-                if(confirm('本当に削除しますか？')) {
-                    bookmarks.splice(editingIndex, 1);
-                    saveToStorage();
-                    renderBookmarks();
-                    closeModal();
-                }
+            if(editingIndex !== -1 && confirm('本当に削除しますか？')) {
+                bookmarks.splice(editingIndex, 1); saveToStorage(); renderBookmarks(); closeModal();
             }
         }
-
-        function saveToStorage() {
-            localStorage.setItem('myBookmarks', JSON.stringify(bookmarks));
-        }
-
-        function closeModal() {
-            modal.style.display = 'none';
-        }
+        function saveToStorage() { localStorage.setItem('myBookmarks', JSON.stringify(bookmarks)); }
+        function closeModal() { modal.style.display = 'none'; }
 
         renderBookmarks();
     </script>
