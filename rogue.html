@@ -2,95 +2,99 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Text Roguelike Web</title>
+    <title>Text Roguelike Complete</title>
     <style>
-        /* 全体のスタイル：レトロな端末風 */
         body {
-            background-color: #111; /* 背景をより暗く */
+            background-color: #050505;
             color: #ccc;
-            font-family: 'Courier New', 'Consolas', monospace; /* 等幅フォントを強制 */
+            font-family: 'Courier New', 'Consolas', monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
             margin: 0;
             padding: 20px;
         }
-        h1 { margin: 10px 0; font-size: 24px; color: #fff; }
+        h1 { margin: 5px 0; font-size: 20px; color: #888; }
         #game-container {
-            border: 2px solid #333;
-            background-color: #000; /* キャンバス背景は真っ黒 */
-            /* 文字がぼやけないようにする設定（ブラウザによる） */
-            image-rendering: pixelated; 
+            border: 4px solid #333;
+            background-color: #000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
         }
         canvas { display: block; }
         #ui {
-            width: 640px; /* キャンバス幅に合わせる */
+            width: 640px;
             display: flex;
             justify-content: space-between;
-            margin-top: 10px;
-            font-size: 18px;
-            color: #fff;
+            margin-top: 5px;
+            font-size: 16px;
+            color: #eee;
+            font-weight: bold;
         }
         #log {
-            width: 640px;
-            height: 120px;
+            width: 630px;
+            height: 100px;
             border: 1px solid #333;
-            margin-top: 10px;
-            padding: 8px;
+            margin-top: 5px;
+            padding: 5px;
             overflow-y: scroll;
-            font-size: 16px;
-            background: #0a0a0a;
+            font-size: 14px;
+            background: #111;
             color: #aaa;
             font-family: 'Courier New', monospace;
         }
         .controls {
-            margin-top: 15px;
-            font-size: 14px;
-            color: #666;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #555;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <h1>Text Roguelike Web</h1>
+    <h1>roguelike.js</h1>
     
     <div id="ui">
-        <span id="stats">HP: 20 | Level: 1</span>
-        <span id="floor">Floor: 1</span>
+        <span id="stats">HP: --/--</span>
+        <span id="floor">--</span>
     </div>
 
     <div id="game-container">
         <canvas id="gameCanvas" width="640" height="480"></canvas>
     </div>
 
-    <div id="log">迷宮探索を開始します...</div>
+    <div id="log">...</div>
 
     <div class="controls">
-        操作: 矢印キー または WASD (移動/攻撃)<br>
-        記号: <span style="color:yellow">@</span>:あなた <span style="color:red">g</span>:敵 <span style="color:#666">#</span>:壁 <span style="color:#333">.</span>:床 <span style="color:#44f">&gt;</span>:階段
+        [矢印/WASD]:移動・攻撃 | [I]:インベントリ | [Space/Enter]:決定・リトライ<br>
+        <span style="color:yellow">@</span>:自分 <span style="color:red">g</span>:敵 <span style="color:#0f0">!</span>:薬 <span style="color:#44f">&gt;</span>:階段
     </div>
 
 <script>
-    // --- 設定 ---
-    // 文字が見やすいようにサイズを少し大きくしました
-    const TILE_SIZE = 24; 
+    // --- 定数・設定 ---
+    const TILE_SIZE = 24;
     const ROWS = 20;
-    const COLS = 26; // 横幅がはみ出ないように少し調整
-    const MAX_ENEMIES = 6;
-
-    // タイルの種類
-    const TILE = {
-        FLOOR: 0,
-        WALL: 1,
-        STAIRS: 2
+    const COLS = 26;
+    const FONT = `${TILE_SIZE - 2}px 'Courier New', monospace`;
+    
+    // ゲームの状態管理
+    const STATE = {
+        TITLE: 0,
+        PLAY: 1,
+        INVENTORY: 2,
+        GAMEOVER: 3
     };
 
-    // --- ゲーム状態 ---
+    const TILE = { FLOOR: 0, WALL: 1, STAIRS: 2 };
+
+    // --- グローバル変数 ---
     let canvas, ctx;
+    let gameState = STATE.TITLE;
+    
     let map = [];
-    // 初期HPを少し増やしました
-    let player = { x: 1, y: 1, hp: 25, maxHp: 25, level: 1, xp: 0 };
+    let player = {};
     let enemies = [];
+    let items = []; // 落ちているアイテム
     let floorLevel = 1;
     let messages = [];
 
@@ -99,129 +103,185 @@
         canvas = document.getElementById('gameCanvas');
         ctx = canvas.getContext('2d');
         
-        // キャンバスサイズをタイルサイズに合わせて正確に設定
+        // Canvasサイズ調整
         canvas.width = COLS * TILE_SIZE;
         canvas.height = ROWS * TILE_SIZE;
-        // UIの幅も合わせる
         document.getElementById('ui').style.width = canvas.width + 'px';
         document.getElementById('log').style.width = canvas.width + 'px';
 
-        startLevel();
         document.addEventListener('keydown', handleInput);
-        draw(); // 最初の描画
+        
+        // 初回描画（タイトル）
+        draw();
     };
+
+    // --- ゲーム開始・リセット ---
+    function initGame() {
+        player = { 
+            x: 1, y: 1, 
+            hp: 30, maxHp: 30, 
+            level: 1, xp: 0, 
+            inventory: [] // アイテム所持配列
+        };
+        floorLevel = 1;
+        messages = [];
+        log("冒険が始まった。");
+        // 初期アイテムを一つ持たせる
+        player.inventory.push({ name: "回復薬", type: "potion", heal: 10 });
+        
+        startLevel();
+        gameState = STATE.PLAY;
+        updateUI();
+    }
 
     // --- レベル生成 ---
     function startLevel() {
         map = [];
         enemies = [];
+        items = [];
         
-        // 全て壁(#)にする
+        // 壁で埋める
         for (let y = 0; y < ROWS; y++) {
             let row = [];
-            for (let x = 0; x < COLS; x++) {
-                row.push(TILE.WALL);
-            }
+            for (let x = 0; x < COLS; x++) { row.push(TILE.WALL); }
             map.push(row);
         }
 
-        // 床(.)を掘る
+        // 床を掘る (Drunkard's Walk)
         let digX = Math.floor(COLS / 2);
         let digY = Math.floor(ROWS / 2);
-        // 掘る回数を増やして広めに
-        for (let i = 0; i < 400; i++) {
+        for (let i = 0; i < 450; i++) {
             map[digY][digX] = TILE.FLOOR;
             const dir = Math.floor(Math.random() * 4);
             if (dir === 0) digX++;
             else if (dir === 1) digX--;
             else if (dir === 2) digY++;
             else if (dir === 3) digY--;
-
-            if (digX < 1) digX = 1;
-            if (digX >= COLS - 1) digX = COLS - 2;
-            if (digY < 1) digY = 1;
-            if (digY >= ROWS - 1) digY = ROWS - 2;
+            
+            // 範囲制限
+            digX = Math.max(1, Math.min(COLS - 2, digX));
+            digY = Math.max(1, Math.min(ROWS - 2, digY));
         }
 
         spawnEntity(player);
         spawnStairs();
 
-        for(let i=0; i<MAX_ENEMIES + Math.floor(floorLevel/2); i++) {
-            // 敵の種類を少しだけ多様に (名前の頭文字が表示される)
+        // 敵配置
+        const enemyCount = 4 + Math.floor(floorLevel * 0.5);
+        for(let i=0; i<enemyCount; i++) {
             let type = Math.random();
-            let name = "goblin";
-            let hp = 8 + floorLevel;
-            if (type > 0.7) { name = "orc"; hp += 5; }
-            if (type > 0.9) { name = "troll"; hp += 10; }
+            let e = { x:0, y:0, hp: 10 + floorLevel, name: "goblin", char: 'g', color: '#f55' };
+            if (floorLevel > 2 && type > 0.7) { e.name="orc"; e.hp+=10; e.char='o'; e.color='#f88'; }
+            if (floorLevel > 4 && type > 0.9) { e.name="dragon"; e.hp+=30; e.char='D'; e.color='#f00'; }
+            
+            if(spawnEntity(e)) enemies.push(e);
+        }
 
-            let enemy = { x: 0, y: 0, hp: hp, name: name };
-            if(spawnEntity(enemy)) {
-                enemies.push(enemy);
-            }
+        // アイテム配置
+        const itemCount = 2 + Math.floor(Math.random() * 2);
+        for(let i=0; i<itemCount; i++) {
+            let item = { x:0, y:0, name: "回復薬", type: "potion", heal: 15, char: '!', color: '#0f0' };
+            if(spawnEntity(item)) items.push(item);
         }
         
         log(`=== 地下 ${floorLevel} 階 ===`);
-        updateUI();
     }
 
     function spawnEntity(entity) {
-        let placed = false;
-        let attempts = 0;
-        while (!placed && attempts < 100) {
+        for(let i=0; i<100; i++) {
             let x = Math.floor(Math.random() * COLS);
             let y = Math.floor(Math.random() * ROWS);
-            if (map[y][x] === TILE.FLOOR && !getEnemyAt(x, y) && (x !== player.x || y !== player.y)) {
-                entity.x = x;
-                entity.y = y;
-                placed = true;
+            // 床かつ、他と重ならない
+            if (map[y][x] === TILE.FLOOR && !getEnemyAt(x, y) && !getItemAt(x, y)) {
+                if (entity !== player || (x !== player.x || y !== player.y)) {
+                    entity.x = x;
+                    entity.y = y;
+                    return true;
+                }
             }
-            attempts++;
         }
-        return placed;
+        return false;
     }
 
     function spawnStairs() {
-        let placed = false;
-        let attempts = 0;
-        while (!placed && attempts < 100) {
+        for(let i=0; i<100; i++) {
             let x = Math.floor(Math.random() * COLS);
             let y = Math.floor(Math.random() * ROWS);
             if (map[y][x] === TILE.FLOOR && (x !== player.x || y !== player.y)) {
                 map[y][x] = TILE.STAIRS;
-                placed = true;
+                return;
             }
-            attempts++;
         }
     }
 
-    // --- 入力処理 ---
+    // --- 入力ハンドリング (状態遷移) ---
     function handleInput(e) {
-        // ブラウザのスクロールなどを防ぐ
-        if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].indexOf(e.code) > -1) {
-            e.preventDefault();
+        e.preventDefault(); // スクロール防止
+
+        if (gameState === STATE.TITLE) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                initGame();
+                draw();
+            }
+            return;
         }
 
-        let dx = 0; let dy = 0;
+        if (gameState === STATE.GAMEOVER) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                gameState = STATE.TITLE;
+                draw();
+            }
+            return;
+        }
+
+        if (gameState === STATE.INVENTORY) {
+            handleInventoryInput(e);
+            return;
+        }
+
+        if (gameState === STATE.PLAY) {
+            handlePlayInput(e);
+        }
+    }
+
+    function handlePlayInput(e) {
+        if (e.key === 'i') {
+            gameState = STATE.INVENTORY;
+            draw();
+            return;
+        }
+
+        let dx = 0, dy = 0;
         if (e.key === 'ArrowUp' || e.key === 'w') dy = -1;
         if (e.key === 'ArrowDown' || e.key === 's') dy = 1;
         if (e.key === 'ArrowLeft' || e.key === 'a') dx = -1;
         if (e.key === 'ArrowRight' || e.key === 'd') dx = 1;
-        // 待機（スペースキーなど）を追加しても良い
 
         if (dx !== 0 || dy !== 0) {
             playerTurn(dx, dy);
         }
     }
 
-    // --- ターン処理 ---
+    function handleInventoryInput(e) {
+        if (e.key === 'i' || e.key === 'Escape') {
+            gameState = STATE.PLAY;
+            draw();
+            return;
+        }
+
+        // 数字キー 1-9
+        const keyNum = parseInt(e.key);
+        if (!isNaN(keyNum) && keyNum > 0 && keyNum <= player.inventory.length) {
+            useItem(keyNum - 1);
+        }
+    }
+
+    // --- ゲームロジック ---
     function playerTurn(dx, dy) {
         const targetX = player.x + dx;
         const targetY = player.y + dy;
 
-        if (map[targetY][targetX] === TILE.WALL) {
-            log("壁だ。");
-            return; // 壁ならターン消費しない（好みによる）
-        }
+        if (map[targetY][targetX] === TILE.WALL) return;
 
         let enemy = getEnemyAt(targetX, targetY);
         if (enemy) {
@@ -229,156 +289,259 @@
         } else {
             player.x = targetX;
             player.y = targetY;
-            log(`移動した (${player.x},${player.y})`);
+
+            // アイテムを拾う
+            let itemIndex = items.findIndex(i => i.x === player.x && i.y === player.y);
+            if (itemIndex !== -1) {
+                let item = items[itemIndex];
+                if (player.inventory.length < 5) {
+                    player.inventory.push(item);
+                    items.splice(itemIndex, 1); // マップから消す
+                    log(`<span style="color:#0f0">${item.name}を拾った！</span>`);
+                } else {
+                    log("持ち物がいっぱいで拾えない！");
+                }
+            }
             
+            // 階段
             if (map[targetY][targetX] === TILE.STAIRS) {
-                log("階段を降りた！");
                 floorLevel++;
                 startLevel();
-                draw(); // レベル遷移時は即座に描画
-                return;
+                return; // レベル生成したら即終了
             }
         }
 
         enemyTurn();
         updateUI();
-        draw(); // ターン終了後に描画更新
+        draw();
+    }
+
+    function useItem(index) {
+        const item = player.inventory[index];
+        if (item.type === 'potion') {
+            let oldHp = player.hp;
+            player.hp = Math.min(player.maxHp, player.hp + item.heal);
+            let healed = player.hp - oldHp;
+            log(`${item.name}を使った。HPが ${healed} 回復！`);
+            
+            // 消費
+            player.inventory.splice(index, 1);
+            
+            // ターン消費ありにするか？ ここでは無しでインベントリ閉じる
+            gameState = STATE.PLAY;
+            enemyTurn(); // アイテム使うと敵も動く
+            updateUI();
+            draw();
+        }
     }
 
     function enemyTurn() {
         enemies.forEach(e => {
             if (e.hp <= 0) return;
-
-            let dx = 0; let dy = 0;
-            // 視界チェック（簡易）：距離が近い場合のみ反応
             const dist = Math.abs(player.x - e.x) + Math.abs(player.y - e.y);
-            if (dist < 8) {
+            
+            if (dist < 8) { // 視界内なら追ってくる
+                let dx = 0, dy = 0;
                 if (player.x > e.x) dx = 1;
                 else if (player.x < e.x) dx = -1;
                 else if (player.y > e.y) dy = 1;
                 else if (player.y < e.y) dy = -1;
-            }
 
-            const targetX = e.x + dx;
-            const targetY = e.y + dy;
+                const tx = e.x + dx;
+                const ty = e.y + dy;
 
-            if (targetX === player.x && targetY === player.y) {
-                attack(e, player);
-            } 
-            else if (map[targetY][targetX] !== TILE.WALL && !getEnemyAt(targetX, targetY)) {
-                e.x = targetX;
-                e.y = targetY;
+                if (tx === player.x && ty === player.y) {
+                    attack(e, player);
+                } else if (map[ty][tx] !== TILE.WALL && !getEnemyAt(tx, ty)) {
+                    e.x = tx; e.y = ty;
+                }
             }
         });
         enemies = enemies.filter(e => e.hp > 0);
     }
 
-    // --- 戦闘処理 ---
     function attack(attacker, defender) {
-        // ダメージ計算を少し調整
-        let baseDamage = (attacker === player) ? Math.floor(player.level/2) + 2 : 2;
-        let damage = Math.floor(Math.random() * baseDamage) + 1;
-        defender.hp -= damage;
-
-        let name = (attacker === player) ? "あなた" : attacker.name;
-        let targetName = (defender === player) ? "あなた" : defender.name;
-        let colorStr = (defender === player) ? 'style="color:red"' : 'style="color:yellow"';
+        let dmg = Math.floor(Math.random() * 3) + 1 + Math.floor(floorLevel/2);
+        if (attacker === player) dmg += Math.floor(player.level/2);
         
-        log(`<span ${colorStr}>${name} は ${targetName} に ${damage} のダメージ！</span>`);
+        defender.hp -= dmg;
+        
+        let targetName = (defender === player) ? "あなた" : defender.name;
+        let style = (defender === player) ? "color:red" : "color:yellow";
+        
+        // ログは重要な情報のみ
+        if(defender === player || defender.hp <= 0) {
+            log(`<span style="${style}">${targetName}に ${dmg} ダメージ！</span>`);
+        }
 
         if (defender.hp <= 0) {
-            log(`*** ${targetName} を倒した！ ***`);
             if (defender === player) {
-                log('<span style="color:red; font-weight:bold;">GAME OVER... リロードして再挑戦</span>');
-                // 操作を無効化するなどの処理が本来は必要
+                log("あなたは死んでしまった...");
+                gameState = STATE.GAMEOVER;
             } else {
-                player.xp += defender.name === 'troll' ? 20 : 10;
-                if(player.xp >= player.level * 25) {
+                player.xp += 10;
+                if(player.xp >= player.level * 20) {
                     player.level++;
-                    player.maxHp += 8;
+                    player.maxHp += 5;
                     player.hp = player.maxHp;
                     player.xp = 0;
-                    log(`<span style="color:cyan">レベルアップ！ Level ${player.level} になった！(HP全回復)</span>`);
+                    log(`<span style="color:cyan">レベルアップ！(Lv${player.level})</span>`);
                 }
             }
         }
     }
 
-    function getEnemyAt(x, y) {
-        return enemies.find(e => e.x === x && e.y === y && e.hp > 0);
-    }
+    function getEnemyAt(x, y) { return enemies.find(e => e.x === x && e.y === y && e.hp > 0); }
+    function getItemAt(x, y) { return items.find(i => i.x === x && i.y === y); }
 
-    // --- 描画 (テキスト方式に変更) ---
+    // --- 描画関連 ---
     function draw() {
-        // 画面を真っ黒にクリア
+        // 共通クリア
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // フォント設定：等幅フォント、サイズ指定
-        // 若干高さを調整して中央に見えるようにする
-        ctx.font = `${TILE_SIZE - 2}px 'Courier New', monospace`;
-        ctx.textAlign = 'center';     // 左右中央揃え
-        ctx.textBaseline = 'middle';  // 上下中央揃え
+        if (gameState === STATE.TITLE) {
+            drawTitle();
+        } else if (gameState === STATE.GAMEOVER) {
+            drawMap(); // 背景にマップを残す
+            drawGameOver();
+        } else {
+            drawMap();
+            if (gameState === STATE.INVENTORY) {
+                drawInventory();
+            }
+        }
+    }
 
-        // マップの描画
+    function drawTitle() {
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.font = '40px monospace';
+        ctx.fillText("ROGUE WEB", canvas.width/2, canvas.height/2 - 40);
+        
+        ctx.font = '20px monospace';
+        ctx.fillStyle = '#888';
+        ctx.fillText("Press Enter to Start", canvas.width/2, canvas.height/2 + 20);
+        
+        ctx.font = '16px monospace';
+        ctx.fillText("@:Hero  g:Goblin  !:Potion", canvas.width/2, canvas.height/2 + 60);
+    }
+
+    function drawGameOver() {
+        // 半透明の黒を被せる
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#f00';
+        ctx.textAlign = 'center';
+        ctx.font = '50px monospace';
+        ctx.fillText("YOU DIED", canvas.width/2, canvas.height/2 - 20);
+
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px monospace';
+        ctx.fillText(`Reached Floor: ${floorLevel}`, canvas.width/2, canvas.height/2 + 30);
+        ctx.fillText(`Level: ${player.level}`, canvas.width/2, canvas.height/2 + 60);
+
+        ctx.fillStyle = '#aaa';
+        ctx.font = '16px monospace';
+        ctx.fillText("Press Space to Restart", canvas.width/2, canvas.height/2 + 100);
+    }
+
+    function drawMap() {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = FONT;
+
         for (let y = 0; y < ROWS; y++) {
             for (let x = 0; x < COLS; x++) {
-                // タイルの中心座標を計算
-                const posX = x * TILE_SIZE + TILE_SIZE / 2;
-                // ベースライン調整のための微調整オフセット
-                const posY = y * TILE_SIZE + TILE_SIZE / 2 + 2; 
-
-                let char = ' ';
-                let color = '#000';
+                const px = x * TILE_SIZE + TILE_SIZE/2;
+                const py = y * TILE_SIZE + TILE_SIZE/2 + 2;
 
                 if (map[y][x] === TILE.WALL) {
-                    char = '#';
-                    color = '#555'; // 暗い灰色の壁
+                    ctx.fillStyle = '#333';
+                    ctx.fillText('#', px, py);
                 } else if (map[y][x] === TILE.FLOOR) {
-                    char = '.';
-                    color = '#333'; // さらに暗い灰色の床
+                    ctx.fillStyle = '#222';
+                    ctx.fillText('.', px, py);
                 } else if (map[y][x] === TILE.STAIRS) {
-                    char = '>';
-                    color = '#44f'; // 青い階段
+                    ctx.fillStyle = '#44f';
+                    ctx.fillText('>', px, py);
                 }
-
-                ctx.fillStyle = color;
-                ctx.fillText(char, posX, posY);
             }
         }
 
-        // 敵の描画
-        enemies.forEach(e => {
-            const posX = e.x * TILE_SIZE + TILE_SIZE / 2;
-            const posY = e.y * TILE_SIZE + TILE_SIZE / 2 + 2;
-            ctx.fillStyle = '#f44'; // 赤っぽい色
-            // 名前の頭文字を表示 (goblin -> g)
-            ctx.fillText(e.name.charAt(0), posX, posY);
+        // アイテム
+        items.forEach(i => {
+            const px = i.x * TILE_SIZE + TILE_SIZE/2;
+            const py = i.y * TILE_SIZE + TILE_SIZE/2 + 2;
+            ctx.fillStyle = i.color;
+            ctx.fillText(i.char, px, py);
         });
 
-        // プレイヤーの描画
+        // 敵
+        enemies.forEach(e => {
+            const px = e.x * TILE_SIZE + TILE_SIZE/2;
+            const py = e.y * TILE_SIZE + TILE_SIZE/2 + 2;
+            ctx.fillStyle = e.color;
+            ctx.fillText(e.char, px, py);
+        });
+
+        // プレイヤー
         if (player.hp > 0) {
-            const playerX = player.x * TILE_SIZE + TILE_SIZE / 2;
-            const playerY = player.y * TILE_SIZE + TILE_SIZE / 2 + 2;
-            ctx.fillStyle = 'yellow'; // 黄色
-            ctx.fillText('@', playerX, playerY); // 自機は @
+            const px = player.x * TILE_SIZE + TILE_SIZE/2;
+            const py = player.y * TILE_SIZE + TILE_SIZE/2 + 2;
+            ctx.fillStyle = 'yellow';
+            ctx.fillText('@', px, py);
         }
+    }
+
+    function drawInventory() {
+        // ウィンドウ枠
+        const w = 300;
+        const h = 200;
+        const x = (canvas.width - w) / 2;
+        const y = (canvas.height - h) / 2;
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px monospace';
+        ctx.fillText("- INVENTORY -", x + 20, y + 30);
+
+        ctx.font = '16px monospace';
+        if (player.inventory.length === 0) {
+            ctx.fillStyle = '#888';
+            ctx.fillText("(Empty)", x + 20, y + 60);
+        } else {
+            player.inventory.forEach((item, index) => {
+                ctx.fillStyle = '#fff';
+                ctx.fillText(`${index + 1}: ${item.name} (HP+${item.heal})`, x + 20, y + 60 + (index * 25));
+            });
+        }
+        
+        ctx.fillStyle = '#aaa';
+        ctx.font = '12px monospace';
+        ctx.fillText("[1-5]:Use  [Esc]:Close", x + 20, y + h - 15);
     }
 
     function log(msg) {
         messages.push(msg);
-        if (messages.length > 20) messages.shift(); // 表示ログ数を制限
-        
-        const logEl = document.getElementById('log');
-        // 最新が下に来るように表示
-        logEl.innerHTML = messages.join('<br>');
-        logEl.scrollTop = logEl.scrollHeight; // 自動スクロール
+        if (messages.length > 20) messages.shift();
+        const el = document.getElementById('log');
+        el.innerHTML = messages.join('<br>');
+        el.scrollTop = el.scrollHeight;
     }
 
     function updateUI() {
-        document.getElementById('stats').innerHTML = `HP: <span style="color:${player.hp < player.maxHp*0.3 ? 'red':'fff'}">${player.hp}</span>/${player.maxHp} | Lvl: ${player.level} | XP: ${player.xp}`;
+        document.getElementById('stats').innerText = `HP: ${player.hp}/${player.maxHp} | Lv: ${player.level}`;
         document.getElementById('floor').innerText = `B${floorLevel}F`;
     }
+
 </script>
 </body>
 </html>
