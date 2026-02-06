@@ -140,14 +140,14 @@
         .dropdown a:last-child { border-bottom: none; }
         .dropdown a:hover { background-color: #f0f0f0; padding-left: 25px; }
 
-        /* --- おみくじ機能のスタイル --- */
+        /* --- おみくじ機能 (左下固定) --- */
         .omikuji-container {
             position: fixed;
             bottom: 30px;
             left: 30px;
-            z-index: 1500;
+            z-index: 2000; /* ナビゲーションより手前に */
             display: flex;
-            flex-direction: column-reverse; /* 結果をボタンの上に表示するため */
+            flex-direction: column-reverse;
             align-items: center;
         }
 
@@ -170,9 +170,8 @@
             transform: scale(0.95);
         }
 
-        /* おみくじ結果のフキダシ */
         .omikuji-result {
-            background-color: rgba(255, 250, 240, 0.95); /* 和紙っぽい色 */
+            background-color: rgba(255, 250, 240, 0.95);
             color: #333;
             padding: 15px 20px;
             border-radius: 8px;
@@ -183,10 +182,10 @@
             opacity: 0;
             visibility: hidden;
             transform: translateY(10px);
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* 跳ねるような動き */
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
             border: 1px solid #d4c4b4;
+            min-width: 150px;
         }
-        /* フキダシの三角部分 */
         .omikuji-result::after {
             content: '';
             position: absolute;
@@ -207,7 +206,7 @@
         .result-unsei {
             font-size: 1.8em;
             font-weight: bold;
-            color: #d35400; /* 朱色 */
+            color: #d35400;
             display: block;
             margin-bottom: 5px;
         }
@@ -219,7 +218,7 @@
         @media (max-width: 768px) {
             .main-title { font-size: 2.2em; }
             .top-nav { top: 20px; right: 10px; left: 10px; justify-content: center; }
-            .omikuji-container { bottom: 20px; left: 20px; } /* スマホでの位置調整 */
+            .omikuji-container { bottom: 20px; left: 20px; }
         }
     </style>
 </head>
@@ -239,9 +238,29 @@
     </div>
 
     <nav class="top-nav">
-        <div class="nav-item"><div class="category-name">学習</div><div class="dropdown"><a href="cobun_card.html">古典単語帳</a><a href="kanji_quiz.html">漢字クイズ</a><a href="daigaku_quiz.html">大学クイズ</a></div></div>
-        <div class="nav-item"><div class="category-name">道具</div><div class="dropdown"><a href="timer.html">集中タイマー</a><a href="kansu.html">関数表示アプリ</a></div></div>
-        <div class="nav-item"><div class="category-name">ゲーム</div><div class="dropdown"><a href="shogi.html">将棋</a><a href="stg.html">シューティング</a><a href="click.html">クリッカー</a></div></div>
+        <div class="nav-item">
+            <div class="category-name">学習</div>
+            <div class="dropdown">
+                <a href="cobun_card.html">古典単語帳</a>
+                <a href="kanji_quiz.html">漢字クイズ</a>
+                <a href="daigaku_quiz.html">大学クイズ</a>
+            </div>
+        </div>
+        <div class="nav-item">
+            <div class="category-name">道具</div>
+            <div class="dropdown">
+                <a href="timer.html">集中タイマー</a>
+                <a href="kansu.html">関数表示アプリ</a>
+            </div>
+        </div>
+        <div class="nav-item">
+            <div class="category-name">ゲーム</div>
+            <div class="dropdown">
+                <a href="shogi.html">将棋</a>
+                <a href="othello.html">オセロ</a> <a href="rogue.html">ローグライク</a> <a href="stg.html">シューティング</a>
+                <a href="click.html">クリッカー</a>
+            </div>
+        </div>
     </nav>
 
     <div class="omikuji-container">
@@ -251,7 +270,6 @@
         </div>
         <div class="omikuji-btn" onclick="drawOmikuji()">⛩️</div>
     </div>
-
 
     <div id="modal" class="modal-overlay">
         <div class="modal-box">
@@ -293,38 +311,25 @@
             const resultKotoba = document.getElementById('result-kotoba');
             const btn = document.querySelector('.omikuji-btn');
 
-            // 表示中なら閉じる
             if (resultBox.classList.contains('show')) {
                 resultBox.classList.remove('show');
                 return;
             }
 
-            // ボタンを少し揺らす演出
             btn.animate([
-                { transform: 'rotate(0deg)' },
-                { transform: 'rotate(-15deg)' },
-                { transform: 'rotate(15deg)' },
-                { transform: 'rotate(0deg)' }
+                { transform: 'rotate(0deg)' }, { transform: 'rotate(-15deg)' },
+                { transform: 'rotate(15deg)' }, { transform: 'rotate(0deg)' }
             ], { duration: 300 });
 
-            // ランダム選出
             const randomIndex = Math.floor(Math.random() * omikujiData.length);
             const result = omikujiData[randomIndex];
 
-            // 結果をセットして表示
             resultUnsei.textContent = result.unsei;
             resultKotoba.textContent = result.kotoba;
             
-            setTimeout(() => {
-                resultBox.classList.add('show');
-            }, 100); // 少し遅らせて表示
-
-            // 5秒後に自動で閉じる
-            setTimeout(() => {
-                resultBox.classList.remove('show');
-            }, 5000);
+            setTimeout(() => { resultBox.classList.add('show'); }, 100);
+            setTimeout(() => { resultBox.classList.remove('show'); }, 5000);
         }
-
 
         // --- ブックマーク処理 ---
         const bookmarkList = document.getElementById('bookmark-list');
