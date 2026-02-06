@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Web Roguelike</title>
+    <style>
+        body {
+            background-color: #222;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { margin: 10px 0; font-size: 24px; }
+        #game-container {
+            position: relative;
+            border: 2px solid #555;
+            background-color: #000;
+        }
+        canvas { display: block; }
+        #ui {
+            width: 600px;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 18px;
+        }
+        #log {
+            width: 600px;
+            height: 100px;
+            border: 1px solid #444;
+            margin-top: 10px;
+            padding: 5px;
+            overflow-y: scroll;
+            font-size: 14px;
+            background: #111;
+            color: #aaa;
+        }
+        .controls {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Web Roguelike MVP</h1>
+    
+    <div id="ui">
+        <span id="stats">HP: 20 | Level: 1</span>
+        <span id="floor">Floor: 1</span>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+    </div>
+
+    <div id="log">ゲーム開始...</div>
+
+    <div class="controls">
+        操作: 矢印キー または WASD (移動/攻撃)<br>
+        目標: 赤い敵を倒しつつ、青い階段を目指してください。
+    </div>
+
+<script>
+    // --- 設定 ---
+    const TILE_SIZE = 20;
+    const ROWS = 20;
+    const COLS = 30;
+    const MAX_ENEMIES = 5;
+
+    // タイルの種類
+    const TILE = {
+        FLOOR: 0,
+        WALL: 1,
+        STAIRS: 2
+    };
+
+    // --- ゲーム状態 ---
+    let canvas, ctx;
+    let map = [];
+    let player = { x: 1, y: 1, hp: 20, maxHp: 20, level: 1, xp: 0 };
+    let enemies = [];
+    let floorLevel = 1;
+    let messages = [];
+
+    // --- 初期化 ---
+    window.onload = () => {
+        canvas = document.getElementById('gameCanvas');
+        ctx = canvas.getContext('2d');
+        startLevel();
+        document.addEventListener('keydown', handleInput);
+        draw();
+    };
+
+    // --- レベル生成（簡易的なランダムマップ） ---
+    function startLevel() {
+        map = [];
+        enemies = [];
+        
+        // 全て壁にする
+        for (let y = 0; y < ROWS; y++) {
+            let row = [];
+            for (let x = 0; x < COLS; x++) {
+                row.push(TILE.WALL);
+            }
+            map.push(row);
+        }
+
+        // 床を掘る (簡易アルゴリズム)
+        // 中央からランダムに床を広げる
+        let digX = Math.floor(COLS / 2);
+        let digY = Math.floor(ROWS / 2);
+        
+        for (let i = 0; i < 300; i++) {
+            map[digY][digX] = TILE.FLOOR;
+            const dir = Math.floor(Math.random() * 4);
+            if (dir === 0) digX++;
+            else if (dir === 1) digX--;
+            else if (dir === 2) digY++;
+            else if (dir === 3) digY--;
+
+            // 画面外に出ないように
+            if (digX < 1) digX = 1;
+            if (digX >= COLS - 1) digX = COLS - 2;
+            if (digY < 1) digY = 1;
+            if (digY >= ROWS - 1) digY = ROWS - 2;
+        }
+
+        // プレイヤー配置（左上の最初の床）
+        spawnEntity(player);
+
+        // 階段配置
+        spawnStairs();
+
+        // 敵配置
+        for(let i=0; i<MAX_ENEMIES + floorLevel; i++) {
+            let enemy = { x: 0, y: 0, hp: 10 + floorLevel, name: "Goblin" };
+            if(spawnEntity(enemy)) {
+                enemies.push(enemy);
+            }
+        }
+        
+        log(`地下 ${floorLevel} 階に到達した。`);
+        draw();
+    }
+
+    function spawnEntity(entity) {
+        let placed = false;
+        while (!placed) {
+            let x = Math.floor(Math.random() * COLS);
+            let y = Math.floor(Math.random() * ROWS);
+            if (map[y][x] === TILE.FLOOR && !getEnemyAt(x, y) && (x !== player.x || y !== player.y)) {
+                entity.x = x;
+                entity.y = y;
+                placed = true;
+            }
+        }
+        return true;
+    }
+
+    function spawnStairs() {
+        let placed = false;
+        while (!placed) {
+            let x = Math.floor(Math.random() * COLS);
+            let y = Math.floor(Math.random() * ROWS);
+            if (map[y][x] === TILE.FLOOR && (x !== player.x || y !== player.y)) {
+                map[y][x] = TILE.STAIRS;
+                placed = true;
+            }
+        }
+    }
+
+    // --- 入力処理 ---
+    function handleInput(e) {
+        let dx = 0;
+        let dy = 0;
+
+        if (e.key === 'ArrowUp' || e.key === 'w') dy = -1;
+        if (e.key === 'ArrowDown' || e.key === 's') dy = 1;
+        if (e.key === 'ArrowLeft' || e.key === 'a') dx = -1;
+        if (e.key === 'ArrowRight' || e.key === 'd') dx = 1;
+
+        if (dx !== 0 || dy !== 0) {
+            e.preventDefault();
+            playerTurn(dx, dy);
+        }
+    }
+
+    // --- プレイヤーのターン ---
+    function playerTurn(dx, dy) {
+        const targetX = player.x + dx;
+        const targetY = player.y + dy;
+
+        // 壁判定
+        if (map[targetY][targetX] === TILE.WALL) return;
+
+        // 敵判定
+        let enemy = getEnemyAt(targetX, targetY);
+        if (enemy) {
+            attack(player, enemy);
+        } else {
+            player.x = targetX;
+            player.y = targetY;
+            
+            // 階段判定
+            if (map[targetY][targetX] === TILE.STAIRS) {
+                floorLevel++;
+                startLevel();
+                return;
+            }
+        }
+
+        enemyTurn();
+        updateUI();
+        draw();
+    }
+
+    // --- 敵のターン ---
+    function enemyTurn() {
+        enemies.forEach(e => {
+            if (e.hp <= 0) return;
+
+            // プレイヤーに向かって移動する簡易AI
+            let dx = 0;
+            let dy = 0;
+            if (player.x > e.x) dx = 1;
+            if (player.x < e.x) dx = -1;
+            if (player.y > e.y) dy = 1;
+            if (player.y < e.y) dy = -1;
+
+            // 斜め移動禁止（ランダムでXかYか選ぶ）
+            if (dx !== 0 && dy !== 0) {
+                if (Math.random() < 0.5) dx = 0;
+                else dy = 0;
+            }
+
+            const targetX = e.x + dx;
+            const targetY = e.y + dy;
+
+            // プレイヤーへの攻撃
+            if (targetX === player.x && targetY === player.y) {
+                attack(e, player);
+            } 
+            // 移動（壁でなく、他の敵がいない場合）
+            else if (map[targetY][targetX] !== TILE.WALL && !getEnemyAt(targetX, targetY)) {
+                e.x = targetX;
+                e.y = targetY;
+            }
+        });
+
+        // 死亡した敵を削除
+        enemies = enemies.filter(e => e.hp > 0);
+    }
+
+    // --- 戦闘処理 ---
+    function attack(attacker, defender) {
+        let damage = Math.floor(Math.random() * 3) + 1; // 1-3ダメージ
+        defender.hp -= damage;
+
+        let name = (attacker === player) ? "あなた" : attacker.name;
+        let targetName = (defender === player) ? "あなた" : defender.name;
+        
+        log(`${name} は ${targetName} に ${damage} のダメージ！`);
+
+        if (defender.hp <= 0) {
+            log(`${targetName} は倒れた！`);
+            if (defender === player) {
+                alert("Game Over! リロードして再挑戦してください。");
+                location.reload();
+            } else {
+                // 経験値取得（簡易）
+                player.xp += 10;
+                if(player.xp >= player.level * 20) {
+                    player.level++;
+                    player.maxHp += 5;
+                    player.hp = player.maxHp;
+                    player.xp = 0;
+                    log(`レベルアップ！ Level ${player.level} になった！`);
+                }
+            }
+        }
+    }
+
+    function getEnemyAt(x, y) {
+        return enemies.find(e => e.x === x && e.y === y && e.hp > 0);
+    }
+
+    // --- 描画 ---
+    function draw() {
+        // 背景クリア
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // マップ描画
+        for (let y = 0; y < ROWS; y++) {
+            for (let x = 0; x < COLS; x++) {
+                if (map[y][x] === TILE.WALL) {
+                    ctx.fillStyle = '#444'; // 壁
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                } else if (map[y][x] === TILE.FLOOR) {
+                    ctx.fillStyle = '#222'; // 床
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
+                } else if (map[y][x] === TILE.STAIRS) {
+                    ctx.fillStyle = 'blue'; // 階段
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText('>', x * TILE_SIZE + 5, y * TILE_SIZE + 14);
+                }
+            }
+        }
+
+        // 階段の説明
+        // enemies
+        enemies.forEach(e => {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(e.x * TILE_SIZE, e.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        });
+
+        // player
+        ctx.fillStyle = 'yellow';
+        ctx.fillRect(player.x * TILE_SIZE, player.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        
+        // グリッド線（オプション）
+        // ctx.strokeStyle = '#111';
+        // ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+
+    function log(msg) {
+        messages.unshift(msg);
+        if (messages.length > 50) messages.pop();
+        
+        const logEl = document.getElementById('log');
+        logEl.innerHTML = messages.join('<br>');
+    }
+
+    function updateUI() {
+        document.getElementById('stats').innerText = `HP: ${player.hp}/${player.maxHp} | Level: ${player.level}`;
+        document.getElementById('floor').innerText = `Floor: ${floorLevel}`;
+    }
+</script>
+</body>
+</html>
