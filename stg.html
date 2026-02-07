@@ -2,602 +2,736 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第九曼荼羅 - The 9th Mandala (Ver.Save)</title>
+    <title>弾幕・夢幻 - Geometric Neo (Smooth Motion Fix)</title>
     <style>
-        :root {
-            --theme-color: #6a0dad;
-            --theme-glow: rgba(106, 13, 173, 0.5);
-            --bg-black: #050505;
-            --text-gold: #d4af37;
-            --card-bg: rgba(20, 20, 20, 0.85);
-            --panel-bg: rgba(10, 10, 10, 0.6);
-        }
-
-        body {
-            background-color: var(--bg-black);
-            background-image: radial-gradient(circle at 30% 50%, rgba(0,0,0,0) 0%, var(--bg-black) 90%),
-                              radial-gradient(circle at 30% 50%, var(--theme-glow) 0%, transparent 60%);
-            color: var(--text-gold);
-            font-family: 'Yu Mincho', 'MS Mincho', serif;
-            margin: 0;
-            height: 100vh;
-            overflow: hidden; /* 全体のスクロールを禁止（カラム別スクロール） */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
+        
+        body { 
+            background: #020005; 
+            margin: 0; 
+            overflow: hidden; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            color: #fff;
+            font-family: 'Share Tech Mono', monospace;
             user-select: none;
-            transition: color 1s ease, background-image 1s ease;
         }
-
-        /* メインレイアウト（左右分割） */
-        .main-wrapper {
-            display: flex;
-            height: 100vh;
-            width: 100%;
-        }
-
-        /* --- 左カラム：曼荼羅とステータス --- */
-        .left-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+        #gameContainer {
             position: relative;
-            min-width: 320px;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.2);
+            border: 1px solid #333;
+            background: #000;
+            width: 640px; 
+            height: 640px;
         }
+        canvas { display: block; }
 
-        #header {
-            text-align: center;
-            margin-bottom: 20px;
-            z-index: 20;
-            text-shadow: 0 0 10px var(--theme-glow);
+        .overlay-ui { 
+            position: absolute; top: 0; left: 0; width: 480px; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center;
+            text-shadow: 0 0 10px #0ff;
         }
-
-        h1 { font-size: 1.8rem; letter-spacing: 0.2rem; margin: 0; }
-        .stats-main {
-            font-size: 2.5rem;
-            font-weight: bold;
-            font-family: 'Times New Roman', serif;
-            margin: 10px 0;
-            color: #fff;
-            text-shadow: 0 0 8px var(--theme-color);
-        }
-        .sub-stats { font-size: 0.95rem; color: #ccc; line-height: 1.5; }
-
-        #mandala-stage {
-            position: relative;
-            width: 350px;
-            height: 350px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        #mandala-stage:active { transform: scale(0.98); }
-
-        .mandala-layer {
-            position: absolute;
-            border: 2px solid var(--theme-color);
-            border-radius: 50%;
-            opacity: 0.8;
-            box-shadow: 0 0 15px var(--theme-glow);
-            transition: all 1s ease;
-        }
-        #layer1 { width: 320px; height: 320px; border-style: double; border-width: 4px; animation: rotate 60s linear infinite; }
-        #layer2 { width: 240px; height: 240px; border-style: dashed; animation: rotate 45s linear infinite reverse; }
-        #layer3 { width: 160px; height: 160px; border-style: dotted; border-width: 3px; animation: rotate 30s linear infinite; }
-        
-        #core {
-            width: 90px;
-            height: 90px;
-            background: radial-gradient(circle, var(--theme-color) 30%, transparent 80%);
-            border: 1px solid var(--theme-color);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            text-shadow: 0 0 5px var(--theme-color);
-            font-weight: bold;
-            font-size: 2.5rem;
-            z-index: 5;
-            box-shadow: 0 0 40px var(--theme-glow);
-            transition: all 0.2s ease;
-        }
-        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        /* --- 右カラム：ショップと設定 --- */
-        .right-panel {
-            flex: 0 0 450px; /* 幅固定 */
-            background: var(--panel-bg);
-            border-left: 1px solid #333;
-            overflow-y: auto; /* 縦スクロール許可 */
-            padding: 20px;
-            box-shadow: -5px 0 20px rgba(0,0,0,0.5);
-            backdrop-filter: blur(5px);
-        }
-
-        /* セーブ機能エリア */
-        .system-section {
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid var(--theme-color);
-            padding: 15px;
-            margin-bottom: 25px;
-            border-radius: 5px;
-        }
-        .system-title { font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #444; color: #fff; }
-        .system-buttons { display: flex; gap: 5px; flex-wrap: wrap; }
-        
-        .sys-btn {
-            background: #222; color: #ccc; border: 1px solid #555;
-            padding: 5px 10px; cursor: pointer; font-size: 0.8rem; flex: 1;
-            transition: 0.2s;
-        }
-        .sys-btn:hover { background: #444; color: #fff; border-color: var(--text-gold); }
-
-        /* ショップ共通 */
-        .shop-section { margin-bottom: 25px; }
-        .shop-title {
-            font-size: 1.1rem;
-            border-bottom: 1px solid var(--text-gold);
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            color: #fff;
-            position: sticky;
-            top: 0;
-            background: var(--bg-black); /* スクロール時に見出しが見やすいように */
-            z-index: 10;
+        .stage-msg {
+            font-family: 'Orbitron', sans-serif; font-size: 32px; color: #fff;
+            text-shadow: 0 0 20px #0ff; opacity: 0; transition: opacity 1s;
+            position: absolute; top: 30%; width: 100%; text-align: center;
         }
         
-        .item-card {
-            background: var(--card-bg);
-            border: 1px solid #444;
-            padding: 8px 12px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: 0.2s;
+        #codeOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); display: none; z-index: 100;
+            flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: auto;
         }
-        .item-card:hover { border-color: var(--text-gold); background: rgba(50, 50, 50, 0.95); }
-
-        .item-info { display: flex; flex-direction: column; text-align: left; flex: 1; padding-right: 10px; }
-        .item-name { font-weight: bold; color: var(--text-gold); font-size: 0.95rem; }
-        .item-effect { font-size: 0.8rem; color: #aaa; margin: 2px 0; }
-        .item-count { font-size: 0.75rem; color: #fff; opacity: 0.7; }
-
-        .buy-btn {
-            background: linear-gradient(to bottom, #333, #222);
-            color: #fff;
-            border: 1px solid #555;
-            padding: 8px 10px;
-            cursor: pointer;
-            font-family: 'Times New Roman', serif;
-            min-width: 90px;
-            text-align: right;
-            border-radius: 4px;
+        .code-box {
+            background: #111; border: 1px solid #0ff; padding: 20px;
+            color: #0ff; font-family: 'Share Tech Mono'; font-size: 16px;
+            max-width: 80%; word-break: break-all; user-select: text; margin-bottom: 20px;
         }
-        .buy-btn:hover:not(:disabled) { background: linear-gradient(to bottom, var(--theme-color), #222); border-color: #fff; }
-        .buy-btn:disabled { color: #555; border-color: #222; background: #111; cursor: not-allowed; }
-        .buy-btn small { display: block; font-size: 0.65rem; opacity: 0.8; }
-
-        /* モバイル対応 */
-        @media (max-width: 800px) {
-            .main-wrapper { flex-direction: column; overflow-y: auto; }
-            .left-panel { flex: 0 0 auto; min-height: 450px; }
-            .right-panel { flex: 1; border-left: none; border-top: 1px solid #333; overflow-y: visible; }
-            body { overflow: auto; }
+        .btn {
+            padding: 10px 30px; border: 1px solid #f0f; color: #f0f; 
+            background: transparent; cursor: pointer; font-family: 'Orbitron'; 
+            text-transform: uppercase; font-size: 18px; transition: 0.2s;
         }
-
-        /* エフェクト類 */
-        .virtue-pop {
-            position: absolute; color: #fff; font-weight: bold; pointer-events: none;
-            animation: riseFade 0.6s ease-out forwards; z-index: 100;
-            text-shadow: 0 0 3px #000; font-family: 'Times New Roman', serif;
-        }
-        @keyframes riseFade { 
-            0% { opacity: 1; transform: translateY(0) scale(1); } 
-            100% { opacity: 0; transform: translateY(-50px) scale(1.3); } 
-        }
-
-        /* 通知トースト */
-        #toast {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.9); color: #000;
-            padding: 10px 20px; border-radius: 20px; font-weight: bold;
-            opacity: 0; transition: opacity 0.5s; pointer-events: none; z-index: 1000;
-        }
-
-        /* 解脱画面 */
-        #liberation-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #fff; color: #000; display: none;
-            flex-direction: column; align-items: center; justify-content: center;
-            z-index: 9999; animation: fadeIn 2s ease forwards;
-        }
-        #prestige-btn {
-            padding: 15px 40px; font-size: 1.5rem; border: 2px solid #000;
-            background: transparent; cursor: pointer; transition: 0.3s;
-        }
-        #prestige-btn:hover { background: #000; color: #fff; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
+        .btn:hover { background: #f0f; color: #000; box-shadow: 0 0 15px #f0f; }
     </style>
 </head>
-<body oncontextmenu="return false;">
+<body>
 
-    <div class="main-wrapper">
-        <div class="left-panel">
-            <div id="header">
-                <h1 id="rank-name">第零曼荼羅：無明</h1>
-                <div class="stats-main" id="virtue-display">0</div>
-                <div class="sub-stats">
-                    <span class="click-power-text">クリック力: <span id="click-display">1</span></span><br>
-                    自動生産: <span id="ips-display">0</span> ips<br>
-                    カルマ: <span id="karma-display" style="color: #ff4500; font-weight:bold;">0</span> 
-                    (Bonus +<span id="karma-bonus">0</span>%)
-                </div>
-            </div>
-
-            <div id="mandala-stage" onclick="clickMandala(event)">
-                <div id="layer1" class="mandala-layer"></div>
-                <div id="layer2" class="mandala-layer"></div>
-                <div id="layer3" class="mandala-layer"></div>
-                <div id="core">唵</div>
-            </div>
-        </div>
-
-        <div class="right-panel">
-            
-            <div class="system-section">
-                <div class="system-title">記録の帳</div>
-                <div class="system-buttons">
-                    <button class="sys-btn" onclick="saveGame()">ブラウザに記録</button>
-                    <button class="sys-btn" onclick="exportSave()">復活の呪文を表示</button>
-                    <button class="sys-btn" onclick="importSave()">呪文を唱える</button>
-                    <button class="sys-btn" onclick="resetGame()" style="border-color:#500; color:#faa;">破棄して転生</button>
-                </div>
-                <div style="font-size:0.7rem; color:#666; margin-top:5px; text-align:right;">※1分ごとに自動記録されます</div>
-            </div>
-
-            <div class="shop-section">
-                <div class="shop-title"><span>基礎作法 (クリック強化)</span></div>
-                <div id="click-shop"></div>
-            </div>
-
-            <div class="shop-section">
-                <div class="shop-title"><span>僧侶と諸天 (自動生産)</span></div>
-                <div id="unit-shop"></div>
-            </div>
-
-            <div class="shop-section">
-                <div class="shop-title"><span>経典と秘宝 (全体倍率)</span></div>
-                <div id="upgrade-shop"></div>
-            </div>
-        </div>
+<div id="gameContainer">
+    <canvas id="canvas" width="640" height="640"></canvas>
+    
+    <div class="overlay-ui">
+        <div class="stage-msg" id="stageMsg"></div>
     </div>
 
-    <div id="toast">記録しました</div>
-
-    <div id="liberation-overlay">
-        <div style="font-size: 4rem; font-weight: bold; margin-bottom: 30px; letter-spacing: 1rem;">解放</div>
-        <div style="font-size: 1.2rem; margin-bottom: 30px;">
-            今生での徳の合計: <span id="total-virtue-end">0</span><br>
-            獲得カルマ: <span id="pending-karma" style="font-weight:bold; font-size:1.5rem;">0</span>
-        </div>
-        <button id="prestige-btn" onclick="doPrestige()">輪廻転生</button>
+    <div id="codeOverlay">
+        <h2 style="color:#0ff; font-family:'Orbitron'; margin-bottom:20px;">RESURRECTION CODE</h2>
+        <div class="code-box" id="codeDisplay">Loading...</div>
+        <button class="btn" onclick="closeCodeOverlay()">CLOSE</button>
     </div>
+</div>
 
-    <script>
-        // --- 巨大数単位 ---
-        function formatVirtue(num) {
-            if (num < 10000) return Math.floor(num).toLocaleString();
-            const units = ["", "万", "億", "兆", "京", "垓", "𥝱", "穣", "溝", "澗", "正", "載", "極", "恒河沙", "阿僧祇", "那由他", "不可思議", "無量大数"];
-            let unitIndex = 0;
-            let tempNum = num;
-            while (tempNum >= 10000 && unitIndex < units.length - 1) {
-                tempNum /= 10000;
-                unitIndex++;
+<script>
+/**
+ * 弾幕・夢幻 - Geometric Neo (Ultra Smooth Boss Motion)
+ */
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// --- 画面設定 ---
+const W = 640; 
+const H = 640; 
+const PLAY_W = 480; 
+const UI_X = 480; 
+
+// --- カラー ---
+const COLORS = {
+    bg: "#020005", grid: "#001a33",
+    cyan: "#00ffff", magenta: "#ff00ff", yellow: "#ffff00", green: "#00ff00",
+    red: "#ff3333", blue: "#3366ff", white: "#ffffff",
+    orange: "#ffaa00", purple: "#aa00ff"
+};
+
+const DIFFICULTIES = [
+    { name: "BEGINNER", rank: 0.5, spd: 0.6 },
+    { name: "EASY",     rank: 0.8, spd: 0.8 },
+    { name: "NORMAL",   rank: 1.0, spd: 1.0 },
+    { name: "HARD",     rank: 1.5, spd: 1.2 }
+];
+
+// --- グローバル変数 ---
+let state = "TITLE"; 
+let menuIndex = 0;
+let diffIndex = 2; 
+let currentDiff = DIFFICULTIES[diffIndex];
+let frame = 0;
+let bgOffset = 0;
+
+let score = 0;
+let nextExtendScore = 100000; 
+const EXTEND_INTERVAL = 150000; 
+
+let stage = 1;
+let stageTimer = 0;
+let isBossActive = false;
+let bossDelayTimer = 0; 
+let midBossDefeated = false; 
+
+let player = { 
+    x: PLAY_W/2, y: H-100, 
+    lives: 3, bombs: 3, power: 0, maxPower: 50,
+    invincible: 0, slow: false, angle: 0
+};
+
+let bullets = [], enemies = [], enemyBullets = [], items = [], particles = [], floatingTexts = [];
+
+let boss = { 
+    active: false, x: PLAY_W/2, y: -100, 
+    hp: 0, maxHp: 0, phase: 0, color: COLORS.green,
+    timer: 0, angle: 0, type: 0, isMid: false
+};
+
+/* --- 初期化・ループ --- */
+function init() { requestAnimationFrame(loop); }
+
+/* --- 入力管理 --- */
+let keys = {};
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if(e.code === "ShiftLeft" || e.code === "ShiftRight") player.slow = true;
+
+    if(state === "TITLE") {
+        if(e.code === "ArrowUp") menuIndex = (menuIndex + 2) % 3;
+        if(e.code === "ArrowDown") menuIndex = (menuIndex + 1) % 3;
+        
+        if(menuIndex === 0) {
+            if(e.code === "ArrowLeft") {
+                diffIndex = (diffIndex + 3) % 4;
+                currentDiff = DIFFICULTIES[diffIndex];
             }
-            return tempNum.toFixed(2) + units[unitIndex];
+            if(e.code === "ArrowRight") {
+                diffIndex = (diffIndex + 1) % 4;
+                currentDiff = DIFFICULTIES[diffIndex];
+            }
         }
 
-        // --- データ定義 ---
-        const clickData = [ { name: "清貧", power: 1, cost: 10 } ];
-        const unitData = [
-            { name: "修行僧", rate: 1, cost: 15 },
-            { name: "東の若僧", rate: 70, cost: 1500 },
-            { name: "南の僧侶", rate: 300, cost: 8000 },
-            { name: "南の高僧", rate: 40000, cost: 2000000 },
-            { name: "西の老僧", rate: 2000000, cost: 150000000 },
-            { name: "北の天才", rate: 800000000, cost: 50000000000 },
-            { name: "無名天", rate: 10000000000, cost: 3000000000000 }, 
-            { name: "怒れる明王", rate: 1000000000000, cost: 500000000000000 }, 
-            { name: "慈愛の菩薩", rate: 100000000000000, cost: 80000000000000000 }, 
-            { name: "圧巻の如来", rate: 10000000000000000, cost: 9000000000000000000 }
-        ];
-        const upgradeData = [
-            { name: "弟子の写経", mult: 1.01, cost: 500 },
-            { name: "中品質の写経", mult: 1.05, cost: 50000 },
-            { name: "完璧な写経", mult: 1.08, cost: 10000000 },
-            { name: "唐の経典", mult: 1.09, cost: 500000000 }, 
-            { name: "天竺の経典", mult: 1.10, cost: 200000000000 },
-            { name: "聖人のミイラ", mult: 1.20, cost: 100000000000000 }
-        ];
-        const rankNames = [
-            { name: "第零曼荼羅：無明", color: "#6a0dad" },
-            { name: "第一曼荼羅：胎蔵界", color: "#4b0082" },
-            { name: "第二曼荼羅：金剛界", color: "#0000ff" },
-            { name: "第三曼荼羅：阿弥陀", color: "#008000" },
-            { name: "第四曼荼羅：蓮華", color: "#adff2f" },
-            { name: "第五曼荼羅：虚空", color: "#ffff00" },
-            { name: "第六曼荼羅：寂静", color: "#ffd700" },
-            { name: "第七曼荼羅：遍照", color: "#ffa500" },
-            { name: "第八曼荼羅：解脱", color: "#ff4500" },
-            { name: "第九曼荼羅：不可説不可説転", color: "#ff0000" }
-        ];
-
-        // --- ゲーム状態 ---
-        let game = {
-            virtue: 0,
-            totalVirtue: 0,
-            karma: 0,
-            rank: 0,
-            clicks: new Array(clickData.length).fill(0),
-            units: new Array(unitData.length).fill(0),
-            upgrades: new Array(upgradeData.length).fill(0),
-            lastSave: Date.now()
-        };
-
-        // --- 初期化 ---
-        function init() {
-            createShopUI();
-            loadGame(); // ロード試行
-            applyRankTheme(game.rank); // テーマ適用
-            updateDisplay();
-            gameLoop();
-            
-            // オートセーブ (60秒毎)
-            setInterval(saveGame, 60000);
+        if(e.code === "KeyZ" || e.code === "Enter") {
+            if(menuIndex === 0) startGame();
+            if(menuIndex === 1) loadFromBrowser();
+            if(menuIndex === 2) generateCode();
         }
+        if(menuIndex === 2 && (e.code === "KeyZ" || e.code === "Enter")) loadFromCodeInput();
+    } 
+    else if (state === "PLAYING") {
+        if(e.code === "KeyX") useBomb();
+        if(e.code === "Escape") state = "PAUSED";
+    }
+    else if (state === "PAUSED") {
+        if(e.code === "Escape") state = "PLAYING";
+        if(e.code === "KeyS") saveToBrowser();
+        if(e.code === "KeyC") generateCode();
+        if(e.code === "KeyQ") state = "TITLE";
+    }
+    else if (["GAMEOVER", "CLEAR"].includes(state)) {
+        if(e.code === "KeyZ") state = "TITLE";
+    }
+});
+window.addEventListener('keyup', e => {
+    keys[e.code] = false;
+    if(e.code === "ShiftLeft" || e.code === "ShiftRight") player.slow = false;
+});
 
-        function createShopUI() {
-            // クリック
-            const cShop = document.getElementById('click-shop');
-            clickData.forEach((c, i) => {
-                cShop.innerHTML += createCardHTML(c.name, `クリック徳 +${c.power}`, `c-cnt-${i}`, `c-btn-${i}`, `c-cost-${i}`, `buyClickItem(${i})`);
-            });
-            // ユニット
-            const uShop = document.getElementById('unit-shop');
-            unitData.forEach((u, i) => {
-                uShop.innerHTML += createCardHTML(u.name, `+${formatVirtue(u.rate)} /sec`, `u-cnt-${i}`, `u-btn-${i}`, `u-cost-${i}`, `buyUnit(${i})`);
-            });
-            // アップグレード
-            const upShop = document.getElementById('upgrade-shop');
-            upgradeData.forEach((u, i) => {
-                upShop.innerHTML += createCardHTML(u.name, `生産量 ${Math.round((u.mult-1)*100)}% UP`, `up-cnt-${i}`, `up-btn-${i}`, `up-cost-${i}`, `buyUpgrade(${i})`);
-            });
+function loop() {
+    drawBackground();
+
+    if(state === "PLAYING") {
+        updateGame();
+        drawGameEntities();
+        drawUI();
+    } 
+    else if (state === "PAUSED") {
+        drawGameEntities(); 
+        drawUI();
+        drawOverlay();
+    }
+    else {
+        if(state !== "TITLE") { drawGameEntities(); drawUI(); }
+        else drawUI();
+        drawOverlay();
+    }
+    
+    if(state !== "PAUSED") {
+        frame++;
+        bgOffset = (bgOffset + 1) % 40;
+    }
+    requestAnimationFrame(loop);
+}
+
+/* --- ゲームロジック --- */
+function startGame() {
+    player.lives = 3; player.bombs = 3; player.power = 0;
+    score = 0; 
+    nextExtendScore = 100000; 
+    stage = 1;
+    resetStageState();
+    state = "PLAYING";
+    showStageTitle("STAGE 1: CYBER FIELD");
+}
+
+function resetStageState() {
+    player.x = PLAY_W/2; player.y = H-100;
+    stageTimer = 0;
+    bossDelayTimer = 0;
+    midBossDefeated = false;
+    bullets = []; enemies = []; enemyBullets = []; items = []; particles = [];
+    boss.active = false; isBossActive = false;
+}
+
+function addScore(amount) {
+    score += amount;
+    if(score >= nextExtendScore) {
+        player.lives++;
+        showFloatingText("EXTEND!", player.x, player.y - 40, COLORS.green);
+        nextExtendScore += EXTEND_INTERVAL;
+    }
+}
+
+function updateGame() {
+    if(!isBossActive && bossDelayTimer === 0) stageTimer++;
+
+    // 移動
+    let moveSpd = (player.slow ? 2.0 : 5.0);
+    if(keys['ArrowLeft'] && player.x > 15) player.x -= moveSpd;
+    if(keys['ArrowRight'] && player.x < PLAY_W-15) player.x += moveSpd;
+    if(keys['ArrowUp'] && player.y > 15) player.y -= moveSpd;
+    if(keys['ArrowDown'] && player.y < H-15) player.y += moveSpd;
+    if(player.invincible > 0) player.invincible--;
+    player.angle = frame * 0.05;
+
+    // ショット
+    if(keys['KeyZ'] && frame % 4 === 0) {
+        let pLvl = Math.floor(player.power / 10);
+        let col = COLORS.cyan;
+        if(player.slow) {
+            bullets.push({x: player.x-6, y: player.y, vx: 0, vy: -18, color: col, type: 'beam'});
+            bullets.push({x: player.x+6, y: player.y, vx: 0, vy: -18, color: col, type: 'beam'});
+            if(pLvl >= 1) { 
+                bullets.push({x: player.x-14, y: player.y+5, vx: 0, vy: -15, color: col, type: 'beam'}); 
+                bullets.push({x: player.x+14, y: player.y+5, vx: 0, vy: -15, color: col, type: 'beam'}); 
+            }
+        } else {
+            bullets.push({x: player.x-8, y: player.y, vx: 0, vy: -14, color: col, type: 'poly', sides:3});
+            bullets.push({x: player.x+8, y: player.y, vx: 0, vy: -14, color: col, type: 'poly', sides:3});
+            if(pLvl >= 1) { 
+                bullets.push({x: player.x-16, y: player.y+5, vx: -3, vy: -12, color: col, type: 'poly', sides:4}); 
+                bullets.push({x: player.x+16, y: player.y+5, vx: 3, vy: -12, color: col, type: 'poly', sides:4}); 
+            }
+            if(pLvl >= 3) {
+                bullets.push({x: player.x-24, y: player.y+10, vx: -5, vy: -10, color: col, type: 'poly', sides:4}); 
+                bullets.push({x: player.x+24, y: player.y+10, vx: 5, vy: -10, color: col, type: 'poly', sides:4}); 
+            }
         }
+    }
 
-        function createCardHTML(name, effect, countId, btnId, costId, func) {
-            return `
-                <div class="item-card">
-                    <div class="item-info">
-                        <span class="item-name">${name}</span>
-                        <span class="item-effect">${effect}</span>
-                        <span class="item-count" id="${countId}">所持: 0</span>
-                    </div>
-                    <button class="buy-btn" id="${btnId}" onclick="${func}">
-                        <small>徳を捧げる</small>
-                        <span id="${costId}">-</span>
-                    </button>
-                </div>`;
-        }
+    // アイテム
+    items.forEach((it, i) => {
+        it.angle += 0.1;
+        let dist = Math.hypot(it.x - player.x, it.y - player.y);
+        let suckRange = (player.y < 180 || it.type === 'bomb') ? 200 : 80;
+        
+        if(dist < suckRange) {
+            let a = Math.atan2(player.y - it.y, player.x - it.x);
+            it.x += Math.cos(a)*10; it.y += Math.sin(a)*10;
+        } else { it.y += 2.5; }
+        
+        if(dist < 25) {
+            items.splice(i, 1);
+            if(it.type === 'power') {
+                addScore(100);
+                if(player.power < player.maxPower) {
+                    player.power++;
+                    if(player.power%10===0) showFloatingText("POWER UP!", player.x, player.y-30, COLORS.yellow);
+                } else {
+                    addScore(500); showFloatingText("MAX!", player.x, player.y-20, COLORS.white);
+                }
+            } else if(it.type === 'score') {
+                addScore(1000); showFloatingText("1000", player.x, player.y-20, COLORS.cyan);
+            } else if(it.type === 'bomb') {
+                player.bombs++;
+                addScore(5000);
+                showFloatingText("BOMB +1", player.x, player.y-40, COLORS.magenta);
+            }
+        } else if(it.y > H+20) items.splice(i, 1);
+    });
 
-        // --- セーブ/ロード機能 ---
+    manageStages();
+    updateEntities();
+    checkCollision();
+    
+    // パーティクルの掃除
+    particles = particles.filter(p => p.life > 0);
+    
+    // フローティングテキスト掃除
+    for(let i=floatingTexts.length-1; i>=0; i--) {
+        let t = floatingTexts[i]; t.y -= 1.0; t.life--;
+        if(t.life <= 0) floatingTexts.splice(i, 1);
+    }
+}
 
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.style.opacity = 1;
-            setTimeout(() => t.style.opacity = 0, 2000);
-        }
+function manageStages() {
+    if(isBossActive) { updateBoss(); return; }
+    
+    if(stageTimer < 0) {
+        if(stageTimer === -50) showStageTitle("STAGE " + stage + " START");
+        return;
+    }
 
-        function saveGame() {
-            game.lastSave = Date.now();
-            localStorage.setItem('mandalaSave_v6', JSON.stringify(game));
-            showToast("記録しました");
-        }
+    let t = stageTimer;
+    let r = currentDiff.rank;
+    const spawn = (type, x, hp) => spawnEnemy(x, -40, type, hp * r);
 
-        function loadGame() {
-            const saved = localStorage.getItem('mandalaSave_v6');
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    // 既存データ構造とマージ（新バージョンで変数が増えた場合に対応）
-                    game = { ...game, ...parsed };
-                    
-                    // 配列長の整合性チェック（アップデートでアイテムが増えた場合）
-                    if (game.clicks.length < clickData.length) game.clicks = game.clicks.concat(new Array(clickData.length - game.clicks.length).fill(0));
-                    if (game.units.length < unitData.length) game.units = game.units.concat(new Array(unitData.length - game.units.length).fill(0));
-                    if (game.upgrades.length < upgradeData.length) game.upgrades = game.upgrades.concat(new Array(upgradeData.length - game.upgrades.length).fill(0));
-                    
-                    showToast("記録を読み込みました");
-                } catch(e) {
-                    console.error("Save file corrupted");
+    let midSpawnEnd = 1500 + (stage * 300); 
+    let bossSpawnEnd = 3500 + (stage * 500); 
+
+    if(!midBossDefeated) {
+        if(t >= midSpawnEnd) {
+            if(enemies.length === 0) {
+                bossDelayTimer++;
+                if(bossDelayTimer === 60) showStageTitle("WARNING: MID-BOSS"); 
+                if(bossDelayTimer >= 240) { 
+                    let hp = 1500 + (stage * 500);
+                    startBoss(stage, hp, true);
+                    bossDelayTimer = 0;
                 }
             }
+            return;
         }
-
-        function exportSave() {
-            saveGame();
-            const str = btoa(JSON.stringify(game)); // Base64エンコード
-            prompt("以下の呪文をコピーして保管してください:", str);
-        }
-
-        function importSave() {
-            const str = prompt("復活の呪文を入力してください:");
-            if (str) {
-                try {
-                    const decoded = atob(str);
-                    const parsed = JSON.parse(decoded);
-                    game = { ...game, ...parsed };
-                    applyRankTheme(game.rank);
-                    updateDisplay();
-                    saveGame();
-                    showToast("復活しました");
-                } catch(e) {
-                    alert("呪文が間違っています。");
+    } else {
+        if(t >= bossSpawnEnd) {
+            if(enemies.length === 0) {
+                bossDelayTimer++;
+                if(bossDelayTimer === 60) showStageTitle("WARNING: BOSS APPROACHING");
+                if(bossDelayTimer >= 240) { 
+                    let hp = 2500 + (stage * 1000);
+                    startBoss(stage, hp, false);
+                    bossDelayTimer = 0;
                 }
             }
+            return;
         }
+    }
 
-        function resetGame() {
-            if(confirm("本当に全ての徳を捨てて最初からやり直しますか？（カルマも消えます）")) {
-                localStorage.removeItem('mandalaSave_v6');
-                location.reload();
+    let density = Math.max(20, 80 - (stage * 5)); 
+    let hpMult = 1.0 + (stage * 0.2); 
+
+    if(t % density === 0) {
+        let type = (Math.random() > 0.5) ? 'cube' : ((stage > 1 && Math.random()>0.5)?'tetra':'cube');
+        spawn(type, Math.random()*PLAY_W, 5 * hpMult);
+    }
+    if(stage >= 2 && t % (density*2) === 0) {
+        spawn('octa', Math.random()*PLAY_W, 12 * hpMult);
+    }
+}
+
+function startBoss(type, hp, isMid) {
+    if(isBossActive) return;
+    isBossActive = true;
+    enemyBullets = [];
+    
+    boss = { 
+        active: true, type, maxHp: hp*currentDiff.rank, hp: hp*currentDiff.rank, 
+        x: PLAY_W/2, y: -120, 
+        timer: 0, angle: 0, phase: 0, 
+        color: isMid ? COLORS.orange : COLORS.green,
+        isMid: isMid 
+    };
+}
+
+function updateBoss() {
+    let targetX, targetY;
+    
+    // 入場フェーズ
+    if(boss.y < 118) { // 少し余裕を持って判定
+        targetX = PLAY_W/2;
+        targetY = 120;
+        boss.angle += 0.02;
+    } 
+    // 戦闘フェーズ
+    else {
+        boss.timer++; boss.angle += 0.02;
+        let bt = boss.timer;
+        
+        // フェーズ管理（大ボス）
+        if(!boss.isMid) {
+            let hpRatio = boss.hp / boss.maxHp;
+            let oldPhase = boss.phase;
+            if (hpRatio > 0.66) boss.phase = 0;
+            else if (hpRatio > 0.33) boss.phase = 1;
+            else boss.phase = 2;
+
+            if(boss.phase === 0) boss.color = COLORS.green;
+            else if(boss.phase === 1) boss.color = COLORS.yellow;
+            else boss.color = COLORS.red;
+
+            if(oldPhase !== boss.phase) {
+                enemyBullets.forEach(b => explode(b.x, b.y, b.color, 3));
+                enemyBullets = [];
+                showFloatingText("PHASE CHANGE!", boss.x, boss.y-50, boss.color);
             }
         }
+        
+        // --- 修正: 目標座標の計算 ---
+        // Y軸: sinを使うことで 120 + 0 = 120 から滑らかにスタートさせる
+        // X軸: 左右に揺れる
+        targetX = PLAY_W/2 + Math.sin(bt * 0.01) * (PLAY_W/3);
+        targetY = 120 + Math.sin(bt * 0.03) * 20; 
 
-        // --- ゲームロジック ---
-
-        function getGlobalMultiplier() {
-            let mult = 1;
-            upgradeData.forEach((u, i) => mult *= Math.pow(u.mult, game.upgrades[i]));
-            return mult * (1 + (game.karma * 0.1));
-        }
-
-        function calculateIPS() {
-            let base = 0;
-            unitData.forEach((u, i) => base += u.rate * game.units[i]);
-            return base * getGlobalMultiplier();
-        }
-
-        function calculateClickPower() {
-            let baseClick = 1;
-            clickData.forEach((c, i) => baseClick += c.power * game.clicks[i]);
-            return (baseClick * getGlobalMultiplier()) + (calculateIPS() * 0.05);
-        }
-
-        function clickMandala(e) {
-            const power = calculateClickPower();
-            addVirtue(power);
-            
-            // ポップアップ位置調整（親要素基準）
-            const rect = document.getElementById('mandala-stage').getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-
-            const pop = document.createElement('div');
-            pop.className = 'virtue-pop';
-            pop.innerText = `+${formatVirtue(power)}`;
-            pop.style.left = `${x}px`;
-            pop.style.top = `${y}px`;
-            document.getElementById('mandala-stage').appendChild(pop);
-            setTimeout(() => pop.remove(), 600);
-
-            const core = document.getElementById('core');
-            core.style.transform = 'scale(1.1)';
-            setTimeout(() => core.style.transform = 'scale(1)', 100);
-        }
-
-        function addVirtue(amount) {
-            if (game.rank >= 9) return;
-            game.virtue += amount;
-            game.totalVirtue += amount;
-
-            let threshold = Math.pow(100, game.rank + 1);
-            if (game.rank === 8) threshold = 1000 * Math.pow(100, 9);
-
-            if (game.virtue >= threshold && game.rank < 9) {
-                game.rank++;
-                applyRankTheme(game.rank);
-                if (game.rank === 9) triggerLiberation();
+        // 攻撃ロジック
+        let spd = currentDiff.spd;
+        let sMul = 1.0 + (stage * 0.1);
+        if(boss.isMid) {
+            if(bt % 40 === 0) fireAimed(boss, 6*spd*sMul, COLORS.orange, 'poly');
+            if(bt % 20 === 0) fireCircle(boss, 8, 3*spd*sMul, COLORS.yellow, 'beam', 0);
+        } else {
+            if(boss.phase === 0) {
+                if(bt % 60 === 0) fireCircle(boss, 16, 2.5*spd*sMul, COLORS.green, 'poly', 3);
+                if(bt % 40 === 0) fireNWay(boss, 3, 3*spd*sMul, COLORS.white, 'beam', 0, 0);
+            } else if(boss.phase === 1) {
+                if(bt % 8 === 0) fire(boss.x, boss.y, Math.cos(bt*0.1)*3*spd*sMul, Math.sin(bt*0.1)*3*spd*sMul, COLORS.yellow, 'poly', 4);
+                if(bt % 90 === 0) fireAimed(boss, 5*spd*sMul, COLORS.orange, 'beam');
+            } else if(boss.phase === 2) {
+                if(bt % 25 === 0) fireCircle(boss, 24, 3*spd*sMul, COLORS.red, 'poly', 5);
+                if(bt % 5 === 0) fire(boss.x + (Math.random()-0.5)*100, boss.y, 0, 4*spd*sMul, COLORS.magenta, 'beam');
             }
         }
+    }
+    
+    // --- 重要修正: スムージング移動 (Lerp) ---
+    // 現在位置から目標位置へ 5% ずつ近づくことで、どのような急な値の変化も滑らかにする
+    boss.x += (targetX - boss.x) * 0.05;
+    boss.y += (targetY - boss.y) * 0.05;
 
-        function buyClickItem(i) {
-            const cost = Math.floor(clickData[i].cost * Math.pow(1.5, game.clicks[i]));
-            if (game.virtue >= cost) { game.virtue -= cost; game.clicks[i]++; updateDisplay(); }
-        }
-        function buyUnit(i) {
-            const cost = Math.floor(unitData[i].cost * Math.pow(1.15, game.units[i]));
-            if (game.virtue >= cost) { game.virtue -= cost; game.units[i]++; updateDisplay(); }
-        }
-        function buyUpgrade(i) {
-            const cost = Math.floor(upgradeData[i].cost * Math.pow(1.8, game.upgrades[i]));
-            if (game.virtue >= cost) { game.virtue -= cost; game.upgrades[i]++; updateDisplay(); }
-        }
-
-        function updateDisplay() {
-            if (game.rank >= 9) return;
-
-            document.getElementById('virtue-display').innerText = formatVirtue(game.virtue);
-            document.getElementById('ips-display').innerText = formatVirtue(calculateIPS());
-            document.getElementById('click-display').innerText = formatVirtue(calculateClickPower());
-            document.getElementById('karma-display').innerText = formatVirtue(game.karma);
-            document.getElementById('karma-bonus').innerText = formatVirtue(game.karma * 10);
-
-            const updateBtn = (id, baseCost, count, power, type) => {
-                const cost = Math.floor(baseCost * Math.pow(power, count));
-                const btn = document.getElementById(type + '-btn-' + id);
-                document.getElementById(type + '-cost-' + id).innerText = formatVirtue(cost);
-                document.getElementById(type + '-cnt-' + id).innerText = `所持: ${count}`;
-                btn.disabled = game.virtue < cost;
-            };
-
-            clickData.forEach((c, i) => updateBtn(i, c.cost, game.clicks[i], 1.5, 'c'));
-            unitData.forEach((u, i) => updateBtn(i, u.cost, game.units[i], 1.15, 'u'));
-            upgradeData.forEach((u, i) => updateBtn(i, u.cost, game.upgrades[i], 1.8, 'up'));
-        }
-
-        function applyRankTheme(r) {
-            const data = rankNames[r];
-            document.getElementById('rank-name').innerText = data.name;
-            const root = document.documentElement;
-            root.style.setProperty('--theme-color', data.color);
-            root.style.setProperty('--theme-glow', data.color + "80");
-            
-            const speed = 60 / (r + 1);
-            document.getElementById('layer1').style.animationDuration = speed + "s";
-            document.getElementById('layer2').style.animationDuration = (speed * 0.7) + "s";
-        }
-
-        function triggerLiberation() {
-            const overlay = document.getElementById('liberation-overlay');
-            const pending = Math.floor(Math.sqrt(game.totalVirtue / 1000000000000));
-            document.getElementById('total-virtue-end').innerText = formatVirtue(game.totalVirtue);
-            document.getElementById('pending-karma').innerText = formatVirtue(pending);
-            overlay.style.display = 'flex';
-        }
-
-        function doPrestige() {
-            const earned = Math.floor(Math.sqrt(game.totalVirtue / 1000000000000));
-            game.karma += earned;
-            game.virtue = 0; game.totalVirtue = 0; game.rank = 0;
-            game.clicks.fill(0); game.units.fill(0); game.upgrades.fill(0);
-            
-            document.getElementById('liberation-overlay').style.display = 'none';
-            applyRankTheme(0);
-            saveGame(); // 転生直後にセーブ
-            updateDisplay();
-        }
-
-        let lastTime = Date.now();
-        function gameLoop() {
-            const now = Date.now();
-            const dt = (now - lastTime) / 1000;
-            lastTime = now;
-            if (game.rank < 9) {
-                const ips = calculateIPS();
-                if (ips > 0) addVirtue(ips * dt);
-                updateDisplay();
+    // 撃破判定
+    if(boss.hp <= 0) {
+        isBossActive = false; boss.active = false;
+        enemyBullets = [];
+        explode(boss.x, boss.y, boss.color, 150, true);
+        
+        if(boss.isMid) {
+            addScore(10000);
+            spawnItem(boss.x, boss.y, 'power');
+            showFloatingText("MID-BOSS DOWN!", PLAY_W/2, H/2 - 50, COLORS.orange);
+            midBossDefeated = true;
+        } else {
+            addScore(50000);
+            spawnItem(boss.x, boss.y, 'bomb');
+            if(stage >= 5) {
+                state = "CLEAR"; 
+            } else {
+                stage++;
+                stageTimer = -240; 
+                midBossDefeated = false; 
+                showFloatingText("STAGE CLEAR!", PLAY_W/2, H/2 - 50, COLORS.cyan);
+                localStorage.setItem('dm_geo_save', JSON.stringify({s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex}));
             }
-            requestAnimationFrame(gameLoop);
         }
+    }
+}
 
-        init();
-    </script>
+function spawnItem(x, y, forcedType = null) {
+    let type;
+    let col;
+    if (forcedType) {
+        type = forcedType;
+        if(type === 'bomb') col = COLORS.magenta;
+        else if(type === 'power') col = COLORS.red;
+        else col = COLORS.yellow;
+    } else {
+        type = Math.random() < 0.5 ? 'power' : 'score';
+        col = type==='power' ? COLORS.red : COLORS.yellow;
+    }
+    items.push({ x, y, type, angle: 0, color: col });
+}
+
+function spawnEnemy(x, y, type, hp) { 
+    let col = type==='cube'?COLORS.blue : type==='tetra'?COLORS.red : COLORS.green;
+    enemies.push({ x, y, type, hp, maxHp: hp, time: 0, angle: 0, color: col }); 
+}
+function fire(x, y, vx, vy, color, type='orb', sides=3) { enemyBullets.push({ x, y, vx, vy, color, type, sides, angle: 0 }); }
+function fireAimed(o, s, c, t='orb') { let a = Math.atan2(player.y - o.y, player.x - o.x); fire(o.x, o.y, Math.cos(a)*s, Math.sin(a)*s, c, t); }
+function fireNWay(o, n, s, c, t, si, off=0) { for(let i=0; i<n; i++) { let a = off + (Math.PI*2/n)*i - Math.PI/2; fire(o.x, o.y, Math.cos(a)*s, Math.sin(a)*s, c, t, si); } }
+function fireCircle(o, n, s, c, t, si) { for(let i=0; i<n; i++) { let a = (Math.PI*2/n)*i; fire(o.x, o.y, Math.cos(a)*s, Math.sin(a)*s, c, t, si); } }
+function explode(x,y,c,n,big=false) { for(let i=0;i<n;i++) particles.push({x,y,vx:(Math.random()-.5)*(big?10:5),vy:(Math.random()-.5)*(big?10:5),life:big?40:20,color:c,size:big?4:2}); }
+
+function useBomb() {
+    if(player.bombs>0 && state==="PLAYING") {
+        player.bombs--; enemyBullets=[];
+        enemies.forEach(e=>{e.hp=0; spawnItem(e.x,e.y); explode(e.x,e.y,COLORS.magenta,15);}); enemies=[];
+        if(boss.active) boss.hp -= 500;
+        let f = document.createElement('div');
+        f.style.cssText=`position:absolute;top:0;left:0;width:${PLAY_W}px;height:100%;background:#fff;opacity:0.8;transition:0.5s;pointer-events:none;`;
+        document.getElementById('gameContainer').appendChild(f); setTimeout(()=>f.remove(),500);
+        showFloatingText("BOMB!", player.x, player.y-50, COLORS.magenta);
+    }
+}
+
+function updateEntities() {
+    bullets.forEach((b,i) => { b.x+=b.vx; b.y+=b.vy; if(b.y<-20) bullets.splice(i,1); });
+    enemies.forEach((e,i) => { 
+        e.y += currentDiff.spd * 2; e.time++; e.angle+=0.05;
+        if(e.time%60===0 && e.y < H-50) fireAimed(e, 3*currentDiff.spd, e.color, 'orb');
+        if(e.y > H+50) enemies.splice(i,1); 
+    });
+    enemyBullets.forEach((b,i) => { 
+        b.x+=b.vx; b.y+=b.vy; b.angle+=0.1; 
+        if(b.x<-50||b.x>PLAY_W+50||b.y<-50||b.y>H+50) enemyBullets.splice(i,1); 
+    });
+}
+
+function checkCollision() {
+    for(let i=bullets.length-1; i>=0; i--) {
+        let b = bullets[i]; let hit = false;
+        for(let j=enemies.length-1; j>=0; j--) {
+            let e = enemies[j];
+            if(Math.hypot(b.x-e.x, b.y-e.y) < 30) {
+                e.hp--; hit=true; 
+                if(e.hp<=0) {
+                    spawnItem(e.x, e.y); 
+                    explode(e.x, e.y, e.color, 8); enemies.splice(j,1); addScore(100);
+                }
+                break;
+            }
+        }
+        if(!hit && boss.active && Math.hypot(b.x-boss.x, b.y-boss.y) < 60) {
+            boss.hp--; hit=true;
+            if(frame%4===0) explode(b.x, b.y, b.color, 1);
+        }
+        if(hit) bullets.splice(i,1);
+    }
+
+    if(state==="PLAYING" && player.invincible<=0) {
+        let hit = false;
+        for(let e of enemies) if(Math.hypot(e.x-player.x, e.y-player.y) < 20) hit=true;
+        for(let b of enemyBullets) if(Math.hypot(b.x-player.x, b.y-player.y) < (player.slow?4:7)) hit=true;
+        if(boss.active && Math.hypot(boss.x-player.x, boss.y-player.y) < 40) hit=true;
+        
+        if(hit) {
+            player.lives--; player.invincible=120; player.power=Math.max(0,player.power-10);
+            explode(player.x, player.y, COLORS.red, 50, true); enemyBullets=[];
+            if(player.lives<0) state="GAMEOVER";
+        }
+    }
+}
+
+function drawBackground() {
+    ctx.fillStyle = "#000"; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = "rgba(0, 5, 20, 1)"; ctx.fillRect(0, 0, PLAY_W, H);
+    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(0, 255, 255, 0.15)";
+    ctx.beginPath();
+    for(let x=0; x<=PLAY_W; x+=40) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for(let y=bgOffset-40; y<=H; y+=40) { ctx.moveTo(0, y); ctx.lineTo(PLAY_W, y); }
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,0,255,0.05)";
+    drawPolygon(ctx, PLAY_W/2, (frame*0.5)%H, 6, 200, frame*0.01, false, null);
+}
+
+function drawGameEntities() {
+    ctx.globalCompositeOperation = "lighter";
+    particles.forEach(p => {
+        ctx.fillStyle=p.color; ctx.globalAlpha=p.life/30; 
+        ctx.fillRect(p.x-p.size/2, p.y-p.size/2, p.size, p.size);
+        p.x+=p.vx; p.y+=p.vy; p.life--; 
+    });
+    ctx.globalAlpha=1; ctx.globalCompositeOperation = "source-over";
+
+    if(player.invincible%10 < 5) drawPolygon(ctx, player.x, player.y, 3, 15, player.angle, true, COLORS.cyan, true);
+    if(player.slow) { ctx.fillStyle="#f00"; ctx.beginPath(); ctx.arc(player.x,player.y,4,0,Math.PI*2); ctx.fill(); }
+
+    enemies.forEach(e => drawPolygon(ctx, e.x, e.y, (e.type==='cube'?4:3), 25, e.angle, true, e.color));
+
+    if(boss.active) {
+        drawPolygon(ctx, boss.x, boss.y, 6 + boss.phase*2, 60, boss.angle, true, boss.color, true);
+        ctx.strokeStyle = boss.color; ctx.lineWidth=2; ctx.globalAlpha=0.6;
+        ctx.beginPath(); ctx.arc(boss.x, boss.y, 80 + Math.sin(frame*0.1)*10, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha=1;
+    }
+
+    bullets.forEach(b => {
+        if(b.type==='beam') { ctx.fillStyle=b.color; ctx.fillRect(b.x-2, b.y-10, 4, 20); }
+        else drawPolygon(ctx, b.x, b.y, b.sides, 6, b.angle, true, b.color);
+    });
+    enemyBullets.forEach(b => {
+        if(b.type==='beam') {
+            ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy,b.vx));
+            ctx.fillStyle=b.color; ctx.fillRect(-10,-3,20,6); ctx.restore();
+        } else drawPolygon(ctx, b.x, b.y, b.sides||3, 8, b.angle, true, b.color);
+    });
+
+    items.forEach(it => {
+        let size = (it.type === 'bomb') ? 14 : 10;
+        let sides = (it.type === 'bomb') ? 4 : 4; 
+        let glow = (it.type === 'bomb'); 
+        drawPolygon(ctx, it.x, it.y, sides, size, it.angle, true, it.color, glow);
+        ctx.fillStyle = "#fff"; ctx.font = "10px sans-serif"; 
+        let txt = 'S'; if(it.type==='power') txt='P'; if(it.type==='bomb') txt='B';
+        ctx.fillText(txt, it.x-3, it.y+3);
+    });
+
+    floatingTexts.forEach(t => {
+        ctx.fillStyle=t.color; ctx.font="bold 14px 'Orbitron'"; ctx.textAlign="center"; 
+        ctx.fillText(t.text, t.x, t.y);
+    });
+
+    if(boss.active) {
+        let hpPct = boss.hp / boss.maxHp;
+        ctx.strokeStyle = "#fff"; ctx.lineWidth=2;
+        ctx.strokeRect(40, 20, PLAY_W-80, 10);
+        ctx.fillStyle = boss.color;
+        ctx.fillRect(42, 22, (PLAY_W-84) * hpPct, 6);
+    }
+}
+
+function drawUI() {
+    ctx.fillStyle = "#050510"; ctx.fillRect(UI_X, 0, W-UI_X, H);
+    ctx.strokeStyle = COLORS.cyan; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(UI_X, 0); ctx.lineTo(UI_X, H); ctx.stroke();
+
+    ctx.textAlign = "left"; 
+    let x = UI_X + 20;
+    
+    ctx.fillStyle = COLORS.magenta; ctx.font = "24px 'Orbitron'";
+    ctx.fillText("GEOMETRIC", x, 50); ctx.fillText("NEO", x, 80);
+
+    ctx.fillStyle = COLORS.cyan; ctx.font = "18px 'Orbitron'"; ctx.fillText("STAGE", x, 140);
+    ctx.fillStyle = "#fff"; ctx.font = "24px 'Share Tech Mono'"; ctx.fillText(stage, x, 170);
+
+    ctx.fillStyle = COLORS.cyan; ctx.font = "18px 'Orbitron'"; ctx.fillText("SCORE", x, 210);
+    ctx.fillStyle = "#fff"; ctx.font = "24px 'Share Tech Mono'"; ctx.fillText(Math.floor(score).toString().padStart(9, '0'), x, 240);
+    ctx.fillStyle = "#666"; ctx.font = "12px 'Share Tech Mono'";
+    ctx.fillText(`NEXT: ${nextExtendScore}`, x, 260);
+
+    ctx.fillStyle = COLORS.green; ctx.font = "18px 'Orbitron'"; ctx.fillText("LIVES", x, 300);
+    for(let i=0; i<player.lives; i++) drawPolygon(ctx, x + 10 + i*30, 330, 3, 10, -Math.PI/2, true, COLORS.green);
+
+    ctx.fillStyle = COLORS.magenta; ctx.font = "18px 'Orbitron'"; ctx.fillText("BOMB (X)", x, 380);
+    for(let i=0; i<player.bombs; i++) drawPolygon(ctx, x + 10 + i*30, 410, 4, 8, 0, true, COLORS.magenta);
+
+    ctx.fillStyle = COLORS.yellow; ctx.font = "18px 'Orbitron'"; ctx.fillText("POWER", x, 460);
+    ctx.fillStyle = "#fff"; ctx.font = "24px 'Share Tech Mono'"; ctx.fillText(`${player.power} / ${player.maxPower}`, x, 490);
+    ctx.strokeStyle = "#555"; ctx.strokeRect(x, 500, 120, 8);
+    ctx.fillStyle = COLORS.yellow; ctx.fillRect(x+1, 501, 118 * (player.power/player.maxPower), 6);
+}
+
+function drawOverlay() {
+    ctx.textAlign = "center";
+    let CX = PLAY_W / 2;
+    if(state === "TITLE") {
+        ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0,0,PLAY_W,H);
+        ctx.fillStyle = "#fff"; ctx.font = "40px 'Orbitron'"; 
+        ctx.shadowBlur=20; ctx.shadowColor="#0ff"; ctx.fillText("弾幕・夢幻", CX, 180);
+        ctx.shadowBlur=0;
+        
+        ctx.fillStyle = "#888"; ctx.font = "14px 'Share Tech Mono'";
+        ctx.fillText("← → CHANGE DIFFICULTY", CX, 230);
+
+        let menus = ["NEW GAME", "LOAD", "INPUT CODE"];
+        menus.forEach((m, i) => {
+            let sel = (i === menuIndex);
+            ctx.fillStyle = sel ? COLORS.cyan : "#555";
+            ctx.font = sel ? "bold 24px 'Orbitron'" : "20px 'Orbitron'";
+            let txt = (sel ? "> " : "") + m;
+            if(i===0 && sel) txt += ` < ${currentDiff.name} >`;
+            ctx.fillText(txt, CX, 350 + i*50);
+        });
+    } else if(state === "PAUSED") {
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,PLAY_W,H);
+        ctx.fillStyle = COLORS.yellow; ctx.font = "30px 'Orbitron'"; ctx.fillText("PAUSED", CX, 200);
+        ctx.fillStyle = "#fff"; ctx.font = "18px 'Share Tech Mono'";
+        ctx.fillText("ESC: RESUME", CX, 300);
+        ctx.fillText("S: SAVE TO BROWSER", CX, 340);
+        ctx.fillText("C: GET CODE", CX, 380);
+        ctx.fillText("Q: TITLE", CX, 420);
+    } else if(state === "GAMEOVER") {
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,PLAY_W,H);
+        ctx.fillStyle = COLORS.red; ctx.font = "40px 'Orbitron'"; ctx.fillText("GAME OVER", CX, 300);
+        ctx.fillStyle = "#fff"; ctx.font = "20px 'Orbitron'"; ctx.fillText("Z: TITLE", CX, 360);
+    } else if(state === "CLEAR") {
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,PLAY_W,H);
+        ctx.fillStyle = COLORS.cyan; ctx.font = "40px 'Orbitron'"; ctx.fillText("ALL CLEAR!", CX, 250);
+        ctx.fillStyle = "#fff"; ctx.font = "20px 'Share Tech Mono'"; 
+        ctx.fillText("SCORE: " + score, CX, 320);
+        ctx.fillText("THANK YOU FOR PLAYING", CX, 380);
+        ctx.fillText("Z: TITLE", CX, 450);
+    }
+}
+
+function drawPolygon(c, x, y, sides, size, angle, filled, color, glow=false) {
+    c.save(); c.translate(x, y); c.rotate(angle);
+    c.beginPath(); c.moveTo(size, 0);
+    for (let i=1; i<sides; i++) c.lineTo(size * Math.cos(i*2*Math.PI/sides), size * Math.sin(i*2*Math.PI/sides));
+    c.closePath();
+    if(glow) { c.shadowBlur=10; c.shadowColor=color; }
+    if (filled) { c.fillStyle=color; c.fill(); c.lineWidth=1; c.strokeStyle="#fff"; c.stroke(); }
+    else { c.lineWidth=2; c.strokeStyle=color; c.stroke(); }
+    c.restore();
+}
+
+function showStageTitle(t) { const el = document.getElementById('stageMsg'); el.innerText = t; el.style.opacity=1; setTimeout(()=>el.style.opacity=0, 3000); }
+function showFloatingText(text, x, y, color) { floatingTexts.push({text, x, y, color, life: 60}); }
+
+function saveToBrowser() { localStorage.setItem('dm_geo_save', JSON.stringify({s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex})); showFloatingText("SAVED!", PLAY_W/2, H/2, COLORS.white); }
+function loadFromBrowser() { let d = JSON.parse(localStorage.getItem('dm_geo_save')); if(d) applyData(d); else alert("NO DATA"); }
+function generateCode() { let d = {s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex}; document.getElementById('codeDisplay').innerText = btoa(JSON.stringify(d)); document.getElementById('codeOverlay').style.display='flex'; }
+function closeCodeOverlay(){ document.getElementById('codeOverlay').style.display='none'; }
+function loadFromCodeInput() { let c = prompt("CODE:"); if(c) { try { applyData(JSON.parse(atob(c))); } catch(e){alert("INVALID");} } }
+function applyData(d) { score=d.s; stage=d.st; player.lives=d.l; player.bombs=d.b; player.power=d.p; diffIndex=d.d; currentDiff=DIFFICULTIES[diffIndex]; startGame(); }
+
+init();
+</script>
 </body>
 </html>
