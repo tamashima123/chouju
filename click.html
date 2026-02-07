@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第九曼荼羅 - The 9th Mandala (Ver.Inf)</title>
+    <title>第九曼荼羅 - The 9th Mandala (Ver.Click)</title>
     <style>
         :root {
             --theme-color: #6a0dad;
@@ -28,7 +28,6 @@
             transition: color 1s ease, background-image 1s ease;
         }
 
-        /* レイアウト */
         .container {
             width: 100%;
             max-width: 800px;
@@ -40,20 +39,20 @@
         /* ヘッダー */
         #header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             position: sticky;
             top: 0;
-            background: rgba(2, 2, 2, 0.9);
-            padding: 10px 0;
+            background: rgba(2, 2, 2, 0.95);
+            padding: 15px 0;
             z-index: 20;
             border-bottom: 1px solid var(--theme-color);
             backdrop-filter: blur(5px);
         }
 
-        h1 { font-size: 1.8rem; letter-spacing: 0.2rem; margin: 0; text-shadow: 0 0 10px var(--theme-glow); }
+        h1 { font-size: 1.5rem; letter-spacing: 0.2rem; margin: 0; text-shadow: 0 0 10px var(--theme-glow); }
         
         .stats-main {
-            font-size: 2.2rem;
+            font-size: 2rem;
             font-weight: bold;
             font-family: 'Times New Roman', serif;
             margin: 5px 0;
@@ -61,13 +60,15 @@
             text-shadow: 0 0 5px var(--theme-color);
         }
         
-        .sub-stats { font-size: 0.9rem; color: #ccc; }
+        .sub-stats { font-size: 0.9rem; color: #ccc; line-height: 1.4; }
+        .click-power-text { color: #fff; font-weight: bold; }
 
         /* 曼荼羅エリア */
         #mandala-wrapper {
             display: flex;
             justify-content: center;
             margin: 20px 0;
+            min-height: 320px;
         }
 
         #mandala-stage {
@@ -78,7 +79,9 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            transition: transform 0.1s;
         }
+        #mandala-stage:active { transform: scale(0.98); }
 
         .mandala-layer {
             position: absolute;
@@ -118,62 +121,66 @@
             color: #fff;
             font-weight: bold;
             pointer-events: none;
-            animation: riseFade 0.8s ease-out forwards;
+            animation: riseFade 0.6s ease-out forwards;
             z-index: 100;
             text-shadow: 0 0 3px #000;
             white-space: nowrap;
+            font-family: 'Times New Roman', serif;
         }
-        @keyframes riseFade { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-40px); } }
+        @keyframes riseFade { 
+            0% { opacity: 1; transform: translateY(0) scale(1); } 
+            100% { opacity: 0; transform: translateY(-50px) scale(1.3); } 
+        }
 
         /* ショップUI */
         .shop-section { margin-bottom: 30px; }
         .shop-title {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             border-bottom: 1px solid var(--text-gold);
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             padding-bottom: 5px;
             color: #fff;
+            display: flex;
+            justify-content: space-between;
         }
         
         .shop-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 12px;
+            gap: 10px;
         }
         @media (min-width: 700px) { .shop-grid { grid-template-columns: 1fr 1fr; } }
 
         .item-card {
             background: var(--card-bg);
             border: 1px solid #444;
-            padding: 12px;
+            padding: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             transition: 0.2s;
-            position: relative;
-            overflow: hidden;
         }
-        .item-card:hover { border-color: var(--text-gold); background: rgba(40, 40, 40, 0.95); }
+        .item-card:hover { border-color: var(--text-gold); background: rgba(50, 50, 50, 0.95); }
 
         .item-info { display: flex; flex-direction: column; text-align: left; flex: 1; padding-right: 10px; }
-        .item-name { font-weight: bold; color: var(--text-gold); font-size: 1.05rem; }
-        .item-effect { font-size: 0.85rem; color: #aaa; margin: 2px 0; }
-        .item-count { font-size: 0.8rem; color: #fff; opacity: 0.7; }
+        .item-name { font-weight: bold; color: var(--text-gold); font-size: 1rem; }
+        .item-effect { font-size: 0.8rem; color: #aaa; margin: 2px 0; }
+        .item-count { font-size: 0.75rem; color: #fff; opacity: 0.7; }
 
         .buy-btn {
             background: linear-gradient(to bottom, #333, #222);
             color: #fff;
             border: 1px solid #555;
-            padding: 10px 15px;
+            padding: 8px 10px;
             cursor: pointer;
             font-family: 'Times New Roman', serif;
-            min-width: 110px;
+            min-width: 100px;
             text-align: right;
             border-radius: 4px;
         }
         .buy-btn:hover:not(:disabled) { background: linear-gradient(to bottom, var(--theme-color), #222); border-color: #fff; }
         .buy-btn:disabled { color: #555; border-color: #222; background: #111; cursor: not-allowed; }
-        .buy-btn small { display: block; font-size: 0.7rem; opacity: 0.8; }
+        .buy-btn small { display: block; font-size: 0.65rem; opacity: 0.8; }
 
         /* 解脱UI */
         #liberation-overlay {
@@ -204,9 +211,10 @@
             <h1 id="rank-name">第零曼荼羅：無明</h1>
             <div class="stats-main" id="virtue-display">0</div>
             <div class="sub-stats">
-                <span id="ips-display">0</span> ips<br>
+                <span class="click-power-text">クリック力: <span id="click-display">1</span></span><br>
+                自動生産: <span id="ips-display">0</span> ips<br>
                 カルマ: <span id="karma-display" style="color: #ff4500; font-weight:bold;">0</span> 
-                (生産力 +<span id="karma-bonus">0</span>%)
+                (全生産 +<span id="karma-bonus">0</span>%)
             </div>
         </div>
 
@@ -220,12 +228,17 @@
         </div>
 
         <div class="shop-section">
-            <div class="shop-title">僧侶と諸天 (自動生産)</div>
+            <div class="shop-title"><span>基礎作法 (クリック強化)</span></div>
+            <div class="shop-grid" id="click-shop"></div>
+        </div>
+
+        <div class="shop-section">
+            <div class="shop-title"><span>僧侶と諸天 (自動生産)</span></div>
             <div class="shop-grid" id="unit-shop"></div>
         </div>
 
         <div class="shop-section">
-            <div class="shop-title">経典と秘宝 (生産倍率)</div>
+            <div class="shop-title"><span>経典と秘宝 (全体倍率)</span></div>
             <div class="shop-grid" id="upgrade-shop"></div>
         </div>
     </div>
@@ -243,28 +256,24 @@
         // --- 巨大数単位フォーマッター ---
         function formatVirtue(num) {
             if (num < 10000) return Math.floor(num).toLocaleString();
-            
-            // 仏教・日本の単位
             const units = ["", "万", "億", "兆", "京", "垓", "𥝱", "穣", "溝", "澗", "正", "載", "極", "恒河沙", "阿僧祇", "那由他", "不可思議", "無量大数"];
-            
             let unitIndex = 0;
             let tempNum = num;
             while (tempNum >= 10000 && unitIndex < units.length - 1) {
                 tempNum /= 10000;
                 unitIndex++;
             }
-            
-            // 小数点第2位まで表示 (例: 1.25京)
             return tempNum.toFixed(2) + units[unitIndex];
         }
 
         // --- データ定義 ---
-        
-        // 10^10 = 100億
-        // 10^12 = 1兆
-        // 10^14 = 100兆
-        // 10^16 = 1京
 
+        // 1. クリック強化アイテム
+        const clickData = [
+            { name: "清貧", power: 1, cost: 10 } // 基本クリック力 +1
+        ];
+
+        // 2. 自動生産ユニット
         const unitData = [
             { name: "修行僧", rate: 1, cost: 15 },
             { name: "東の若僧", rate: 70, cost: 1500 },
@@ -272,21 +281,20 @@
             { name: "南の高僧", rate: 40000, cost: 2000000 },
             { name: "西の老僧", rate: 2000000, cost: 150000000 },
             { name: "北の天才", rate: 800000000, cost: 50000000000 },
-            // 新規追加
-            { name: "無名天", rate: 10000000000, cost: 3000000000000 }, // +100億 (Cost 3兆)
-            { name: "怒れる明王", rate: 1000000000000, cost: 500000000000000 }, // +1兆 (Cost 500兆)
-            { name: "慈愛の菩薩", rate: 100000000000000, cost: 80000000000000000 }, // +100兆 (Cost 8京)
-            { name: "圧巻の如来", rate: 10000000000000000, cost: 9000000000000000000 } // +1京 (Cost 900京)
+            { name: "無名天", rate: 10000000000, cost: 3000000000000 }, 
+            { name: "怒れる明王", rate: 1000000000000, cost: 500000000000000 }, 
+            { name: "慈愛の菩薩", rate: 100000000000000, cost: 80000000000000000 }, 
+            { name: "圧巻の如来", rate: 10000000000000000, cost: 9000000000000000000 }
         ];
 
+        // 3. 倍率アイテム
         const upgradeData = [
             { name: "弟子の写経", mult: 1.01, cost: 500 },
             { name: "中品質の写経", mult: 1.05, cost: 50000 },
             { name: "完璧な写経", mult: 1.08, cost: 10000000 },
-            // 新規追加
-            { name: "唐の経典", mult: 1.09, cost: 500000000 }, // 5億
-            { name: "天竺の経典", mult: 1.10, cost: 200000000000 }, // 2000億
-            { name: "聖人のミイラ", mult: 1.20, cost: 100000000000000 } // 100兆
+            { name: "唐の経典", mult: 1.09, cost: 500000000 }, 
+            { name: "天竺の経典", mult: 1.10, cost: 200000000000 },
+            { name: "聖人のミイラ", mult: 1.20, cost: 100000000000000 }
         ];
 
         const rankNames = [
@@ -307,6 +315,7 @@
             totalVirtue: 0,
             karma: 0,
             rank: 0,
+            clicks: new Array(clickData.length).fill(0), // 清貧の数
             units: new Array(unitData.length).fill(0),
             upgrades: new Array(upgradeData.length).fill(0)
         };
@@ -319,6 +328,24 @@
         }
 
         function createShopUI() {
+            // クリック強化（清貧）
+            const cShop = document.getElementById('click-shop');
+            clickData.forEach((c, i) => {
+                cShop.innerHTML += `
+                    <div class="item-card">
+                        <div class="item-info">
+                            <span class="item-name">${c.name}</span>
+                            <span class="item-effect">クリック徳 +${c.power}</span>
+                            <span class="item-count" id="c-cnt-${i}">所持: 0</span>
+                        </div>
+                        <button class="buy-btn" id="c-btn-${i}" onclick="buyClickItem(${i})">
+                            <small>徳を捧げる</small>
+                            <span id="c-cost-${i}">-</span>
+                        </button>
+                    </div>`;
+            });
+
+            // ユニット
             const uShop = document.getElementById('unit-shop');
             unitData.forEach((u, i) => {
                 uShop.innerHTML += `
@@ -335,6 +362,7 @@
                     </div>`;
             });
 
+            // アップグレード
             const upShop = document.getElementById('upgrade-shop');
             upgradeData.forEach((u, i) => {
                 upShop.innerHTML += `
@@ -352,29 +380,49 @@
             });
         }
 
-        // --- 計算ロジック ---
+        // --- コア計算ロジック ---
+        
+        // 全体の倍率を計算 (経典 * ミイラ * カルマ)
+        function getGlobalMultiplier() {
+            let mult = 1;
+            upgradeData.forEach((u, i) => {
+                mult *= Math.pow(u.mult, game.upgrades[i]);
+            });
+            // カルマボーナス
+            mult *= (1 + (game.karma * 0.1));
+            return mult;
+        }
+
+        // 自動生産量 (IPS)
         function calculateIPS() {
             let base = 0;
             unitData.forEach((u, i) => {
                 base += u.rate * game.units[i];
             });
+            return base * getGlobalMultiplier();
+        }
+
+        // クリック力 (Click Power)
+        // 計算式: (基本1 + 清貧) * 全体倍率 + (IPSの5%)
+        function calculateClickPower() {
+            let baseClick = 1;
             
-            let mult = 1;
-            upgradeData.forEach((u, i) => {
-                mult *= Math.pow(u.mult, game.upgrades[i]);
+            // 清貧などの加算
+            clickData.forEach((c, i) => {
+                baseClick += c.power * game.clicks[i];
             });
 
-            // カルマボーナス
-            let karmaBonus = 1 + (game.karma * 0.1); 
+            // 全体倍率を適用 (経典などはクリックも強化する)
+            let multiplier = getGlobalMultiplier();
             
-            return base * mult * karmaBonus;
+            // IPSシナジー (自動生産の5%を加算)
+            let ipsSynergy = calculateIPS() * 0.05;
+
+            return (baseClick * multiplier) + ipsSynergy;
         }
 
         function clickMandala(e) {
-            // クリック威力: 最低1、またはIPSの3%
-            const ips = calculateIPS();
-            const power = 1 + (ips * 0.03);
-            
+            const power = calculateClickPower();
             addVirtue(power);
 
             // 演出
@@ -384,7 +432,7 @@
             pop.style.left = `${e.clientX}px`;
             pop.style.top = `${e.clientY}px`;
             document.body.appendChild(pop);
-            setTimeout(() => pop.remove(), 800);
+            setTimeout(() => pop.remove(), 600);
 
             const core = document.getElementById('core');
             core.style.transform = 'scale(1.1)';
@@ -398,19 +446,25 @@
 
             // ランクアップ: 100^(rank+1)
             let threshold = Math.pow(100, game.rank + 1);
-            
-            // ランク9への到達は非常に困難にする
-            if (game.rank === 8) {
-                // 第八から第九へは特別に閾値を上げる（10^20など）
-                // 通常計算だと 100^9 = 10^18 (100京)。
-                // 圧巻の如来(1京)がいれば100秒で終わってしまうため、少し難易度調整
-                threshold = 1000 * Math.pow(100, 9); // 1000倍の難易度
-            }
+            if (game.rank === 8) threshold = 1000 * Math.pow(100, 9); // ラストスパート難易度調整
 
             if (game.virtue >= threshold && game.rank < 9) {
                 game.rank++;
                 applyRankTheme(game.rank);
                 if (game.rank === 9) triggerLiberation();
+            }
+        }
+
+        // --- 購入処理 ---
+
+        function buyClickItem(i) {
+            const c = clickData[i];
+            // 清貧のコストは安めに (1.5倍ずつ増加)
+            const cost = Math.floor(c.cost * Math.pow(1.5, game.clicks[i]));
+            if (game.virtue >= cost) {
+                game.virtue -= cost;
+                game.clicks[i]++;
+                updateDisplay();
             }
         }
 
@@ -426,7 +480,6 @@
 
         function buyUpgrade(i) {
             const u = upgradeData[i];
-            // 倍率アイテムはコストが激増する(1.8倍ずつ)
             const cost = Math.floor(u.cost * Math.pow(1.8, game.upgrades[i]));
             if (game.virtue >= cost) {
                 game.virtue -= cost;
@@ -435,15 +488,27 @@
             }
         }
 
+        // --- 表示更新 ---
         function updateDisplay() {
             if (game.rank >= 9) return;
 
             document.getElementById('virtue-display').innerText = formatVirtue(game.virtue);
             document.getElementById('ips-display').innerText = formatVirtue(calculateIPS());
+            document.getElementById('click-display').innerText = formatVirtue(calculateClickPower());
+            
             document.getElementById('karma-display').innerText = formatVirtue(game.karma);
             document.getElementById('karma-bonus').innerText = formatVirtue(game.karma * 10);
 
-            // ユニットボタン更新
+            // 1. 清貧ボタン
+            clickData.forEach((c, i) => {
+                const cost = Math.floor(c.cost * Math.pow(1.5, game.clicks[i]));
+                const btn = document.getElementById(`c-btn-${i}`);
+                document.getElementById(`c-cost-${i}`).innerText = formatVirtue(cost);
+                document.getElementById(`c-cnt-${i}`).innerText = `所持: ${game.clicks[i]}`;
+                btn.disabled = game.virtue < cost;
+            });
+
+            // 2. ユニットボタン
             unitData.forEach((u, i) => {
                 const cost = Math.floor(u.cost * Math.pow(1.15, game.units[i]));
                 const btn = document.getElementById(`u-btn-${i}`);
@@ -452,7 +517,7 @@
                 btn.disabled = game.virtue < cost;
             });
 
-            // アップグレードボタン更新
+            // 3. アップグレードボタン
             upgradeData.forEach((u, i) => {
                 const cost = Math.floor(u.cost * Math.pow(1.8, game.upgrades[i]));
                 const btn = document.getElementById(`up-btn-${i}`);
@@ -469,7 +534,6 @@
             root.style.setProperty('--theme-color', data.color);
             root.style.setProperty('--theme-glow', data.color + "80");
             
-            // 回転速度
             const speed = 60 / (r + 1);
             document.getElementById('layer1').style.animationDuration = speed + "s";
             document.getElementById('layer2').style.animationDuration = (speed * 0.7) + "s";
@@ -477,9 +541,7 @@
 
         function triggerLiberation() {
             const overlay = document.getElementById('liberation-overlay');
-            // カルマ計算: (総徳 / 1兆)の平方根
             const pending = Math.floor(Math.sqrt(game.totalVirtue / 1000000000000));
-            
             document.getElementById('total-virtue-end').innerText = formatVirtue(game.totalVirtue);
             document.getElementById('pending-karma').innerText = formatVirtue(pending);
             overlay.style.display = 'flex';
@@ -493,6 +555,7 @@
             game.virtue = 0;
             game.totalVirtue = 0;
             game.rank = 0;
+            game.clicks.fill(0);
             game.units.fill(0);
             game.upgrades.fill(0);
 
