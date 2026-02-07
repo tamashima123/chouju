@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Roguelike: Inventory Management</title>
+    <title>Roguelike: Command Battle</title>
     <style>
         body {
             background-color: #050505;
@@ -59,7 +59,8 @@
     <div id="log">...</div>
 
     <div class="controls">
-        [矢印]:選択/移動 [Enter]:決定/メニュー [Esc]:キャンセル
+        [矢印]:移動 [Enter]:メニュー [Esc]:キャンセル<br>
+        <span style="color:#f00">攻撃はメニューから「Attack」を選択</span>
     </div>
 
 <script>
@@ -85,11 +86,9 @@
 
     const STATE = {
         TITLE: 0, LOBBY: 1, PLAY: 2, 
-        MENU: 3,       
-        INVENTORY: 4,  
-        ITEM_SUBMENU: 5, // アイテム選択後のアクション選択
-        ITEM_MOVE: 6,    // 並び替え中
-        STATUS: 7, STORAGE: 8, GAMEOVER: 9, VICTORY: 10
+        MENU: 3, INVENTORY: 4, ITEM_SUBMENU: 5, ITEM_MOVE: 6,
+        STATUS: 7, STORAGE: 8, GAMEOVER: 9, VICTORY: 10,
+        ATTACK_DIR: 11 // 攻撃方向選択モード
     };
 
     const TILE = { FLOOR: 0, WALL: 1, STAIRS: 2, DOOR_E: 3, DOOR_N: 4, DOOR_H: 5, STORAGE: 6, PORTAL: 7 };
@@ -111,11 +110,10 @@
     let floorLevel = 1;
     let messages = [];
     
-    // UI状態管理
     let menuCursor = 0;
     let menuOptions = [];
-    let subMenuCursor = 0; // アイテムサブメニュー用
-    let moveSourceIndex = -1; // 移動元のインデックス
+    let subMenuCursor = 0;
+    let moveSourceIndex = -1;
 
     // --- 初期化 ---
     window.onload = () => {
@@ -148,11 +146,11 @@
         return null;
     }
 
-    // --- ロビー・ダンジョン生成 (省略なし) ---
+    // --- ロビー・ダンジョン生成 ---
     function initLobby() {
         gameState = STATE.LOBBY;
         currentDungeon = null; enemies = []; items = []; messages = [];
-        log("ロビー: [Enter]でメニュー");
+        log("ロビー: [Enter]メニュー > Attackで攻撃");
         map = [];
         for (let y=0; y<ROWS; y++) {
             let row=[]; for(let x=0; x<COLS; x++) {
@@ -226,10 +224,10 @@
         if (gameState===STATE.TITLE) { if(e.key==='Enter') initLobby(); return; }
         if (gameState===STATE.GAMEOVER || gameState===STATE.VICTORY) { if(e.key==='Enter'){ if(gameState===STATE.GAMEOVER){player.inventory=[]; player.equipment={weapon:null,armor:null};} initLobby();} return; }
 
-        // サブメニュー制御
+        if (gameState === STATE.ATTACK_DIR) { handleAttackDirInput(e); return; }
+
         if (gameState === STATE.ITEM_SUBMENU) { handleItemSubMenu(e); return; }
         if (gameState === STATE.ITEM_MOVE) { handleItemMove(e); return; }
-
         if (gameState === STATE.MENU) { handleMenuInput(e); return; }
         if (gameState === STATE.INVENTORY) { handleInventoryInput(e); return; }
         if (gameState === STATE.STORAGE) { handleStorageInput(e); return; }
@@ -249,17 +247,27 @@
     // --- メニュー関連 ---
     function openMainMenu() {
         gameState = STATE.MENU; menuCursor = 0;
-        menuOptions = [
-            { label: "Items/Equip", action: () => { gameState=STATE.INVENTORY; menuCursor=0; draw(); } },
-            { label: "Status", action: () => { gameState=STATE.STATUS; draw(); } }
-        ];
+        menuOptions = [];
+
+        // 1. Attack (最上部)
+        menuOptions.push({ label: "Attack", action: () => { gameState = STATE.ATTACK_DIR; log("方向キーで攻撃！"); draw(); } });
+        
+        // 2. Items/Status
+        menuOptions.push({ label: "Items/Equip", action: () => { gameState=STATE.INVENTORY; menuCursor=0; draw(); } });
+        menuOptions.push({ label: "Status", action: () => { gameState=STATE.STATUS; draw(); } });
+
+        // 3. Interactions
         const t = map[player.y][player.x];
         if (t===TILE.STAIRS) {
-            menuOptions.unshift({ label: "Descend Stairs", action: () => { floorLevel++; generateFloor(); gameState=STATE.PLAY; } });
-            if(currentDungeon&&currentDungeon.id===1&&floorLevel===10) { menuOptions[0].label="Complete Dungeon"; menuOptions[0].action=()=>victory("踏破！"); }
-        } else if (t===TILE.PORTAL) menuOptions.unshift({ label: "Return Home", action: ()=>victory("帰還！") });
-        else if (t===TILE.STORAGE) menuOptions.unshift({ label: "Open Storage", action: ()=>{gameState=STATE.STORAGE; menuCursor=0; draw();} });
+            menuOptions.push({ label: "Descend Stairs", action: () => { floorLevel++; generateFloor(); gameState=STATE.PLAY; } });
+            if(currentDungeon&&currentDungeon.id===1&&floorLevel===10) { 
+                let last = menuOptions[menuOptions.length-1];
+                last.label="Complete Dungeon"; last.action=()=>victory("踏破！"); 
+            }
+        } else if (t===TILE.PORTAL) menuOptions.push({ label: "Return Home", action: ()=>victory("帰還！") });
+        else if (t===TILE.STORAGE) menuOptions.push({ label: "Open Storage", action: ()=>{gameState=STATE.STORAGE; menuCursor=0; draw();} });
         
+        // 4. Close
         menuOptions.push({ label: "Close Menu", action: () => { gameState=(currentDungeon?STATE.PLAY:STATE.LOBBY); draw(); } });
         draw();
     }
@@ -272,71 +280,95 @@
         draw();
     }
 
-    // --- インベントリ操作 ---
+    // --- 攻撃方向入力 ---
+    function handleAttackDirInput(e) {
+        let dx=0, dy=0;
+        if(e.key==='ArrowUp'||e.key==='w') dy=-1;
+        if(e.key==='ArrowDown'||e.key==='s') dy=1;
+        if(e.key==='ArrowLeft'||e.key==='a') dx=-1;
+        if(e.key==='ArrowRight'||e.key==='d') dx=1;
+        
+        if (dx!==0 || dy!==0) {
+            // 攻撃実行
+            const tx = player.x + dx;
+            const ty = player.y + dy;
+            const target = getEnemyAt(tx, ty);
+            
+            if (target) {
+                attack(player, target);
+            } else {
+                log("空振り！何もいない。");
+            }
+            // 攻撃が終わったらプレイ画面へ戻り、敵のターン
+            gameState = (currentDungeon ? STATE.PLAY : STATE.LOBBY);
+            if (currentDungeon) enemyTurn();
+            draw();
+        } else if (e.key === 'Escape') {
+            // キャンセル
+            gameState = (currentDungeon ? STATE.PLAY : STATE.LOBBY);
+            draw();
+        }
+    }
+
+    // --- 移動処理 (体当たり廃止) ---
+    function playerTurn(dx, dy) {
+        const tx=player.x+dx, ty=player.y+dy;
+        if(map[ty][tx]===TILE.WALL) return;
+        
+        let e=getEnemyAt(tx,ty);
+        if(e) {
+            // 体当たり攻撃は廃止
+            log("敵がいる！メニューから攻撃せよ。");
+            return;
+        }
+        
+        // 移動
+        player.x=tx; player.y=ty;
+        let iIdx=items.findIndex(i=>i.x===tx&&i.y===ty);
+        if(iIdx!==-1) {
+            if(player.inventory.length<20) { player.inventory.push(items[iIdx]); log(`${items[iIdx].name}を拾った`); items.splice(iIdx,1); }
+            else log("持ち物がいっぱい！");
+        }
+        enemyTurn(); updateUI(); draw();
+    }
+
+    // --- その他UI操作など (前回と同様) ---
     function handleInventoryInput(e) {
         const len = player.inventory.length;
         if(e.key==='ArrowUp') menuCursor = Math.max(0, menuCursor-1);
         if(e.key==='ArrowDown') menuCursor = Math.min(len-1, menuCursor+1);
-        if(e.key==='ArrowLeft') menuCursor = Math.max(0, menuCursor-10); // 列移動
+        if(e.key==='ArrowLeft') menuCursor = Math.max(0, menuCursor-10);
         if(e.key==='ArrowRight') menuCursor = Math.min(len-1, menuCursor+10);
-
-        if(e.key==='Enter' && len > 0) {
-            // 即使用ではなくサブメニューを開く
-            gameState = STATE.ITEM_SUBMENU;
-            subMenuCursor = 0;
-            draw();
-            return;
-        }
+        if(e.key==='Enter' && len > 0) { gameState = STATE.ITEM_SUBMENU; subMenuCursor = 0; draw(); return; }
         if(e.key==='Escape') { openMainMenu(); }
         draw();
     }
-
-    // --- アイテムサブメニュー (Action Menu) ---
     function handleItemSubMenu(e) {
-        // 0: Use/Equip, 1: Move, 2: Discard
         if(e.key==='ArrowUp') subMenuCursor = Math.max(0, subMenuCursor-1);
         if(e.key==='ArrowDown') subMenuCursor = Math.min(2, subMenuCursor+1);
-        
         if(e.key==='Enter') {
-            if(subMenuCursor === 0) { // Use/Equip
-                useOrEquipItem(menuCursor);
-                gameState = STATE.INVENTORY;
-            } else if(subMenuCursor === 1) { // Move
-                moveSourceIndex = menuCursor;
-                gameState = STATE.ITEM_MOVE;
-            } else if(subMenuCursor === 2) { // Discard
-                discardItem(menuCursor);
-                gameState = STATE.INVENTORY;
-            }
+            if(subMenuCursor === 0) { useOrEquipItem(menuCursor); gameState = STATE.INVENTORY; }
+            else if(subMenuCursor === 1) { moveSourceIndex = menuCursor; gameState = STATE.ITEM_MOVE; }
+            else if(subMenuCursor === 2) { discardItem(menuCursor); gameState = STATE.INVENTORY; }
         }
-        if(e.key==='Escape') {
-            gameState = STATE.INVENTORY;
-        }
+        if(e.key==='Escape') { gameState = STATE.INVENTORY; }
         draw();
     }
-
-    // --- アイテム移動 (並び替え) ---
     function handleItemMove(e) {
         const len = player.inventory.length;
         if(e.key==='ArrowUp') menuCursor = Math.max(0, menuCursor-1);
         if(e.key==='ArrowDown') menuCursor = Math.min(len-1, menuCursor+1);
         if(e.key==='ArrowLeft') menuCursor = Math.max(0, menuCursor-10);
         if(e.key==='ArrowRight') menuCursor = Math.min(len-1, menuCursor+10);
-
         if(e.key==='Enter') {
-            // 入れ替え実行
             const temp = player.inventory[moveSourceIndex];
             player.inventory[moveSourceIndex] = player.inventory[menuCursor];
             player.inventory[menuCursor] = temp;
-            log("入れ替えました。");
             gameState = STATE.INVENTORY;
         }
-        if(e.key==='Escape') {
-            gameState = STATE.INVENTORY;
-        }
+        if(e.key==='Escape') gameState = STATE.INVENTORY;
         draw();
     }
-
     function useOrEquipItem(idx) {
         const item = player.inventory[idx];
         if (item.type==='potion') {
@@ -344,8 +376,8 @@
             player.inventory.splice(idx, 1);
             log(`${item.name}を使った。`);
             if(currentDungeon) enemyTurn();
-        } else { // weapon/armor
-            const type = item.type; // 'weapon' or 'armor'
+        } else { 
+            const type = item.type; 
             const old = player.equipment[type];
             player.equipment[type] = item;
             player.inventory.splice(idx, 1);
@@ -355,17 +387,13 @@
         }
         if(menuCursor >= player.inventory.length) menuCursor = Math.max(0, player.inventory.length-1);
     }
-
     function discardItem(idx) {
         const item = player.inventory[idx];
         if(confirm(`${item.name} を捨てますか？`)) {
             player.inventory.splice(idx, 1);
-            log(`${item.name}を捨てた。`);
             if(menuCursor >= player.inventory.length) menuCursor = Math.max(0, player.inventory.length-1);
         }
     }
-
-    // --- 倉庫処理 ---
     function handleStorageInput(e) {
         if(!window.storageSide) window.storageSide=0; if(!window.storageCursor) window.storageCursor=0;
         let list=(window.storageSide===0)?player.inventory:warehouseItems;
@@ -384,8 +412,6 @@
         if(e.key==='Escape') openMainMenu();
         draw();
     }
-
-    // --- ゲームロジック ---
     function lobbyMove(dx, dy) {
         const tx=player.x+dx, ty=player.y+dy;
         if(map[ty][tx]!==TILE.WALL) {
@@ -395,21 +421,6 @@
             else if(map[ty][tx]===TILE.DOOR_H) initDungeon(DUNG_TYPES.HARD);
             else draw();
         }
-    }
-    function playerTurn(dx, dy) {
-        const tx=player.x+dx, ty=player.y+dy;
-        if(map[ty][tx]===TILE.WALL) return;
-        let e=getEnemyAt(tx,ty);
-        if(e) attack(player,e);
-        else {
-            player.x=tx; player.y=ty;
-            let iIdx=items.findIndex(i=>i.x===tx&&i.y===ty);
-            if(iIdx!==-1) {
-                if(player.inventory.length<20) { player.inventory.push(items[iIdx]); log(`${items[iIdx].name}を拾った`); items.splice(iIdx,1); }
-                else log("持ち物がいっぱい！");
-            }
-        }
-        enemyTurn(); updateUI(); draw();
     }
     function enemyTurn() {
         enemies.forEach(e=>{
@@ -427,6 +438,8 @@
         let d=(def===player)?(player.equipment.armor?player.equipment.armor.def:0):0;
         let dmg=Math.max(1, (p+Math.floor(Math.random()*2))-d);
         def.hp-=dmg;
+        let tName = (def===player)?"あなた":def.name;
+        log(`${tName}に${dmg}ダメージ`);
         if(def.hp<=0) {
             if(def===player) { log("死んでしまった..."); gameState=STATE.GAMEOVER; }
             else {
@@ -443,8 +456,9 @@
     // --- 描画 ---
     function draw() {
         ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        if(gameState===STATE.TITLE){ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='40px monospace';ctx.fillText("ROGUE INV+",canvas.width/2,200);ctx.font='20px monospace';ctx.fillText("[Enter] Start",canvas.width/2,250);return;}
+        if(gameState===STATE.TITLE){ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='40px monospace';ctx.fillText("ROGUE BATTLE+",canvas.width/2,200);ctx.font='20px monospace';ctx.fillText("[Enter] Start",canvas.width/2,250);return;}
         drawMap();
+        if(gameState===STATE.ATTACK_DIR) drawCenterText("Select Direction", "lime", true);
         if(gameState===STATE.MENU) drawMenuOverlay();
         if(gameState===STATE.INVENTORY || gameState===STATE.ITEM_SUBMENU || gameState===STATE.ITEM_MOVE) drawInventoryOverlay();
         if(gameState===STATE.STATUS) drawStatusOverlay();
@@ -463,4 +477,68 @@
             else if(t===TILE.PORTAL){ctx.fillStyle='#f0f';ctx.fillText('%',px,py);}
             else if(t===TILE.STORAGE){ctx.fillStyle='#0ff';ctx.fillText('S',px,py);}
             else if(t===TILE.DOOR_E){ctx.fillStyle='#4f4';ctx.fillText('1',px,py);}
-            else if(t===TILE.DOOR_N){ctx.fillStyle='#ff0
+            else if(t===TILE.DOOR_N){ctx.fillStyle='#ff0';ctx.fillText('2',px,py);}
+            else if(t===TILE.DOOR_H){ctx.fillStyle='#f44';ctx.fillText('3',px,py);}
+        }
+        items.forEach(i=>{ctx.fillStyle=i.color;ctx.fillText(i.char,i.x*TILE_SIZE+TILE_SIZE/2,i.y*TILE_SIZE+TILE_SIZE/2+2);});
+        enemies.forEach(e=>{ctx.fillStyle=e.color;ctx.fillText(e.char,e.x*TILE_SIZE+TILE_SIZE/2,e.y*TILE_SIZE+TILE_SIZE/2+2);});
+        if(player.hp>0){ctx.fillStyle='yellow';ctx.fillText('@',player.x*TILE_SIZE+TILE_SIZE/2,player.y*TILE_SIZE+TILE_SIZE/2+2);}
+    }
+    function drawMenuOverlay() {
+        drawWindow(200,200,"MENU",()=>{
+            menuOptions.forEach((o,i)=>{ctx.fillStyle=(i===menuCursor)?'#ff0':'#fff';ctx.fillText((i===menuCursor?"> ":"  ")+o.label,240,180+i*30);});
+        });
+    }
+    function drawInventoryOverlay() {
+        drawWindow(400,400,gameState===STATE.ITEM_MOVE?"SWAP MODE":"INVENTORY",()=>{
+            if(player.inventory.length===0) { ctx.fillStyle='#888';ctx.fillText("Empty",140,100); return; }
+            player.inventory.forEach((item, i) => {
+                let x = 140 + Math.floor(i / 10) * 200; let y = 100 + (i % 10) * 30;
+                if (gameState === STATE.ITEM_MOVE && i === moveSourceIndex) ctx.fillStyle = '#0f0';
+                else if (i === menuCursor) ctx.fillStyle = '#ff0'; else ctx.fillStyle = item.color;
+                ctx.fillText((i===menuCursor?"> ":"")+item.name, x, y);
+                if(i === menuCursor) { ctx.fillStyle = '#ccc'; ctx.fillText(item.desc, 320, 420); }
+            });
+            if (gameState === STATE.ITEM_SUBMENU) {
+                const sx = 140 + Math.floor(menuCursor/10)*200 + 120; const sy = 100 + (menuCursor%10)*30;
+                ctx.fillStyle = 'rgba(0,0,0,0.95)'; ctx.fillRect(sx, sy, 100, 90); ctx.strokeStyle = '#fff'; ctx.strokeRect(sx, sy, 100, 90);
+                ["Use/Equip", "Move", "Discard"].forEach((act, j) => {
+                    ctx.fillStyle = (j === subMenuCursor) ? '#ff0' : '#fff';
+                    ctx.fillText((j === subMenuCursor ? ">" : " ") + act, sx + 10, sy + 25 + j*25);
+                });
+            }
+        });
+    }
+    function drawStatusOverlay() {
+        drawWindow(400,300,"STATUS",()=>{
+            let x=160,y=120; ctx.fillStyle='#fff';
+            ctx.fillText(`Lv : ${player.level}`,x,y); ctx.fillText(`HP : ${player.hp}/${player.maxHp}`,x,y+30);
+            let p=(Math.floor(player.level/2)+2+(player.equipment.weapon?player.equipment.weapon.atk:0));
+            let d=(player.equipment.armor?player.equipment.armor.def:0);
+            ctx.fillText(`ATK: ${p}`,x,y+60); ctx.fillText(`DEF: ${d}`,x,y+90);
+            ctx.fillStyle='#aaa'; ctx.fillText("--- EQUIPMENT ---",x,y+130);
+            let w=player.equipment.weapon, a=player.equipment.armor;
+            ctx.fillStyle=w?w.color:'#888'; ctx.fillText(`Wpn: ${w?w.name:"(None)"}`,x,y+160);
+            ctx.fillStyle=a?a.color:'#888'; ctx.fillText(`Arm: ${a?a.name:"(None)"}`,x,y+190);
+        });
+    }
+    function drawStorageOverlay() {
+        drawWindow(600,400,"STORAGE",()=>{
+            ctx.fillStyle=(window.storageSide===0)?'#ff0':'#888'; ctx.fillText("[Bag]",60,80);
+            ctx.fillStyle=(window.storageSide===1)?'#ff0':'#888'; ctx.fillText("[Storage]",340,80);
+            player.inventory.forEach((t,i)=>{let a=(window.storageSide===0&&window.storageCursor===i);ctx.fillStyle=a?'#ff0':t.color;ctx.fillText((a?"> ":"")+t.name,60,110+i*20);});
+            warehouseItems.forEach((t,i)=>{let a=(window.storageSide===1&&window.storageCursor===i);ctx.fillStyle=a?'#ff0':t.color;ctx.fillText((a?"> ":"")+t.name,340,110+i*20);});
+        });
+    }
+    function drawWindow(w,h,t,f){const x=(canvas.width-w)/2,y=(canvas.height-h)/2;ctx.fillStyle='rgba(0,0,0,0.9)';ctx.fillRect(x,y,w,h);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='20px monospace';ctx.fillText(`- ${t} -`,canvas.width/2,y+30);ctx.textAlign='left';ctx.font='14px monospace';f();}
+    function drawCenterText(t,c, overlay=false){
+        if(!overlay) { ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(0,0,canvas.width,canvas.height); }
+        else { ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(0,0,canvas.width,canvas.height); }
+        ctx.fillStyle=c; ctx.textAlign='center'; ctx.font='40px monospace';
+        ctx.fillText(t,canvas.width/2,canvas.height/2);
+    }
+    function log(m){messages.push(m);if(messages.length>20)messages.shift();let e=document.getElementById('log');e.innerHTML=messages.join('<br>');e.scrollTop=9999;}
+    function updateUI(){document.getElementById('stats').innerText=`HP:${player.hp}/${player.maxHp} Lv:${player.level}`;document.getElementById('location').innerText=currentDungeon?`${currentDungeon.name} B${floorLevel}F`:"Lobby";}
+</script>
+</body>
+</html>
