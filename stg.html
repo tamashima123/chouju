@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>弾幕・夢幻 - Geometric Neo (Seamless)</title>
+    <title>弾幕・夢幻 - Geometric Neo (Smooth Boss Entry)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
         
@@ -77,7 +77,7 @@
 
 <script>
 /**
- * 弾幕・夢幻 - Geometric Neo (Seamless Edition)
+ * 弾幕・夢幻 - Geometric Neo (Smooth Boss Entry Edition)
  */
 
 const canvas = document.getElementById('canvas');
@@ -105,7 +105,7 @@ const DIFFICULTIES = [
 ];
 
 // --- グローバル変数 ---
-let state = "TITLE"; // TITLE, PLAYING, PAUSED, GAMEOVER, CLEAR
+let state = "TITLE"; 
 let menuIndex = 0;
 let diffIndex = 2; 
 let currentDiff = DIFFICULTIES[diffIndex];
@@ -119,6 +119,8 @@ const EXTEND_INTERVAL = 150000;
 let stage = 1;
 let stageTimer = 0;
 let isBossActive = false;
+let bossDelayTimer = 0; // ボス出現前の待機用タイマー
+let midBossDefeated = false; // 中ボス撃破フラグ
 
 let player = { 
     x: PLAY_W/2, y: H-100, 
@@ -131,7 +133,7 @@ let bullets = [], enemies = [], enemyBullets = [], items = [], particles = [], f
 let boss = { 
     active: false, x: PLAY_W/2, y: -100, 
     hp: 0, maxHp: 0, phase: 0, color: COLORS.green,
-    timer: 0, angle: 0, type: 0 
+    timer: 0, angle: 0, type: 0, isMid: false
 };
 
 /* --- 初期化・ループ --- */
@@ -167,7 +169,7 @@ window.addEventListener('keydown', e => {
     } 
     else if (state === "PLAYING") {
         if(e.code === "KeyX") useBomb();
-        if(e.code === "Escape") state = "PAUSED"; // ポーズ機能
+        if(e.code === "Escape") state = "PAUSED";
     }
     else if (state === "PAUSED") {
         if(e.code === "Escape") state = "PLAYING";
@@ -195,10 +197,9 @@ function loop() {
     else if (state === "PAUSED") {
         drawGameEntities(); 
         drawUI();
-        drawOverlay(); // PAUSE画面
+        drawOverlay();
     }
     else {
-        // TITLE, GAMEOVER, CLEAR
         if(state !== "TITLE") { drawGameEntities(); drawUI(); }
         else drawUI();
         drawOverlay();
@@ -225,6 +226,8 @@ function startGame() {
 function resetStageState() {
     player.x = PLAY_W/2; player.y = H-100;
     stageTimer = 0;
+    bossDelayTimer = 0;
+    midBossDefeated = false;
     bullets = []; enemies = []; enemyBullets = []; items = []; particles = [];
     boss.active = false; isBossActive = false;
 }
@@ -239,7 +242,8 @@ function addScore(amount) {
 }
 
 function updateGame() {
-    if(!isBossActive) stageTimer++;
+    // ボス待機中（敵全滅後の4秒間）はステージタイマーを進めない
+    if(!isBossActive && bossDelayTimer === 0) stageTimer++;
 
     // 移動
     let moveSpd = (player.slow ? 2.0 : 5.0);
@@ -319,7 +323,7 @@ function updateGame() {
 function manageStages() {
     if(isBossActive) { updateBoss(); return; }
     
-    // stageTimerが負の数（ボス撃破直後の休憩時間）の場合は敵を出さない
+    // ステージ開始時の待機
     if(stageTimer < 0) {
         if(stageTimer === -50) showStageTitle("STAGE " + stage + " START");
         return;
@@ -329,18 +333,48 @@ function manageStages() {
     let r = currentDiff.rank;
     const spawn = (type, x, hp) => spawnEnemy(x, -40, type, hp * r);
 
-    // ボス出現（ステージが進むごとに少し出現が遅くなる＝ステージが長くなる）
-    let bossTime = 1500 + (stage * 300); 
-    if(t === bossTime) { 
-        let bossHp = 2000 + (stage * 1000);
-        startBoss(stage, bossHp, false); 
-        return; 
+    // タイミング設定
+    let midSpawnEnd = 1500 + (stage * 300); // 中ボス前の雑魚湧き停止
+    let bossSpawnEnd = 3500 + (stage * 500); // 大ボス前の雑魚湧き停止
+
+    // --- 中ボス処理 ---
+    if(!midBossDefeated) {
+        // 時間が来たら湧き停止
+        if(t >= midSpawnEnd) {
+            if(enemies.length === 0) {
+                // 敵が全滅したらカウントダウン開始
+                bossDelayTimer++;
+                if(bossDelayTimer === 60) showStageTitle("WARNING: MID-BOSS"); // 1秒後に警告
+                if(bossDelayTimer >= 240) { // 4秒(240F)経過で出現
+                    let hp = 1500 + (stage * 500);
+                    startBoss(stage, hp, true);
+                    bossDelayTimer = 0;
+                }
+            }
+            return; // 湧き処理をスキップ
+        }
+    } 
+    // --- 大ボス処理 ---
+    else {
+        // 中ボス撃破後、時間が来たら湧き停止
+        if(t >= bossSpawnEnd) {
+            if(enemies.length === 0) {
+                // 敵が全滅したらカウントダウン開始
+                bossDelayTimer++;
+                if(bossDelayTimer === 60) showStageTitle("WARNING: BOSS APPROACHING");
+                if(bossDelayTimer >= 240) { // 4秒経過で出現
+                    let hp = 2500 + (stage * 1000);
+                    startBoss(stage, hp, false);
+                    bossDelayTimer = 0;
+                }
+            }
+            return; // 湧き処理をスキップ
+        }
     }
 
-    // 雑魚敵パターン
-    // ステージが進むほど敵の密度が少し上がる
-    let density = Math.max(20, 80 - (stage * 5)); // 出現間隔
-    let hpMult = 1.0 + (stage * 0.2); // HP倍率
+    // 雑魚敵パターン (湧き停止時間外のみ実行)
+    let density = Math.max(20, 80 - (stage * 5)); 
+    let hpMult = 1.0 + (stage * 0.2); 
 
     if(t % density === 0) {
         let type = (Math.random() > 0.5) ? 'cube' : ((stage > 1 && Math.random()>0.5)?'tetra':'cube');
@@ -354,69 +388,98 @@ function manageStages() {
 function startBoss(type, hp, isMid) {
     if(isBossActive) return;
     isBossActive = true;
-    enemies.forEach(e => explode(e.x, e.y, e.color, 15)); enemies = []; enemyBullets = [];
+    
+    // 敵は既に全滅しているはずだが、念のため弾幕だけ消す
+    enemyBullets = [];
+    
     boss = { 
         active: true, type, maxHp: hp*currentDiff.rank, hp: hp*currentDiff.rank, 
-        x: PLAY_W/2, y: -80, timer: 0, angle: 0, phase: 0, color: COLORS.green 
+        x: PLAY_W/2, y: -120, // 画面外上部からスタート
+        timer: 0, angle: 0, phase: 0, 
+        color: isMid ? COLORS.orange : COLORS.green,
+        isMid: isMid 
     };
-    showStageTitle("WARNING: BOSS APPROACHING");
+    
+    // WARNING表示はmanageStagesで行っているため、ここでは不要
 }
 
 function updateBoss() {
-    if(boss.y < 120) boss.y+=2;
+    // スムーズな入場: y=120までゆっくり降りてくる
+    if(boss.y < 120) {
+        boss.y += 2;
+        boss.timer++; // 入場中もタイマーを進める（回転演出などのため）
+        boss.angle += 0.02;
+        // 入場中は攻撃しない
+        return; 
+    }
+
     boss.timer++; boss.angle += 0.02;
     let bt = boss.timer;
     let spd = currentDiff.spd;
 
-    let hpRatio = boss.hp / boss.maxHp;
-    let oldPhase = boss.phase;
-    if (hpRatio > 0.66) boss.phase = 0;
-    else if (hpRatio > 0.33) boss.phase = 1;
-    else boss.phase = 2;
+    // 大ボスのみフェーズ変化あり
+    if(!boss.isMid) {
+        let hpRatio = boss.hp / boss.maxHp;
+        let oldPhase = boss.phase;
+        if (hpRatio > 0.66) boss.phase = 0;
+        else if (hpRatio > 0.33) boss.phase = 1;
+        else boss.phase = 2;
 
-    if(boss.phase === 0) boss.color = COLORS.green;
-    else if(boss.phase === 1) boss.color = COLORS.yellow;
-    else boss.color = COLORS.red;
+        if(boss.phase === 0) boss.color = COLORS.green;
+        else if(boss.phase === 1) boss.color = COLORS.yellow;
+        else boss.color = COLORS.red;
 
-    if(oldPhase !== boss.phase) {
-        enemyBullets.forEach(b => explode(b.x, b.y, b.color, 3));
-        enemyBullets = [];
-        showFloatingText("PHASE CHANGE!", boss.x, boss.y-50, boss.color);
+        if(oldPhase !== boss.phase) {
+            enemyBullets.forEach(b => explode(b.x, b.y, b.color, 3));
+            enemyBullets = [];
+            showFloatingText("PHASE CHANGE!", boss.x, boss.y-50, boss.color);
+        }
     }
 
     boss.x = PLAY_W/2 + Math.sin(bt * 0.01) * (PLAY_W/3);
     boss.y = 120 + Math.cos(bt * 0.02) * 20;
 
-    // 攻撃パターン (ステージが進むと少し弾速アップ)
     let sMul = 1.0 + (stage * 0.1);
 
-    if(boss.phase === 0) {
-        if(bt % 60 === 0) fireCircle(boss, 16, 2.5*spd*sMul, COLORS.green, 'poly', 3);
-        if(bt % 40 === 0) fireNWay(boss, 3, 3*spd*sMul, COLORS.white, 'beam', 0, 0);
-    } else if(boss.phase === 1) {
-        if(bt % 8 === 0) fire(boss.x, boss.y, Math.cos(bt*0.1)*3*spd*sMul, Math.sin(bt*0.1)*3*spd*sMul, COLORS.yellow, 'poly', 4);
-        if(bt % 90 === 0) fireAimed(boss, 5*spd*sMul, COLORS.orange, 'beam');
-    } else if(boss.phase === 2) {
-        if(bt % 25 === 0) fireCircle(boss, 24, 3*spd*sMul, COLORS.red, 'poly', 5);
-        if(bt % 5 === 0) fire(boss.x + (Math.random()-0.5)*100, boss.y, 0, 4*spd*sMul, COLORS.magenta, 'beam');
+    if(boss.isMid) {
+        if(bt % 40 === 0) fireAimed(boss, 6*spd*sMul, COLORS.orange, 'poly');
+        if(bt % 20 === 0) fireCircle(boss, 8, 3*spd*sMul, COLORS.yellow, 'beam', 0);
+    } else {
+        if(boss.phase === 0) {
+            if(bt % 60 === 0) fireCircle(boss, 16, 2.5*spd*sMul, COLORS.green, 'poly', 3);
+            if(bt % 40 === 0) fireNWay(boss, 3, 3*spd*sMul, COLORS.white, 'beam', 0, 0);
+        } else if(boss.phase === 1) {
+            if(bt % 8 === 0) fire(boss.x, boss.y, Math.cos(bt*0.1)*3*spd*sMul, Math.sin(bt*0.1)*3*spd*sMul, COLORS.yellow, 'poly', 4);
+            if(bt % 90 === 0) fireAimed(boss, 5*spd*sMul, COLORS.orange, 'beam');
+        } else if(boss.phase === 2) {
+            if(bt % 25 === 0) fireCircle(boss, 24, 3*spd*sMul, COLORS.red, 'poly', 5);
+            if(bt % 5 === 0) fire(boss.x + (Math.random()-0.5)*100, boss.y, 0, 4*spd*sMul, COLORS.magenta, 'beam');
+        }
     }
 
     if(boss.hp <= 0) {
         isBossActive = false; boss.active = false;
         enemyBullets = [];
-        explode(boss.x, boss.y, COLORS.cyan, 150, true);
-        addScore(50000);
-        spawnItem(boss.x, boss.y, 'bomb');
-
-        if(stage >= 5) {
-            state = "CLEAR"; // 5面クリアでエンディング
+        explode(boss.x, boss.y, boss.color, 150, true);
+        
+        if(boss.isMid) {
+            addScore(10000);
+            spawnItem(boss.x, boss.y, 'power');
+            showFloatingText("MID-BOSS DOWN!", PLAY_W/2, H/2 - 50, COLORS.orange);
+            midBossDefeated = true;
+            // stageTimerはそのまま進む（次の雑魚湧きポイントまで自然に待機）
         } else {
-            // シームレス移行: ステージを加算し、タイマーをマイナス(待機時間)に設定
-            stage++;
-            stageTimer = -240; // 約4秒間のインターバル
-            showFloatingText("STAGE CLEAR!", PLAY_W/2, H/2 - 50, COLORS.cyan);
-            // オートセーブ
-            localStorage.setItem('dm_geo_save', JSON.stringify({s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex}));
+            addScore(50000);
+            spawnItem(boss.x, boss.y, 'bomb');
+            if(stage >= 5) {
+                state = "CLEAR"; 
+            } else {
+                stage++;
+                stageTimer = -240; 
+                midBossDefeated = false; // 次のステージ用にリセット
+                showFloatingText("STAGE CLEAR!", PLAY_W/2, H/2 - 50, COLORS.cyan);
+                localStorage.setItem('dm_geo_save', JSON.stringify({s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex}));
+            }
         }
     }
 }
@@ -486,6 +549,8 @@ function checkCollision() {
             }
         }
         if(!hit && boss.active && Math.hypot(b.x-boss.x, b.y-boss.y) < 60) {
+            // ボス入場中（y<100）は無敵にするか、あるいはヒットさせるか。
+            // ここではヒット可能にするが、入場演出を邪魔しない程度に。
             boss.hp--; hit=true;
             if(frame%4===0) explode(b.x, b.y, b.color, 1);
         }
