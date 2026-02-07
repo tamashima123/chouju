@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>弾幕・夢幻 - Geometric Neo (Smooth Motion Fix)</title>
+    <title>弾幕・夢幻 - Geometric Neo (Final Fix)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
         
@@ -77,7 +77,8 @@
 
 <script>
 /**
- * 弾幕・夢幻 - Geometric Neo (Ultra Smooth Boss Motion)
+ * 弾幕・夢幻 - Geometric Neo (Logic Fix)
+ * Boss entered flag implemented to prevent logic loop.
  */
 
 const canvas = document.getElementById('canvas');
@@ -133,7 +134,7 @@ let bullets = [], enemies = [], enemyBullets = [], items = [], particles = [], f
 let boss = { 
     active: false, x: PLAY_W/2, y: -100, 
     hp: 0, maxHp: 0, phase: 0, color: COLORS.green,
-    timer: 0, angle: 0, type: 0, isMid: false
+    timer: 0, angle: 0, type: 0, isMid: false, entered: false 
 };
 
 /* --- 初期化・ループ --- */
@@ -388,25 +389,33 @@ function startBoss(type, hp, isMid) {
         x: PLAY_W/2, y: -120, 
         timer: 0, angle: 0, phase: 0, 
         color: isMid ? COLORS.orange : COLORS.green,
-        isMid: isMid 
+        isMid: isMid,
+        entered: false // 重要: 入場完了フラグ
     };
 }
 
 function updateBoss() {
-    let targetX, targetY;
+    let targetX = boss.x;
+    let targetY = boss.y;
     
-    // 入場フェーズ
-    if(boss.y < 118) { // 少し余裕を持って判定
+    // ▼ 重要修正：フラグ管理で入場と戦闘を完全に分ける
+    if (!boss.entered) {
+        // --- 入場モード ---
         targetX = PLAY_W/2;
         targetY = 120;
         boss.angle += 0.02;
+
+        // 目標地点に十分近づいたら戦闘開始
+        if (Math.abs(boss.y - 120) < 1.0) {
+            boss.entered = true;
+            boss.timer = 0; // タイマーリセット
+        }
     } 
-    // 戦闘フェーズ
     else {
+        // --- 戦闘モード ---
         boss.timer++; boss.angle += 0.02;
         let bt = boss.timer;
         
-        // フェーズ管理（大ボス）
         if(!boss.isMid) {
             let hpRatio = boss.hp / boss.maxHp;
             let oldPhase = boss.phase;
@@ -425,9 +434,7 @@ function updateBoss() {
             }
         }
         
-        // --- 修正: 目標座標の計算 ---
-        // Y軸: sinを使うことで 120 + 0 = 120 から滑らかにスタートさせる
-        // X軸: 左右に揺れる
+        // 移動パターンの計算
         targetX = PLAY_W/2 + Math.sin(bt * 0.01) * (PLAY_W/3);
         targetY = 120 + Math.sin(bt * 0.03) * 20; 
 
@@ -451,8 +458,7 @@ function updateBoss() {
         }
     }
     
-    // --- 重要修正: スムージング移動 (Lerp) ---
-    // 現在位置から目標位置へ 5% ずつ近づくことで、どのような急な値の変化も滑らかにする
+    // スムーズ移動処理 (慣性)
     boss.x += (targetX - boss.x) * 0.05;
     boss.y += (targetY - boss.y) * 0.05;
 
