@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>弾幕・夢幻 - Geometric Neo (Smooth Boss Entry)</title>
+    <title>弾幕・夢幻 - Geometric Neo (Fixed Performance)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
         
@@ -77,7 +77,7 @@
 
 <script>
 /**
- * 弾幕・夢幻 - Geometric Neo (Smooth Boss Entry Edition)
+ * 弾幕・夢幻 - Geometric Neo (Fixed Performance & Stutter)
  */
 
 const canvas = document.getElementById('canvas');
@@ -119,8 +119,8 @@ const EXTEND_INTERVAL = 150000;
 let stage = 1;
 let stageTimer = 0;
 let isBossActive = false;
-let bossDelayTimer = 0; // ボス出現前の待機用タイマー
-let midBossDefeated = false; // 中ボス撃破フラグ
+let bossDelayTimer = 0; 
+let midBossDefeated = false; 
 
 let player = { 
     x: PLAY_W/2, y: H-100, 
@@ -242,7 +242,6 @@ function addScore(amount) {
 }
 
 function updateGame() {
-    // ボス待機中（敵全滅後の4秒間）はステージタイマーを進めない
     if(!isBossActive && bossDelayTimer === 0) stageTimer++;
 
     // 移動
@@ -314,6 +313,10 @@ function updateGame() {
     updateEntities();
     checkCollision();
     
+    // ▼ 重要修正: パーティクルの掃除（これがないと無限に増えて重くなる）
+    particles = particles.filter(p => p.life > 0);
+    
+    // フローティングテキスト掃除
     for(let i=floatingTexts.length-1; i>=0; i--) {
         let t = floatingTexts[i]; t.y -= 1.0; t.life--;
         if(t.life <= 0) floatingTexts.splice(i, 1);
@@ -323,7 +326,6 @@ function updateGame() {
 function manageStages() {
     if(isBossActive) { updateBoss(); return; }
     
-    // ステージ開始時の待機
     if(stageTimer < 0) {
         if(stageTimer === -50) showStageTitle("STAGE " + stage + " START");
         return;
@@ -333,46 +335,37 @@ function manageStages() {
     let r = currentDiff.rank;
     const spawn = (type, x, hp) => spawnEnemy(x, -40, type, hp * r);
 
-    // タイミング設定
-    let midSpawnEnd = 1500 + (stage * 300); // 中ボス前の雑魚湧き停止
-    let bossSpawnEnd = 3500 + (stage * 500); // 大ボス前の雑魚湧き停止
+    let midSpawnEnd = 1500 + (stage * 300); 
+    let bossSpawnEnd = 3500 + (stage * 500); 
 
-    // --- 中ボス処理 ---
     if(!midBossDefeated) {
-        // 時間が来たら湧き停止
         if(t >= midSpawnEnd) {
             if(enemies.length === 0) {
-                // 敵が全滅したらカウントダウン開始
                 bossDelayTimer++;
-                if(bossDelayTimer === 60) showStageTitle("WARNING: MID-BOSS"); // 1秒後に警告
-                if(bossDelayTimer >= 240) { // 4秒(240F)経過で出現
+                if(bossDelayTimer === 60) showStageTitle("WARNING: MID-BOSS"); 
+                if(bossDelayTimer >= 240) { 
                     let hp = 1500 + (stage * 500);
                     startBoss(stage, hp, true);
                     bossDelayTimer = 0;
                 }
             }
-            return; // 湧き処理をスキップ
+            return;
         }
-    } 
-    // --- 大ボス処理 ---
-    else {
-        // 中ボス撃破後、時間が来たら湧き停止
+    } else {
         if(t >= bossSpawnEnd) {
             if(enemies.length === 0) {
-                // 敵が全滅したらカウントダウン開始
                 bossDelayTimer++;
                 if(bossDelayTimer === 60) showStageTitle("WARNING: BOSS APPROACHING");
-                if(bossDelayTimer >= 240) { // 4秒経過で出現
+                if(bossDelayTimer >= 240) { 
                     let hp = 2500 + (stage * 1000);
                     startBoss(stage, hp, false);
                     bossDelayTimer = 0;
                 }
             }
-            return; // 湧き処理をスキップ
+            return;
         }
     }
 
-    // 雑魚敵パターン (湧き停止時間外のみ実行)
     let density = Math.max(20, 80 - (stage * 5)); 
     let hpMult = 1.0 + (stage * 0.2); 
 
@@ -388,36 +381,33 @@ function manageStages() {
 function startBoss(type, hp, isMid) {
     if(isBossActive) return;
     isBossActive = true;
-    
-    // 敵は既に全滅しているはずだが、念のため弾幕だけ消す
     enemyBullets = [];
     
     boss = { 
         active: true, type, maxHp: hp*currentDiff.rank, hp: hp*currentDiff.rank, 
-        x: PLAY_W/2, y: -120, // 画面外上部からスタート
+        x: PLAY_W/2, y: -120, 
         timer: 0, angle: 0, phase: 0, 
         color: isMid ? COLORS.orange : COLORS.green,
         isMid: isMid 
     };
-    
-    // WARNING表示はmanageStagesで行っているため、ここでは不要
 }
 
 function updateBoss() {
-    // スムーズな入場: y=120までゆっくり降りてくる
+    // スムーズな入場
     if(boss.y < 120) {
         boss.y += 2;
-        boss.timer++; // 入場中もタイマーを進める（回転演出などのため）
+        // 入場中はtimerを進めず、角度だけ回す
         boss.angle += 0.02;
-        // 入場中は攻撃しない
+        // X座標は中央固定（これにより入場完了時に変な場所にテレポートしない）
+        boss.x = PLAY_W/2;
         return; 
     }
 
+    // ここから戦闘パターン
     boss.timer++; boss.angle += 0.02;
     let bt = boss.timer;
     let spd = currentDiff.spd;
 
-    // 大ボスのみフェーズ変化あり
     if(!boss.isMid) {
         let hpRatio = boss.hp / boss.maxHp;
         let oldPhase = boss.phase;
@@ -436,6 +426,7 @@ function updateBoss() {
         }
     }
 
+    // 動きの計算（btが0から始まるので中央からスムーズに動き出す）
     boss.x = PLAY_W/2 + Math.sin(bt * 0.01) * (PLAY_W/3);
     boss.y = 120 + Math.cos(bt * 0.02) * 20;
 
@@ -467,7 +458,6 @@ function updateBoss() {
             spawnItem(boss.x, boss.y, 'power');
             showFloatingText("MID-BOSS DOWN!", PLAY_W/2, H/2 - 50, COLORS.orange);
             midBossDefeated = true;
-            // stageTimerはそのまま進む（次の雑魚湧きポイントまで自然に待機）
         } else {
             addScore(50000);
             spawnItem(boss.x, boss.y, 'bomb');
@@ -476,7 +466,7 @@ function updateBoss() {
             } else {
                 stage++;
                 stageTimer = -240; 
-                midBossDefeated = false; // 次のステージ用にリセット
+                midBossDefeated = false; 
                 showFloatingText("STAGE CLEAR!", PLAY_W/2, H/2 - 50, COLORS.cyan);
                 localStorage.setItem('dm_geo_save', JSON.stringify({s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex}));
             }
@@ -549,8 +539,6 @@ function checkCollision() {
             }
         }
         if(!hit && boss.active && Math.hypot(b.x-boss.x, b.y-boss.y) < 60) {
-            // ボス入場中（y<100）は無敵にするか、あるいはヒットさせるか。
-            // ここではヒット可能にするが、入場演出を邪魔しない程度に。
             boss.hp--; hit=true;
             if(frame%4===0) explode(b.x, b.y, b.color, 1);
         }
