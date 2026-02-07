@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Minesweeper</title>
+    <style>
+        body {
+            background-color: #222;
+            color: #eee;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+
+        h1 { margin: 0 0 20px; font-weight: 300; letter-spacing: 2px; }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            width: 340px;
+            background: #333;
+            padding: 10px 15px;
+            border-radius: 8px 8px 0 0;
+            box-sizing: border-box;
+            border-bottom: 2px solid #555;
+        }
+
+        .stat-box { font-size: 20px; font-weight: bold; font-family: monospace; color: #ff5555; }
+        .timer-box { color: #55ff55; }
+
+        #reset-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(10, 34px);
+            grid-gap: 2px;
+            background: #555;
+            padding: 2px;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .cell {
+            width: 34px;
+            height: 34px;
+            background: #bbb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: background 0.1s;
+        }
+
+        .cell:hover { background: #ccc; }
+        
+        .cell.revealed {
+            background: #e0e0e0; /* 明るいグレー */
+            cursor: default;
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* 数字の色定義 */
+        .c-1 { color: #1976D2; }
+        .c-2 { color: #388E3C; }
+        .c-3 { color: #D32F2F; }
+        .c-4 { color: #7B1FA2; }
+        .c-5 { color: #FF8F00; }
+        .c-6 { color: #0097A7; }
+        .c-7 { color: #424242; }
+        .c-8 { color: #9E9E9E; }
+
+        .cell.mine { background: #e74c3c !important; }
+        .cell.flag { color: #c0392b; }
+
+        .controls { margin-top: 20px; display: flex; gap: 10px; }
+        button.ctrl-btn {
+            padding: 8px 16px;
+            background: #444;
+            color: #fff;
+            border: 1px solid #666;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button.ctrl-btn.active { background: #3498db; border-color: #3498db; }
+    </style>
+</head>
+<body>
+
+    <h1>MINESWEEPER</h1>
+
+    <div class="game-header">
+        <div class="stat-box" id="mine-count">10</div>
+        <button id="reset-btn">😎</button>
+        <div class="stat-box timer-box" id="timer">000</div>
+    </div>
+
+    <div id="grid"></div>
+
+    <div class="controls">
+        <button class="ctrl-btn active" id="mode-dig" onclick="setMode('dig')">⛏️ Dig</button>
+        <button class="ctrl-btn" id="mode-flag" onclick="setMode('flag')">🚩 Flag</button>
+    </div>
+
+<script>
+    const ROWS = 10;
+    const COLS = 10;
+    const MINES = 12;
+
+    let grid = [];
+    let gameOver = false;
+    let flags = 0;
+    let firstClick = true;
+    let timerInterval;
+    let seconds = 0;
+    let currentMode = 'dig'; // 'dig' or 'flag' (スマホ用)
+
+    const gridElement = document.getElementById('grid');
+    const mineCountElement = document.getElementById('mine-count');
+    const timerElement = document.getElementById('timer');
+    const resetBtn = document.getElementById('reset-btn');
+
+    // 初期化
+    function initGame() {
+        gridElement.innerHTML = '';
+        grid = [];
+        gameOver = false;
+        flags = 0;
+        firstClick = true;
+        seconds = 0;
+        clearInterval(timerInterval);
+        timerElement.innerText = '000';
+        mineCountElement.innerText = MINES;
+        resetBtn.innerText = '😎';
+
+        // グリッド作成
+        for (let r = 0; r < ROWS; r++) {
+            const row = [];
+            for (let c = 0; c < COLS; c++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.r = r;
+                cell.dataset.c = c;
+                
+                // 左クリック / タップ
+                cell.addEventListener('click', () => handleClick(r, c));
+                
+                // 右クリック (PC用)
+                cell.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    toggleFlag(r, c);
+                });
+
+                gridElement.appendChild(cell);
+                row.push({
+                    element: cell,
+                    mine: false,
+                    revealed: false,
+                    flagged: false,
+                    count: 0
+                });
+            }
+            grid.push(row);
+        }
+    }
+
+    // 地雷配置（初手安全機能付き）
+    function placeMines(safeR, safeC) {
+        let placed = 0;
+        while (placed < MINES) {
+            const r = Math.floor(Math.random() * ROWS);
+            const c = Math.floor(Math.random() * COLS);
+
+            // 既に地雷があるか、初回クリック位置周辺ならスキップ
+            if (!grid[r][c].mine && !(Math.abs(r - safeR) <= 1 && Math.abs(c - safeC) <= 1)) {
+                grid[r][c].mine = true;
+                placed++;
+            }
+        }
+        calculateNumbers();
+        startTimer();
+    }
+
+    // 数字計算
+    function calculateNumbers() {
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (grid[r][c].mine) continue;
+                let count = 0;
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        if (r+i >= 0 && r+i < ROWS && c+j >= 0 && c+j < COLS && grid[r+i][c+j].mine) {
+                            count++;
+                        }
+                    }
+                }
+                grid[r][c].count = count;
+            }
+        }
+    }
+
+    // クリック処理
+    function handleClick(r, c) {
+        if (gameOver || grid[r][c].revealed) return;
+
+        // フラグモードの場合
+        if (currentMode === 'flag') {
+            toggleFlag(r, c);
+            return;
+        }
+
+        // フラグが立っていたら掘れない
+        if (grid[r][c].flagged) return;
+
+        // 初回クリック時に地雷生成
+        if (firstClick) {
+            placeMines(r, c);
+            firstClick = false;
+        }
+
+        // 地雷を踏んだ場合
+        if (grid[r][c].mine) {
+            gameOver = true;
+            revealAllMines();
+            grid[r][c].element.style.backgroundColor = '#c0392b';
+            resetBtn.innerText = '😵';
+            return;
+        }
+
+        revealCell(r, c);
+        checkWin();
+    }
+
+    // セルを開く（再帰的）
+    function revealCell(r, c) {
+        if (r < 0 || r >= ROWS || c < 0 || c >= COLS || grid[r][c].revealed || grid[r][c].flagged) return;
+
+        grid[r][c].revealed = true;
+        grid[r][c].element.classList.add('revealed');
+
+        if (grid[r][c].count > 0) {
+            grid[r][c].element.innerText = grid[r][c].count;
+            grid[r][c].element.classList.add(`c-${grid[r][c].count}`);
+        } else {
+            // 空白なら周囲も開く
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    revealCell(r + i, c + j);
+                }
+            }
+        }
+    }
+
+    // 旗の切り替え
+    function toggleFlag(r, c) {
+        if (gameOver || grid[r][c].revealed) return;
+
+        const cell = grid[r][c];
+        cell.flagged = !cell.flagged;
+        
+        if (cell.flagged) {
+            cell.element.innerText = '🚩';
+            cell.element.classList.add('flag');
+            flags++;
+        } else {
+            cell.element.innerText = '';
+            cell.element.classList.remove('flag');
+            flags--;
+        }
+        mineCountElement.innerText = MINES - flags;
+    }
+
+    // ゲームオーバー時に全地雷表示
+    function revealAllMines() {
+        clearInterval(timerInterval);
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (grid[r][c].mine) {
+                    grid[r][c].element.innerText = '💣';
+                    if (!grid[r][c].flagged) grid[r][c].element.style.color = '#333';
+                }
+            }
+        }
+    }
+
+    // 勝利判定
+    function checkWin() {
+        let revealedCount = 0;
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (grid[r][c].revealed) revealedCount++;
+            }
+        }
+        if (revealedCount === ROWS * COLS - MINES) {
+            gameOver = true;
+            clearInterval(timerInterval);
+            resetBtn.innerText = '😎';
+            alert('CLEAR! Time: ' + seconds + 's');
+        }
+    }
+
+    // タイマー
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            seconds++;
+            timerElement.innerText = seconds.toString().padStart(3, '0');
+        }, 1000);
+    }
+
+    // モード切替（スマホ用）
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('mode-dig').classList.toggle('active', mode === 'dig');
+        document.getElementById('mode-flag').classList.toggle('active', mode === 'flag');
+    }
+
+    resetBtn.addEventListener('click', initGame);
+
+    initGame();
+</script>
+</body>
+</html>
