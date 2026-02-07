@@ -2,13 +2,13 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>弾幕・夢幻 - 完結編 (Final & True Boss)</title>
-    <link rel="icon" href="tama.gif">
+    <title>弾幕・夢幻 - Geometric Neo</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@700&display=swap');
+        /* テクノロジー感のあるフォントをインポート */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
         
         body { 
-            background: #050010; 
+            background: #020005; /* 深い黒 */
             margin: 0; 
             overflow: hidden; 
             display: flex; 
@@ -16,44 +16,61 @@
             align-items: center; 
             height: 100vh; 
             color: #fff;
-            font-family: 'Shippori Mincho', serif;
+            font-family: 'Share Tech Mono', monospace; /* 等幅フォント */
             user-select: none;
         }
         #gameContainer {
             position: relative;
-            box-shadow: 0 0 60px rgba(100, 0, 200, 0.4);
-            border: 4px ridge #646;
+            /* ネオンサインのような発光ボーダー */
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(255, 0, 255, 0.2);
+            border: 2px solid #0ff;
             background: #000;
         }
-        canvas { display: block; image-rendering: pixelated; }
+        canvas { display: block; } /* ピクセル表現ではなく滑らかな図形描画 */
         
-        /* UI */
+        /* UIレイヤー */
         .hud { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             pointer-events: none;
+            text-transform: uppercase; /* 全て大文字でサイバー感 */
         }
         .score-box {
-            position: absolute; top: 10px; right: 10px;
-            text-align: right; font-size: 20px; color: #ffd;
-            text-shadow: 2px 2px 0 #500;
+            position: absolute; top: 10px; right: 15px;
+            text-align: right; font-size: 22px; color: #0ff;
+            text-shadow: 0 0 5px #0ff;
         }
         .info-box {
             position: absolute; bottom: 10px; left: 10px;
-            font-size: 16px; color: #fff; text-shadow: 1px 1px 0 #005;
-            background: rgba(0,0,0,0.6); padding: 8px; border-radius: 4px; border: 1px solid #444;
+            font-size: 16px; color: #f0f; text-shadow: 0 0 5px #f0f;
+            background: rgba(0,0,0,0.7); padding: 10px; border: 1px solid #f0f;
+            box-shadow: 0 0 10px rgba(255,0,255,0.3);
         }
         .stage-title {
             position: absolute; top: 35%; width: 100%;
-            text-align: center; font-size: 52px; color: #fff;
-            text-shadow: 0 0 20px #f00; letter-spacing: 0.1em;
-            opacity: 0; transition: opacity 1s; z-index: 10;
+            text-align: center; font-size: 40px; color: #fff;
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 20px #0ff, 0 0 40px #f0f;
+            letter-spacing: 0.2em; opacity: 0; transition: opacity 0.8s; z-index: 10;
         }
+        /* ボスUI */
         .boss-ui {
-            position: absolute; top: 10px; left: 10px; display: none;
+            position: absolute; top: 10px; left: 15px; display: none;
         }
-        .boss-name { font-size: 16px; color: #f88; margin-bottom: 2px; text-shadow: 2px 2px #000; font-weight: bold; }
-        .boss-hp-frame { width: 320px; height: 10px; background: #200; border: 2px solid #fff; box-shadow: 0 0 5px #f00; }
-        .hp-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #f00, #ff0); transition: width 0.1s; }
+        .boss-name { 
+            font-size: 18px; color: #f00; margin-bottom: 4px; 
+            text-shadow: 0 0 10px #f00; font-family: 'Orbitron', sans-serif;
+        }
+        .boss-hp-frame { 
+            width: 300px; height: 12px; background: #100; 
+            border: 2px solid #f00; box-shadow: 0 0 15px #f00; 
+            transform: skewX(-20deg); /* 斜めにしてスピード感 */
+            overflow: hidden;
+        }
+        .hp-fill { 
+            width: 100%; height: 100%; 
+            background: linear-gradient(90deg, #f00, #ff0, #0ff); 
+            box-shadow: 0 0 10px #ff0; transition: width 0.1s;
+        }
     </style>
 </head>
 <body>
@@ -62,18 +79,18 @@
     <canvas id="canvas" width="480" height="640"></canvas>
     <div class="hud">
         <div class="boss-ui" id="bossUI">
-            <div class="boss-name" id="bossName">Boss</div>
+            <div class="boss-name" id="bossName">SYSTEM: BOSS DETECTED</div>
             <div class="boss-hp-frame"><div class="hp-fill" id="bossBar"></div></div>
         </div>
-        <div class="score-box" id="scoreText">Score: 0</div>
-        <div class="info-box" id="infoText">Load...</div>
+        <div class="score-box" id="scoreText">SCORE: 0000000</div>
+        <div class="info-box" id="infoText">SYSTEM BOOTING...</div>
         <div class="stage-title" id="stageMsg"></div>
     </div>
 </div>
 
 <script>
 /**
- * 弾幕・夢幻 - Final Complete Edition
+ * 弾幕・夢幻 - Geometric Neo Edition
  */
 
 const canvas = document.getElementById('canvas');
@@ -81,35 +98,37 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width;
 const H = canvas.height;
 
-// --- 設定 ---
+// --- ネオンカラーパレット ---
 const COLORS = {
-    bg: "#100510",
-    red: "#f44", blue: "#4af", green: "#4f4", purple: "#d4d", gold: "#fd0", white: "#fff",
-    cyan: "#0ff", orange: "#f80"
+    bg_grid: "#001a33",
+    cyan: "#00ffff", magenta: "#ff00ff", yellow: "#ffff00", green: "#00ff00",
+    red: "#ff3333", blue: "#3366ff", white: "#ffffff"
 };
 
+// 難易度設定 (速度係数を調整)
 const DIFFICULTIES = [
-    { name: "入門 (Beginner)", rank: 0.4, spd: 0.5 },
-    { name: "凡人 (Easy)",     rank: 0.7, spd: 0.7 },
-    { name: "達人 (Normal)",   rank: 1.0, spd: 0.9 },
-    { name: "修羅 (Hard)",     rank: 1.5, spd: 1.1 }
+    { name: "BEGINNER (入門)", rank: 0.4, spd: 0.5 },
+    { name: "EASY (凡人)",     rank: 0.7, spd: 0.7 },
+    { name: "NORMAL (達人)",   rank: 1.0, spd: 0.9 },
+    { name: "HARD (修羅)",     rank: 1.5, spd: 1.1 }
 ];
 
 // --- グローバル変数 ---
 let state = "TITLE"; 
-let diffIndex = 1;
-let currentDiff = DIFFICULTIES[1];
+let diffIndex = 2; // デフォルト NORMAL
+let currentDiff = DIFFICULTIES[diffIndex];
 let frame = 0;
 let score = 0;
 let stage = 1;
 let stageTimer = 0;
 let isBossActive = false;
+let bgOffset = 0; // 背景スクロール用
 
-// プレイヤー
+// プレイヤー (三角形)
 let player = { 
     x: W/2, y: H-100, 
     lives: 3, bombs: 3, power: 0, maxPower: 40,
-    invincible: 0, slow: false 
+    invincible: 0, slow: false, angle: 0
 };
 
 // エンティティ
@@ -119,80 +138,15 @@ let enemyBullets = [];
 let items = [];
 let particles = [];
 let floatingTexts = [];
+let trails = []; // 弾の軌跡用
 
 // ボス管理
-let boss = { 
-    active: false, isMid: false, 
-    x: W/2, y: -100, 
-    hp: 0, maxHp: 0, type: 0, phase: 0, timer: 0 
-};
+let boss = { active: false, isMid: false, x: W/2, y: -100, hp: 0, maxHp: 0, type: 0, phase: 0, timer: 0, angle: 0 };
 
-// 画像アセット (自動生成)
-const IMAGES = {};
-
+/* --- 初期化 --- */
 function init() {
-    generateSprites();
+    // グラフィック生成は不要。描画時に直接CanvasAPIで描く。
     requestAnimationFrame(loop);
-}
-
-function generateSprites() {
-    const create = (w, h, drawFn) => {
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        const x = c.getContext('2d');
-        drawFn(x, w, h);
-        return c;
-    };
-    // 自機
-    IMAGES.player = create(32, 32, (c) => {
-        c.fillStyle = "#e22"; c.fillRect(8, 8, 16, 16); 
-        c.fillStyle = "#ffe"; c.beginPath(); c.arc(16, 8, 6, 0, Math.PI*2); c.fill(); 
-        c.fillStyle = "#fff"; c.fillRect(2, 20, 28, 6); 
-    });
-    // 雑魚
-    IMAGES.fairy = create(32, 32, (c) => {
-        c.fillStyle = "#48f"; c.beginPath(); c.moveTo(16,0); c.lineTo(32,12); c.lineTo(16,28); c.lineTo(0,12); c.fill();
-        c.fillStyle = "#fff"; c.fillRect(10,8,12,6);
-    });
-    IMAGES.bird = create(32, 32, (c) => {
-        c.fillStyle = "#f80"; c.beginPath(); c.moveTo(16,32); c.lineTo(32,0); c.lineTo(16,8); c.lineTo(0,0); c.fill();
-    });
-    IMAGES.big = create(48, 48, (c) => {
-        c.translate(24,24);
-        c.fillStyle = "#eee"; c.beginPath(); c.arc(0,0,22,0,Math.PI*2); c.fill();
-        c.fillStyle = "#d00"; c.beginPath(); c.arc(0,0,22, Math.PI*1.5, Math.PI*0.5); c.fill();
-        c.beginPath(); c.arc(0,-11,11,0,Math.PI*2); c.fillStyle="#d00"; c.fill();
-        c.beginPath(); c.arc(0,11,11,0,Math.PI*2); c.fillStyle="#eee"; c.fill();
-    });
-    // ボス系
-    IMAGES.boss_mid = create(64, 64, (c) => { // 中ボス（汎用）
-        c.fillStyle = "#444"; c.beginPath(); c.arc(32,32,28,0,Math.PI*2); c.fill();
-        c.fillStyle = "#f00"; c.beginPath(); c.moveTo(32,32); c.lineTo(60,10); c.lineTo(60,54); c.fill();
-        c.beginPath(); c.moveTo(32,32); c.lineTo(4,10); c.lineTo(4,54); c.fill();
-    });
-    IMAGES.boss = create(80, 80, (c) => { // 通常ボス
-        c.fillStyle = "#a0a"; c.beginPath(); c.moveTo(40,0); c.lineTo(80,40); c.lineTo(40,80); c.lineTo(0,40); c.fill();
-        c.fillStyle = "#fff"; c.beginPath(); c.arc(40,40,20,0,Math.PI*2); c.fill();
-    });
-    IMAGES.boss_final = create(96, 96, (c) => { // ラスボス
-        c.fillStyle = "#204"; c.beginPath(); c.arc(48,48,46,0,Math.PI*2); c.fill();
-        c.strokeStyle = "#0ff"; c.lineWidth=4; c.stroke();
-        c.fillStyle = "#0ff"; c.beginPath(); c.arc(48,48,15,0,Math.PI*2); c.fill();
-    });
-    IMAGES.boss_true = create(128, 128, (c) => { // 裏ボス
-        const grad = c.createRadialGradient(64,64,10,64,64,60);
-        grad.addColorStop(0, "#fff"); grad.addColorStop(0.5, "#fd0"); grad.addColorStop(1, "#f00");
-        c.fillStyle = grad; c.beginPath(); 
-        for(let i=0;i<16;i++){
-            let r = i%2==0 ? 60 : 30; let a=i*Math.PI/8;
-            c.lineTo(64+Math.cos(a)*r, 64+Math.sin(a)*r);
-        }
-        c.fill();
-    });
-    IMAGES.power = create(16, 16, (c) => {
-        c.fillStyle = "#f22"; c.fillRect(2,2,12,12);
-        c.fillStyle = "#fff"; c.font="10px sans-serif"; c.fillText("P", 4, 12);
-    });
 }
 
 /* --- 入力 --- */
@@ -218,25 +172,8 @@ window.addEventListener('keyup', e => {
 
 /* --- ループ --- */
 function loop() {
-    ctx.fillStyle = COLORS.bg;
-    ctx.fillRect(0, 0, W, H);
-    
-    // 背景エフェクト（裏ボス時は赤黒く）
-    if(stage === 6) {
-        ctx.fillStyle = `rgba(50, 0, 0, ${0.1 + Math.sin(frame*0.05)*0.05})`;
-        ctx.fillRect(0,0,W,H);
-    }
-
-    // 星スクロール
-    ctx.fillStyle = (stage === 6) ? "#fa0" : "#fff";
-    for(let i=0; i<40; i++) {
-        let spd = (stage === 6) ? 8 : 1;
-        let x = (frame * 0.2 + i * 37) % W;
-        let y = (frame * (0.5 + (i%3)*0.2) * spd + i * 23) % H;
-        ctx.globalAlpha = (Math.sin(frame*0.1 + i) + 1)/2 * 0.5; 
-        ctx.fillRect(x, y, 2, 2);
-    }
-    ctx.globalAlpha = 1;
+    // 背景描画（サイバーグリッド）
+    drawBackground();
 
     if(state === "PLAYING") {
         updateGame();
@@ -247,7 +184,36 @@ function loop() {
     }
     
     frame++;
+    bgOffset = (bgOffset + 1) % 40; // 背景スクロール
     requestAnimationFrame(loop);
+}
+
+// 幾何学的な背景を描画
+function drawBackground() {
+    // 画面を少し暗くクリア（残像効果のため完全には消さない）
+    ctx.fillStyle = "rgba(0, 5, 15, 0.8)";
+    ctx.fillRect(0, 0, W, H);
+    
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(0, 255, 255, 0.2)";
+    ctx.beginPath();
+    // 縦グリッド線
+    for(let x=0; x<=W; x+=40) {
+        ctx.moveTo(x, 0); ctx.lineTo(x, H);
+    }
+    // 横グリッド線（スクロール）
+    for(let y=bgOffset-40; y<=H; y+=40) {
+        ctx.moveTo(0, y); ctx.lineTo(W, y);
+    }
+    ctx.stroke();
+
+    // 遠景の幾何学模様
+    ctx.strokeStyle = (stage%2===0) ? "rgba(255, 0, 255, 0.1)" : "rgba(0, 255, 0, 0.1)";
+    for(let i=0; i<5; i++) {
+        let s = (frame*0.2 + i*100) % H;
+        let size = (i+1)*50;
+        drawPolygon(W/2, s, (i+3), size, frame*0.01*(i%2?-1:1), false);
+    }
 }
 
 function startGame() {
@@ -255,11 +221,11 @@ function startGame() {
     player.x = W/2; player.y = H-100;
     player.lives = 3; player.bombs = 3; player.power = 0;
     score = 0; stage = 1; stageTimer = 0;
-    bullets = []; enemies = []; enemyBullets = []; items = []; particles = []; floatingTexts = [];
+    bullets = []; enemies = []; enemyBullets = []; items = []; particles = []; floatingTexts = []; trails = [];
     boss.active = false; isBossActive = false;
     document.getElementById('bossUI').style.display = 'none';
     state = "PLAYING";
-    showStageTitle("Stage 1 妖精の森");
+    showStageTitle("STAGE 1: CYBER FIELD");
     updateUI();
 }
 
@@ -268,45 +234,49 @@ function updateGame() {
     if(!isBossActive) stageTimer++;
 
     // 自機移動
-    let moveSpd = (player.slow ? 1.5 : 4.0);
-    if(keys['ArrowLeft'] && player.x > 10) player.x -= moveSpd;
-    if(keys['ArrowRight'] && player.x < W-10) player.x += moveSpd;
-    if(keys['ArrowUp'] && player.y > 10) player.y -= moveSpd;
-    if(keys['ArrowDown'] && player.y < H-10) player.y += moveSpd;
+    let moveSpd = (player.slow ? 2.0 : 4.5);
+    if(keys['ArrowLeft'] && player.x > 15) player.x -= moveSpd;
+    if(keys['ArrowRight'] && player.x < W-15) player.x += moveSpd;
+    if(keys['ArrowUp'] && player.y > 15) player.y -= moveSpd;
+    if(keys['ArrowDown'] && player.y < H-15) player.y += moveSpd;
     if(player.invincible > 0) player.invincible--;
+    player.angle = frame * 0.05; // 自機をゆっくり回転させる
 
     // ショット
     if(keys['KeyX'] && frame % 5 === 0) {
         let pLvl = Math.floor(player.power / 10);
-        if(player.slow) { // 集中
-            bullets.push({x: player.x-5, y: player.y, vx: 0, vy: -14});
-            bullets.push({x: player.x+5, y: player.y, vx: 0, vy: -14});
-            if(pLvl >= 1) { bullets.push({x: player.x-8, y: player.y+4, vx: 0, vy: -13}); bullets.push({x: player.x+8, y: player.y+4, vx: 0, vy: -13}); }
-            if(pLvl >= 2) { bullets.push({x: player.x, y: player.y-4, vx: 0, vy: -16}); }
-        } else { // 拡散
-            bullets.push({x: player.x-6, y: player.y, vx: 0, vy: -12});
-            bullets.push({x: player.x+6, y: player.y, vx: 0, vy: -12});
-            if(pLvl >= 1) { bullets.push({x: player.x-14, y: player.y+4, vx: -1.5, vy: -11}); bullets.push({x: player.x+14, y: player.y+4, vx: 1.5, vy: -11}); }
-            if(pLvl >= 2) { bullets.push({x: player.x-20, y: player.y+8, vx: -3, vy: -10}); bullets.push({x: player.x+20, y: player.y+8, vx: 3, vy: -10}); }
+        let col = COLORS.cyan;
+        if(player.slow) { // 集中（直線的なレーザー風）
+            bullets.push({x: player.x-5, y: player.y, vx: 0, vy: -16, color: col, type: 'beam'});
+            bullets.push({x: player.x+5, y: player.y, vx: 0, vy: -16, color: col, type: 'beam'});
+            if(pLvl >= 1) { bullets.push({x: player.x-12, y: player.y+8, vx: 0, vy: -14, color: col, type: 'beam'}); bullets.push({x: player.x+12, y: player.y+8, vx: 0, vy: -14, color: col, type: 'beam'}); }
+        } else { // 拡散（多角形の弾）
+            bullets.push({x: player.x-8, y: player.y, vx: 0, vy: -12, color: col, type: 'poly', sides:3});
+            bullets.push({x: player.x+8, y: player.y, vx: 0, vy: -12, color: col, type: 'poly', sides:3});
+            if(pLvl >= 1) { bullets.push({x: player.x-16, y: player.y+4, vx: -2, vy: -11, color: col, type: 'poly', sides:4}); bullets.push({x: player.x+16, y: player.y+4, vx: 2, vy: -11, color: col, type: 'poly', sides:4}); }
         }
     }
 
     // アイテム回収
     items.forEach((it, i) => {
-        if(player.y < 130 || Math.hypot(it.x - player.x, it.y - player.y) < 50) {
+        it.angle += 0.1; // 回転
+        if(player.y < 150 || Math.hypot(it.x - player.x, it.y - player.y) < 60) {
             let a = Math.atan2(player.y - it.y, player.x - it.x);
-            it.x += Math.cos(a)*8; it.y += Math.sin(a)*8;
-        } else { it.y += 1.5; }
+            it.x += Math.cos(a)*9; it.y += Math.sin(a)*9;
+        } else { it.y += 2.0; }
         
-        if(Math.hypot(it.x - player.x, it.y - player.y) < 15) {
+        if(Math.hypot(it.x - player.x, it.y - player.y) < 20) {
             items.splice(i, 1);
+            explode(it.x, it.y, it.color, 5, true); // 取得エフェクト
             score += 100;
-            if(player.power < player.maxPower) {
-                player.power++;
-                if(player.power%10===0) showFloatingText("POWER UP", player.x, player.y-20, "#ff0");
-            } else { score+=500; showFloatingText("500", player.x, player.y-20, "#fff"); }
+            if(it.type === 'power') {
+                if(player.power < player.maxPower) {
+                    player.power++;
+                    if(player.power%10===0) showFloatingText("POWER LEVEL UP!", player.x, player.y-30, COLORS.yellow);
+                } else { score+=500; showFloatingText("+500", player.x, player.y-20, COLORS.white); }
+            }
             updateUI();
-        } else if(it.y > H) items.splice(i, 1);
+        } else if(it.y > H+20) items.splice(i, 1);
     });
 
     manageStages();
@@ -315,7 +285,7 @@ function updateGame() {
     
     // UIテキスト更新
     for(let i=floatingTexts.length-1; i>=0; i--) {
-        let t = floatingTexts[i]; t.y -= 0.5; t.life--;
+        let t = floatingTexts[i]; t.y -= 0.8; t.life--;
         if(t.life <= 0) floatingTexts.splice(i, 1);
     }
 }
@@ -326,45 +296,44 @@ function manageStages() {
 
     let r = currentDiff.rank;
     let t = stageTimer;
-    const spawn = (type, x, hp) => spawnEnemy(x, -30, type, hp * r);
+    const spawn = (type, x, hp) => spawnEnemy(x, -40, type, hp * r);
 
-    // 中ボス出現タイミング (各ステージ共通: t=1200あたり)
-    if(t === 1200) {
-        startBoss(stage, "Mid-Boss", 800 + stage*200, true);
+    if(t === 1300) {
+        startBoss(stage, `MID-BOSS: PROTOTYPE-${stage}`, 1000 + stage*300, true);
         return;
     }
 
-    // --- Stage 1: 森 ---
+    // --- Stage 1: CYBER FIELD ---
     if(stage === 1) {
-        if(t%100===0) spawn('fairy', Math.random()*W, 3);
-        if(t>1500 && t%200===0) spawn('bird', Math.random()*W, 6);
-        if(t > 2800) startBoss(1, "森の番人", 1500, false);
+        if(t%90===0) spawn('cube', Math.random()*W, 4); // 基本の立方体
+        if(t>1600 && t%180===0) spawn('tetra', Math.random()*W, 8); // 高速な四面体
+        if(t > 3000) startBoss(1, "GEOMETRIC GUARDIAN", 1800, false);
     }
-    // --- Stage 2: 風 ---
+    // --- Stage 2: MATRIX STREAM ---
     else if(stage === 2) {
-        if(t%80===0) spawn('bird', Math.random()*W, 5);
-        if(t>1500 && t%200===0) spawn('big', W/2, 20);
-        if(t > 3000) startBoss(2, "疾風の魔神", 2200, false);
+        if(t%70===0) spawn('tetra', Math.random()*W, 6);
+        if(t>1600 && t%220===0) spawn('octa', W/2, 25); // 硬い八面体
+        if(t > 3200) startBoss(2, "DATA CONSTRUCT", 2500, false);
     }
-    // --- Stage 3: 夢幻 ---
+    // --- Stage 3: NEON ABYSS ---
     else if(stage === 3) {
-        if(t%60===0) spawn('fairy', Math.random()*W, 6);
-        if(t>1500 && t%150===0) spawn('big', Math.random()*W, 30);
-        if(t > 3200) startBoss(3, "夢幻の道化師", 3000, false);
+        if(t%50===0) spawn('cube', Math.random()*W, 8);
+        if(t>1600 && t%150===0) { spawn('octa', 80, 35); spawn('octa', W-80, 35); }
+        if(t > 3500) startBoss(3, "SYSTEM CORE", 3500, false);
     }
-    // --- Stage 4: 紅魔 (New) ---
+    // --- Stage 4: VECTOR SPACE ---
     else if(stage === 4) {
-        if(t%50===0) spawn('bird', Math.random()*W, 8); // 速い
-        if(t>1400 && t%100===0) { spawn('fairy', 50, 10); spawn('fairy', W-50, 10); }
-        if(t > 3400) startBoss(4, "鮮血の伯爵", 4000, false);
+        if(t%40===0) spawn('tetra', Math.random()*W, 10);
+        if(t>1500 && t%90===0) spawn(Math.random()<0.5?'cube':'octa', Math.random()*W, 15);
+        if(t > 3800) startBoss(4, "DIMENSIONAL RIFT", 4500, false);
     }
-    // --- Stage 5: 深淵 (New) ---
+    // --- Stage 5: POLYGON NEXUS ---
     else if(stage === 5) {
-        if(t%40===0) spawn(Math.random()<0.5?'fairy':'bird', Math.random()*W, 10);
-        if(t>1300 && t%120===0) spawn('big', Math.random()*W, 50);
-        if(t > 3600) startBoss(5, "深淵の皇帝", 6000, false);
+        if(t%30===0) spawn(['cube','tetra','octa'][Math.floor(Math.random()*3)], Math.random()*W, 12);
+        if(t>1500 && t%100===0) spawn('octa', Math.random()*W, 60);
+        if(t > 4000) startBoss(5, "THE ARCHITECT", 7000, false);
     }
-    // --- Extra: 裏ボス ---
+    // --- Extra: ZERO POINT ---
     else if(stage === 6) {
         // ボス戦のみ
     }
@@ -374,108 +343,98 @@ function manageStages() {
 function startBoss(type, name, hp, isMid) {
     if(isBossActive) return;
     isBossActive = true;
-    enemies.forEach(e => explode(e.x, e.y)); enemies = []; enemyBullets = []; // 弾消し
+    enemies.forEach(e => explode(e.x, e.y, e.color, 15)); enemies = []; enemyBullets = [];
     
-    boss.active = true; 
-    boss.type = type; 
-    boss.name = isMid ? `Mid: ${name}` : name;
-    boss.isMid = isMid;
-    boss.maxHp = hp * currentDiff.rank; 
-    boss.hp = boss.maxHp;
-    boss.x = W/2; boss.y = -50; boss.timer = 0; boss.phase = 1;
+    boss.active = true; boss.type = type; boss.name = name; boss.isMid = isMid;
+    boss.maxHp = hp * currentDiff.rank; boss.hp = boss.maxHp;
+    boss.x = W/2; boss.y = -80; boss.timer = 0; boss.phase = 1; boss.angle = 0;
     
     document.getElementById('bossUI').style.display = "block";
     document.getElementById('bossName').innerText = boss.name;
-    document.getElementById('bossBar').style.background = isMid ? "#fa0" : "linear-gradient(90deg, #f00, #ff0)";
+    document.getElementById('bossBar').style.background = isMid ? `linear-gradient(90deg, ${COLORS.yellow}, ${COLORS.red})` : `linear-gradient(90deg, ${COLORS.red}, ${COLORS.magenta}, ${COLORS.cyan})`;
     
-    showStageTitle(isMid ? "WARNING" : "BOSS ENCOUNTER");
+    showStageTitle(isMid ? "WARNING: SUB-ROUTINE DETECTED" : "ALERT: BOSS INITIALIZED");
 }
 
 function updateBoss() {
-    if(boss.y < 100) boss.y++;
-    boss.timer++;
+    if(boss.y < 120) boss.y+=2;
+    boss.timer++; boss.angle += 0.02;
     let bt = boss.timer;
     let r = currentDiff.rank;
-    let s = currentDiff.spd; // 速度係数
+    let s = currentDiff.spd;
 
-    // HPバー
     let hpRatio = boss.hp / boss.maxHp;
     document.getElementById('bossBar').style.width = (hpRatio*100) + "%";
-
-    // フェーズ変化 (中ボスは1形態、ボスは3形態)
     if(!boss.isMid) {
         if(hpRatio < 0.3) boss.phase = 3; else if(hpRatio < 0.7) boss.phase = 2; else boss.phase = 1;
     }
 
-    // 移動: 8の字
-    boss.x = W/2 + Math.sin(bt * 0.02) * (W/3);
+    boss.x = W/2 + Math.cos(bt * 0.015) * (W/3);
+    boss.y = 120 + Math.sin(bt * 0.02) * 30;
 
-    // --- 攻撃パターン ---
+    // --- 攻撃パターン (幾何学弾幕) ---
+    let bCol = boss.isMid ? COLORS.yellow : COLORS.red;
+    if(boss.phase === 2) bCol = COLORS.magenta;
+    if(boss.phase === 3) bCol = COLORS.cyan;
+
     if(boss.isMid) {
-        // 中ボス共通パターン: 拡散弾 + 自機狙い
-        if(bt % 60 === 0) fireNWay(boss, 10 + boss.type*2, 2*s, COLORS.cyan);
-        if(bt % 40 === 0) fireAimed(boss, 3*s, COLORS.blue);
+        if(bt % 50 === 0) fireNWay(boss, 12, 2.5*s, bCol, 'poly', 4, bt*0.1); // 回転する四角弾
+        if(bt % 35 === 0) fireAimed(boss, 4*s, COLORS.red, 'beam'); // 高速ビーム
     } else {
         switch(boss.type) {
-            case 1: // 森
-                if(boss.phase===1 && bt%90===0) fireNWay(boss, 12, 1.5*s, COLORS.red);
-                if(boss.phase===2 && bt%30===0) fire(boss.x, boss.y, (Math.random()-.5)*3, 1.5*s, COLORS.green);
-                if(boss.phase===3 && bt%40===0) fireAimed(boss, 3*s, COLORS.red);
+            case 1: // Stage 1
+                if(boss.phase===1 && bt%80===0) fireCircle(boss, 16, 2*s, bCol, 'poly', 3);
+                if(boss.phase===2 && bt%25===0) fire(boss.x, boss.y, (Math.random()-.5)*4, 2*s, bCol, 'poly', 5);
+                if(boss.phase===3 && bt%35===0) fireAimed(boss, 4*s, bCol, 'beam');
                 break;
-            case 2: // 風
-                if(boss.phase===1 && bt%15===0) fire(boss.x, boss.y, 0, 3*s, COLORS.blue, 'needle');
-                if(boss.phase===2 && bt%60===0) { fireNWay(boss, 8, 2*s, COLORS.blue, 0.2); fireNWay(boss, 8, 2*s, COLORS.blue, -0.2); }
-                if(boss.phase===3 && bt%5===0) fire(boss.x, boss.y, Math.sin(bt)*3, Math.cos(bt)*3, COLORS.purple, 'needle');
+            case 2: // Stage 2
+                if(boss.phase===1 && bt%10===0) fire(boss.x, boss.y, 0, 3.5*s, bCol, 'beam');
+                if(boss.phase===2 && bt%50===0) { fireNWay(boss, 8, 2.5*s, bCol, 'poly', 4, 0.2); fireNWay(boss, 8, 2.5*s, bCol, 'poly', 4, -0.2); }
+                if(boss.phase===3 && bt%4===0) fire(boss.x, boss.y, Math.sin(bt*0.3)*4, 3*s, bCol, 'beam');
                 break;
-            case 3: // 夢幻
-                if(boss.phase===1 && bt%100===0) fireCircle(boss, 16, 1.2*s, COLORS.gold);
-                if(boss.phase===2 && bt%50===0) { fireAimed(boss, 2*s, COLORS.red); fireNWay(boss, 10, 1.5*s, COLORS.red); }
-                if(boss.phase===3 && bt%80===0) fireCircle(boss, 32, 1.0*s, COLORS.gold);
+            case 3: // Stage 3
+                if(boss.phase===1 && bt%90===0) fireCircle(boss, 24, 1.8*s, bCol, 'poly', 6);
+                if(boss.phase===2 && bt%45===0) { fireAimed(boss, 3*s, COLORS.red, 'beam'); fireNWay(boss, 12, 2*s, bCol, 'poly', 3); }
+                if(boss.phase===3 && bt%70===0) fireCircle(boss, 40, 1.5*s, bCol, 'cross');
                 break;
-            case 4: // 紅魔 (New) - コウモリイメージ
-                if(boss.phase===1 && bt%60===0) { fireNWay(boss, 5, 2*s, COLORS.purple, -0.5); fireNWay(boss, 5, 2*s, COLORS.purple, 0.5); }
-                if(boss.phase===2 && bt%10===0) fire(boss.x, boss.y, Math.sin(bt*0.1)*5, 2*s, COLORS.red, 'needle');
-                if(boss.phase===3 && bt%40===0) { fireCircle(boss, 20, 3*s, COLORS.red); fireAimed(boss, 5*s, COLORS.purple); }
+            case 4: // Stage 4
+                if(boss.phase===1 && bt%50===0) { fireNWay(boss, 6, 2.5*s, bCol, 'poly', 5, -0.5); fireNWay(boss, 6, 2.5*s, bCol, 'poly', 5, 0.5); }
+                if(boss.phase===2 && bt%8===0) fire(boss.x, boss.y, Math.sin(bt*0.15)*6, 3*s, bCol, 'beam');
+                if(boss.phase===3 && bt%35===0) { fireCircle(boss, 20, 4*s, bCol, 'cross'); fireAimed(boss, 6*s, COLORS.white, 'beam'); }
                 break;
-            case 5: // 深淵 (Last) - 重力・密度
-                if(boss.phase===1 && bt%20===0) fireNWay(boss, 7, 2*s, COLORS.blue);
-                if(boss.phase===2 && bt%5===0) fire(boss.x + (Math.random()-.5)*100, boss.y, 0, (Math.random()+1)*s, COLORS.cyan);
-                if(boss.phase===3) { // 弾幕結界
-                    if(bt%60===0) fireCircle(boss, 40, 1.2*s, COLORS.blue);
-                    if(bt%30===0) fireAimed(boss, 4*s, COLORS.white, 'needle');
+            case 5: // Stage 5
+                if(boss.phase===1 && bt%18===0) fireNWay(boss, 9, 2.5*s, bCol, 'poly', 8);
+                if(boss.phase===2 && bt%4===0) fire(boss.x + (Math.random()-.5)*120, boss.y, 0, (Math.random()+1.5)*s, bCol, 'beam');
+                if(boss.phase===3) { 
+                    if(bt%50===0) fireCircle(boss, 50, 1.8*s, bCol, 'ring');
+                    if(bt%25===0) fireAimed(boss, 5*s, COLORS.white, 'beam');
                 }
                 break;
-            case 6: // 裏ボス (True) - カオス
-                let color = [COLORS.red, COLORS.blue, COLORS.gold, COLORS.purple][Math.floor(bt/100)%4];
-                if(bt%80===0) fireCircle(boss, 50, 1.5*s, color); // 全方位超密度
-                if(bt%15===0) fire(boss.x, boss.y, Math.cos(bt*0.1)*4, Math.sin(bt*0.1)*4, COLORS.white); // 回転乱射
-                if(bt%100===0) fireAimed(boss, 6*s, COLORS.red, 'needle'); // 超高速狙い
-                if(boss.hp < boss.maxHp*0.3 && bt%5===0) fire(boss.x, boss.y, (Math.random()-.5)*10, (Math.random()-.5)*10, COLORS.gold); // 発狂
+            case 6: // True Boss
+                let c = [COLORS.red, COLORS.blue, COLORS.yellow, COLORS.magenta][Math.floor(bt/80)%4];
+                if(bt%70===0) fireCircle(boss, 60, 2*s, c, 'cross');
+                if(bt%12===0) fire(boss.x, boss.y, Math.cos(bt*0.15)*5, Math.sin(bt*0.15)*5, COLORS.white, 'poly', 3);
+                if(bt%90===0) fireAimed(boss, 7*s, COLORS.red, 'beam');
+                if(boss.hp < boss.maxHp*0.3 && bt%4===0) fire(boss.x, boss.y, (Math.random()-.5)*12, (Math.random()-.5)*12, COLORS.yellow, 'beam');
                 break;
         }
     }
 
-    // 撃破処理
     if(boss.hp <= 0) {
         isBossActive = false; boss.active = false;
         document.getElementById('bossUI').style.display = "none";
         enemyBullets = [];
-        explode(boss.x, boss.y, "#fd0", 100); // 派手な爆発
+        explode(boss.x, boss.y, bCol, 150, true); // 大爆発
         
         if(boss.isMid) {
-            // 中ボス撃破 -> ステージ継続
-            showStageTitle("BONUS!");
-            score += 2000;
+            showStageTitle("SYSTEM RESTORED (+2000 PTS)"); score += 2000;
         } else {
-            // ステージボス撃破
             score += 10000;
             if(stage < 5) {
-                stage++; stageTimer = 0;
-                showStageTitle(`Stage ${stage}`);
+                stage++; stageTimer = 0; showStageTitle(`STAGE ${stage}: START`);
             } else if(stage === 5) {
-                // 裏ボスへの入り口
                 stage = 6; stageTimer = 0;
-                setTimeout(() => startBoss(6, "真の支配者・カオス", 10000, false), 3000);
+                setTimeout(() => startBoss(6, "TRUE ADMINISTRATOR: CHAOS", 12000, false), 3000);
             } else {
                 state = "CLEAR";
             }
@@ -483,43 +442,63 @@ function updateBoss() {
     }
 }
 
-/* --- 弾幕ヘルパー --- */
-function spawnEnemy(x, y, type, hp) { enemies.push({ x, y, type, hp, maxHp: hp, time: 0 }); }
-function fire(x, y, vx, vy, color, shape='orb') { enemyBullets.push({ x, y, vx, vy, color, shape }); }
-function fireAimed(origin, speed, color, shape='orb') {
-    let a = Math.atan2(player.y - origin.y, player.x - origin.x);
-    fire(origin.x, origin.y, Math.cos(a)*speed, Math.sin(a)*speed, color, shape);
+/* --- 弾幕・アイテム ヘルパー --- */
+function spawnEnemy(x, y, type, hp) { 
+    let color = (type==='cube') ? COLORS.blue : (type==='tetra') ? COLORS.red : COLORS.green;
+    enemies.push({ x, y, type, hp, maxHp: hp, time: 0, angle: 0, color: color }); 
 }
-function fireNWay(origin, count, speed, color, offset=0) {
-    for(let i=0; i<count; i++) {
-        let a = offset + (Math.PI*2/count)*i - (Math.PI/2); // 上向き基準補正
-        fire(origin.x, origin.y, Math.cos(a)*speed, Math.sin(a)*speed, color);
+function spawnItem(x, y, type) {
+    items.push({ x, y, type, angle: 0, color: (type==='power'?COLORS.red:COLORS.yellow) });
+}
+
+function fire(x, y, vx, vy, color, type='orb', sides=3) { 
+    enemyBullets.push({ x, y, vx, vy, color, type, sides, angle: 0 }); 
+    // 軌跡を追加
+    if(type === 'beam' || type === 'cross') {
+        trails.push({x, y, vx, vy, color, life: 10, width: (type==='beam'?4:8)});
     }
 }
-function fireCircle(origin, count, speed, color) { // 全方位
+function fireAimed(origin, speed, color, type='orb', sides=3) {
+    let a = Math.atan2(player.y - origin.y, player.x - origin.x);
+    fire(origin.x, origin.y, Math.cos(a)*speed, Math.sin(a)*speed, color, type, sides);
+}
+function fireNWay(origin, count, speed, color, type='orb', sides=3, offset=0) {
+    for(let i=0; i<count; i++) {
+        let a = offset + (Math.PI*2/count)*i - (Math.PI/2);
+        fire(origin.x, origin.y, Math.cos(a)*speed, Math.sin(a)*speed, color, type, sides);
+    }
+}
+function fireCircle(origin, count, speed, color, type='orb', sides=3) {
     for(let i=0; i<count; i++) {
         let a = (Math.PI*2/count)*i;
-        fire(origin.x, origin.y, Math.cos(a)*speed, Math.sin(a)*speed, color);
+        fire(origin.x, origin.y, Math.cos(a)*speed, Math.sin(a)*speed, color, type, sides);
     }
 }
 
 /* --- 更新 & 判定 --- */
 function updateEntities() {
+    // 弾の軌跡
+    for(let i=trails.length-1; i>=0; i--) {
+        let t = trails[i]; t.x+=t.vx; t.y+=t.vy; t.life--;
+        if(t.life<=0) trails.splice(i,1);
+    }
+
     // 自機弾
     for(let i=bullets.length-1; i>=0; i--) {
-        let b = bullets[i]; b.x+=b.vx; b.y+=b.vy;
+        let b = bullets[i]; b.x+=b.vx; b.y+=b.vy; b.angle+=0.2;
         if(b.y < -20) bullets.splice(i,1);
     }
     // 敵
     for(let i=enemies.length-1; i>=0; i--) {
-        let e = enemies[i]; e.time++; e.y += (e.type==='big'? 0.4 : 1.2) * currentDiff.spd;
-        if(e.type==='fairy' && e.time%120===0) fireAimed(e, 1.5*currentDiff.spd, COLORS.red);
-        if(e.type==='big' && e.time%150===0) fireNWay(e, 5, 1.5*currentDiff.spd, COLORS.blue);
+        let e = enemies[i]; e.time++; e.angle += (e.type==='tetra' ? 0.05 : 0.02);
+        e.y += (e.type==='octa'? 0.6 : 1.8) * currentDiff.spd;
+        if(e.type==='cube' && e.time%120===0) fireAimed(e, 2*currentDiff.spd, e.color, 'poly', 4);
+        if(e.type==='octa' && e.time%150===0) fireNWay(e, 6, 2*currentDiff.spd, e.color, 'poly', 8);
         if(e.y > H+50) enemies.splice(i,1);
     }
     // 敵弾
     for(let i=enemyBullets.length-1; i>=0; i--) {
-        let b = enemyBullets[i]; b.x+=b.vx; b.y+=b.vy;
+        let b = enemyBullets[i]; b.x+=b.vx; b.y+=b.vy; b.angle += 0.05;
         if(b.x<-50||b.x>W+50||b.y<-50||b.y>H+50) enemyBullets.splice(i,1);
     }
 }
@@ -530,17 +509,20 @@ function checkCollision() {
         let b = bullets[i]; let hit = false;
         for(let j=enemies.length-1; j>=0; j--) {
             let e = enemies[j];
-            if(Math.hypot(b.x-e.x, b.y-e.y) < (e.type==='big'?24:16)) {
+            let size = e.type==='octa' ? 28 : 20;
+            if(Math.hypot(b.x-e.x, b.y-e.y) < size) {
                 e.hp--; hit=true; 
                 if(e.hp<=0) {
-                    if(Math.random()<0.4) items.push({x: e.x, y: e.y});
-                    explode(e.x, e.y, "#f88", 5); enemies.splice(j,1); score+=100;
+                    spawnItem(e.x, e.y, Math.random()<0.3 ? 'power' : 'score');
+                    explode(e.x, e.y, e.color, 8); enemies.splice(j,1); score+=100;
                 }
                 break;
             }
         }
-        if(!hit && boss.active && Math.hypot(b.x-boss.x, b.y-boss.y) < 40) {
+        if(!hit && boss.active && Math.hypot(b.x-boss.x, b.y-boss.y) < 45) {
             boss.hp--; hit=true;
+             // ボス被弾時のエフェクトは負荷軽減のため控えめに
+             if(frame%5===0) explode(b.x, b.y, b.color, 1);
         }
         if(hit) bullets.splice(i,1);
     }
@@ -548,16 +530,16 @@ function checkCollision() {
     // 敵攻撃 -> 自機
     if(state==="PLAYING" && player.invincible<=0) {
         let hit = false;
-        for(let e of enemies) if(Math.hypot(e.x-player.x, e.y-player.y) < 16) hit=true;
+        for(let e of enemies) if(Math.hypot(e.x-player.x, e.y-player.y) < 20) hit=true;
         for(let b of enemyBullets) {
-            let safe = player.slow ? 1 : 2; 
-            if(Math.hypot(b.x-player.x, b.y-player.y) < safe+3) hit=true;
+            let safe = player.slow ? 2 : 4; 
+            if(Math.hypot(b.x-player.x, b.y-player.y) < safe+5) hit=true;
         }
-        if(boss.active && Math.hypot(boss.x-player.x, boss.y-player.y) < 30) hit=true;
+        if(boss.active && Math.hypot(boss.x-player.x, boss.y-player.y) < 35) hit=true;
 
         if(hit) {
             player.lives--; player.invincible=150; player.power = Math.max(0, player.power-10);
-            explode(player.x, player.y, "#f00", 50); // 赤い爆発のみ
+            explode(player.x, player.y, COLORS.red, 60, true); // 派手な被弾エフェクト
             enemyBullets=[]; 
             if(player.lives<0) state="GAMEOVER";
             updateUI();
@@ -566,8 +548,12 @@ function checkCollision() {
     if(frame%10===0) updateUI();
 }
 
-function explode(x,y,c="#fff",n=10) {
-    for(let i=0;i<n;i++) particles.push({x,y,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,life:30,color:c});
+// エフェクト・描画ヘルパー
+function explode(x,y,c,n,big=false) {
+    for(let i=0;i<n;i++) {
+        let spd = big ? (Math.random()*8+2) : (Math.random()*5+1);
+        particles.push({x,y,vx:(Math.random()-.5)*spd,vy:(Math.random()-.5)*spd,life:big?40:25,color:c, size:big?Math.random()*5+2:Math.random()*3+1});
+    }
 }
 function showFloatingText(text, x, y, color) { floatingTexts.push({text, x, y, color, life: 60}); }
 function showStageTitle(t) {
@@ -575,117 +561,175 @@ function showStageTitle(t) {
     el.innerText = t; el.style.opacity=1; setTimeout(()=>el.style.opacity=0, 3000);
 }
 function updateUI() {
-    document.getElementById('scoreText').innerText = `Score: ${Math.floor(score)}`;
+    document.getElementById('scoreText').innerText = `SCORE: ${Math.floor(score).toString().padStart(7,'0')}`;
     document.getElementById('infoText').innerHTML = 
-        `HP: ${"♥".repeat(Math.max(0,player.lives))}<br>` +
-        `Bomb: ${"★".repeat(Math.max(0,player.bombs))}<br>` +
-        `Power: ${player.power}/${player.maxPower}`;
+        `LIFE: ${"■".repeat(Math.max(0,player.lives))}<br>` +
+        `BOMB: ${"□".repeat(Math.max(0,player.bombs))}<br>` +
+        `PWR : ${player.power.toString().padStart(2,'0')}/${player.maxPower}`;
 }
 function useBomb() {
     if(player.bombs>0 && state==="PLAYING") {
         player.bombs--; enemyBullets=[];
-        enemies.forEach(e=>{e.hp=0; explode(e.x,e.y,"#f80",10);}); enemies=[];
-        if(boss.active) boss.hp -= 300;
+        enemies.forEach(e=>{e.hp=0; explode(e.x,e.y,COLORS.magenta,15);}); enemies=[];
+        if(boss.active) boss.hp -= 400;
         updateUI();
+        // ボムエフェクト（画面フラッシュ）
         let flash = document.createElement('div');
-        flash.style.cssText="position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;opacity:0.8;transition:0.5s";
+        flash.style.cssText="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(45deg, #f0f, #0ff);opacity:0.6;mix-blend-mode:screen;transition:0.5s";
         document.getElementById('gameContainer').appendChild(flash);
         setTimeout(()=>flash.remove(),500);
     }
 }
 
-/* --- 描画 --- */
+/* --- 描画 (Canvas APIによる幾何学図形描画) --- */
 function drawGame() {
-    // 自機
+    // 弾の軌跡描画
+    ctx.globalCompositeOperation = "lighter"; // 加算合成で発光させる
+    trails.forEach(t => {
+        ctx.beginPath();
+        ctx.moveTo(t.x, t.y);
+        ctx.lineTo(t.x - t.vx*3, t.y - t.vy*3);
+        ctx.lineWidth = t.width * (t.life/10);
+        ctx.strokeStyle = t.color; ctx.globalAlpha = t.life/10;
+        ctx.stroke();
+    });
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+
+    // 自機 (回転する三角形)
     if(player.invincible%10 < 5) {
-        ctx.drawImage(IMAGES.player, player.x-16, player.y-16);
-        if(player.slow) {
-            ctx.fillStyle="#f00"; ctx.beginPath(); ctx.arc(player.x, player.y, 4, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle="#fff"; ctx.lineWidth=1; ctx.stroke();
+        drawPolygon(player.x, player.y, 3, 20, player.angle, true, COLORS.cyan, true);
+        if(player.slow) { // 低速時のコア表示
+            drawPolygon(player.x, player.y, 4, 6, -player.angle*2, true, COLORS.red, true);
+            ctx.strokeStyle = COLORS.cyan; ctx.lineWidth=1;
+            ctx.beginPath(); ctx.arc(player.x, player.y, 35, 0, Math.PI*2); ctx.stroke();
         }
     }
+    
     // 敵
     enemies.forEach(e => {
-        let img = (e.type==='fairy') ? IMAGES.fairy : (e.type==='big' ? IMAGES.big : IMAGES.bird);
-        ctx.drawImage(img, e.x - img.width/2, e.y - img.height/2);
+        let sides = (e.type==='cube') ? 4 : (e.type==='tetra') ? 3 : 8;
+        drawPolygon(e.x, e.y, sides, sides*5, e.angle, true, e.color);
     });
+
     // ボス
     if(boss.active) {
-        let bImg = IMAGES.boss;
-        if(boss.isMid) bImg = IMAGES.boss_mid;
-        else if(boss.type === 5) bImg = IMAGES.boss_final;
-        else if(boss.type === 6) bImg = IMAGES.boss_true;
+        let sides = boss.isMid ? 6 : (boss.type === 6 ? 12 : 8);
+        let size = boss.isMid ? 50 : 70;
+        let col = boss.isMid ? COLORS.yellow : (boss.phase===1 ? COLORS.red : (boss.phase===2 ? COLORS.magenta : COLORS.cyan));
+        if(boss.type === 6) col = `hsl(${frame%360}, 80%, 60%)`; // 裏ボスは虹色
         
-        ctx.drawImage(bImg, boss.x - bImg.width/2, boss.y - bImg.height/2);
-
+        // ボス本体
+        drawPolygon(boss.x, boss.y, sides, size, boss.angle, true, col, true);
         // ボス魔法陣
-        ctx.save(); ctx.translate(boss.x, boss.y); ctx.rotate(frame*(boss.type===6 ? 0.1 : 0.05));
-        ctx.strokeStyle = (boss.type===6) ? `hsl(${frame%360},100%,50%)` : `rgba(200,50,255,0.5)`;
-        ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,50+Math.sin(frame*0.1)*10, 0, Math.PI*2); ctx.stroke();
+        ctx.save(); ctx.translate(boss.x, boss.y); ctx.rotate(-boss.angle*0.5);
+        ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.globalAlpha = 0.5 + Math.sin(frame*0.1)*0.2;
+        ctx.beginPath(); ctx.arc(0,0, size+30, 0, Math.PI*2); ctx.stroke();
+        drawPolygon(0, 0, sides, size+20, 0, false, col); // 外枠
         ctx.restore();
     }
-    // アイテム
-    items.forEach(it => ctx.drawImage(IMAGES.power, it.x-8, it.y-8));
+
+    // アイテム (回転する四角形)
+    items.forEach(it => {
+        drawPolygon(it.x, it.y, 4, 12, it.angle, true, it.color, true);
+        ctx.fillStyle = COLORS.white; ctx.font = "bold 12px sans-serif"; ctx.textAlign="center";
+        ctx.fillText(it.type==='power'?"P":"S", it.x, it.y+4);
+    });
 
     // 自機弾
-    ctx.fillStyle = "#ffeda0";
-    bullets.forEach(b => ctx.fillRect(b.x-2, b.y-8, 4, 16));
+    bullets.forEach(b => {
+        if(b.type === 'beam') {
+            ctx.fillStyle = b.color; ctx.fillRect(b.x-2, b.y-10, 4, 20);
+        } else {
+            drawPolygon(b.x, b.y, b.sides, 8, b.angle, true, b.color);
+        }
+    });
 
     // 敵弾
     enemyBullets.forEach(b => {
-        ctx.save(); ctx.translate(b.x, b.y);
-        ctx.fillStyle = b.color;
-        if(b.shape === 'needle') {
-            ctx.rotate(Math.atan2(b.vy, b.vx)); ctx.fillRect(-10, -1, 20, 3);
+        if(b.type === 'beam') {
+            ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx));
+            ctx.fillStyle = b.color; ctx.fillRect(-10, -3, 20, 6); ctx.restore();
+        } else if(b.type === 'cross' || b.type === 'ring') {
+             drawPolygon(b.x, b.y, 4, 10, b.angle, true, b.color, false);
+             if(b.type==='ring') { ctx.beginPath(); ctx.arc(b.x,b.y,4,0,Math.PI*2); ctx.fillStyle=COLORS.white; ctx.fill(); }
         } else {
-            ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
-            ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill();
+            drawPolygon(b.x, b.y, b.sides, 8, b.angle, true, b.color);
         }
-        ctx.restore();
     });
     
-    // パーティクル
+    // パーティクル (発光する矩形)
+    ctx.globalCompositeOperation = "lighter";
     particles.forEach(p => {
-        ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life/30);
-        ctx.fillRect(p.x, p.y, 6, 6); ctx.globalAlpha = 1;
+        ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life/40);
+        let s = p.size || 4;
+        ctx.fillRect(p.x-s/2, p.y-s/2, s, s);
         p.x += p.vx; p.y += p.vy; p.life--;
     });
-    particles = particles.filter(p => p.life > 0);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
 
-    // テキスト
+    // 浮遊テキスト
     floatingTexts.forEach(t => {
-        ctx.fillStyle = t.color; ctx.font = "bold 18px Arial"; 
-        ctx.fillText(t.text, t.x - 20, t.y);
+        ctx.fillStyle = t.color; ctx.font = "bold 16px 'Orbitron'"; ctx.textAlign="center";
+        ctx.fillText(t.text, t.x, t.y);
     });
 }
 
+// 汎用多角形描画関数 (グロー効果付き)
+function drawPolygon(x, y, sides, size, angle, filled, color, glow=false) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.beginPath();
+    ctx.moveTo(size, 0);
+    for (let i = 1; i < sides; i++) {
+        ctx.lineTo(size * Math.cos(i * 2 * Math.PI / sides), size * Math.sin(i * 2 * Math.PI / sides));
+    }
+    ctx.closePath();
+    
+    if(glow) {
+        ctx.shadowBlur = 15; ctx.shadowColor = color;
+    }
+    if (filled) {
+        ctx.fillStyle = color; ctx.fill();
+        // 輪郭を少し明るく
+        ctx.lineWidth = 2; ctx.strokeStyle = COLORS.white; ctx.globalAlpha=0.5; ctx.stroke();
+    } else {
+        ctx.lineWidth = 2; ctx.strokeStyle = color; ctx.stroke();
+    }
+    ctx.restore();
+}
+
 function drawOverlay() {
-    ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,W,H);
-    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(0, 5, 15, 0.85)"; ctx.fillRect(0,0,W,H);
+    ctx.textAlign = "center"; ctx.font = "'Orbitron', sans-serif";
     
     if(state === "TITLE") {
-        ctx.fillStyle = "#fff"; ctx.font = "50px serif"; 
-        ctx.shadowBlur=10; ctx.shadowColor="#f0f";
-        ctx.fillText("弾幕・夢幻", W/2, 150);
+        ctx.fillStyle = "#fff"; ctx.font = "50px 'Orbitron'"; 
+        ctx.shadowBlur=20; ctx.shadowColor="#0ff"; ctx.fillText("弾幕・夢幻", W/2, 160);
+        ctx.shadowColor="#f0f"; ctx.font = "28px 'Orbitron'"; ctx.fillText("GEOMETRIC NEO", W/2, 210);
         ctx.shadowBlur=0;
-        ctx.font = "24px serif"; ctx.fillText("- 完結編 -", W/2, 190);
         
         DIFFICULTIES.forEach((d, i) => {
-            ctx.fillStyle = (i===diffIndex) ? "#ff0" : "#888";
-            ctx.font = (i===diffIndex) ? "bold 26px serif" : "20px serif";
-            ctx.fillText((i===diffIndex?"▶ ":"") + d.name, W/2, 280+i*50);
+            let selected = (i===diffIndex);
+            ctx.fillStyle = selected ? COLORS.cyan : "#888";
+            ctx.font = selected ? "bold 24px 'Orbitron'" : "20px 'Orbitron'";
+            if(selected) { ctx.shadowBlur=10; ctx.shadowColor=COLORS.cyan; }
+            ctx.fillText((selected?"> ":"") + d.name, W/2, 320+i*50);
+            ctx.shadowBlur=0;
         });
-        ctx.fillStyle="#aaa"; ctx.font="14px sans-serif";
-        ctx.fillText("移動:矢印 / ショット:X / ボム:Z / 低速:Shift", W/2, 550);
+        ctx.fillStyle=COLORS.magenta; ctx.font="14px 'Share Tech Mono'";
+        ctx.fillText("MOVE:ARROW / SHOT:X / BOMB:Z / SLOW:SHIFT", W/2, 560);
     } else if(state === "GAMEOVER") {
-        ctx.fillStyle = "#f00"; ctx.font = "40px serif"; ctx.fillText("G A M E  O V E R", W/2, H/2);
-        ctx.fillStyle = "#fff"; ctx.font = "20px serif"; ctx.fillText("Retry: Z Key", W/2, H/2+60);
+        ctx.fillStyle = COLORS.red; ctx.font = "46px 'Orbitron'"; ctx.shadowBlur=15; ctx.shadowColor=COLORS.red;
+        ctx.fillText("SYSTEM FAILURE", W/2, H/2); ctx.shadowBlur=0;
+        ctx.fillStyle = "#fff"; ctx.font = "22px 'Orbitron'"; ctx.fillText("REBOOT: Z KEY", W/2, H/2+60);
     } else if(state === "CLEAR") {
-        ctx.fillStyle = "#ff0"; ctx.font = "40px serif"; ctx.fillText("CONGRATULATIONS!!", W/2, H/2);
-        ctx.fillStyle = "#fff"; ctx.font = "20px serif"; 
-        ctx.fillText(`Final Score: ${Math.floor(score)}`, W/2, H/2+60);
-        ctx.fillText("Thank you for playing!", W/2, H/2+100);
-        ctx.fillText("Return: Z Key", W/2, H/2+150);
+        ctx.fillStyle = COLORS.cyan; ctx.font = "46px 'Orbitron'"; ctx.shadowBlur=15; ctx.shadowColor=COLORS.cyan;
+        ctx.fillText("MISSION COMPLETE", W/2, H/2); ctx.shadowBlur=0;
+        ctx.fillStyle = "#fff"; ctx.font = "22px 'Orbitron'"; 
+        ctx.fillText(`FINAL SCORE: ${Math.floor(score)}`, W/2, H/2+60);
+        ctx.fillText("DIFFICULTY: " + currentDiff.name.split(' ')[0], W/2, H/2+100);
+        ctx.fillText("RETURN: Z KEY", W/2, H/2+150);
     }
 }
 
