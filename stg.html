@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>弾幕・夢幻 - Geometric Neo (Fixed)</title>
+    <title>弾幕・夢幻 - Geometric Neo (Seamless)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
         
@@ -77,7 +77,7 @@
 
 <script>
 /**
- * 弾幕・夢幻 - Geometric Neo (Fixed Edition)
+ * 弾幕・夢幻 - Geometric Neo (Seamless Edition)
  */
 
 const canvas = document.getElementById('canvas');
@@ -105,9 +105,9 @@ const DIFFICULTIES = [
 ];
 
 // --- グローバル変数 ---
-let state = "TITLE";
+let state = "TITLE"; // TITLE, PLAYING, PAUSED, GAMEOVER, CLEAR
 let menuIndex = 0;
-let diffIndex = 2; // Default Normal
+let diffIndex = 2; 
 let currentDiff = DIFFICULTIES[diffIndex];
 let frame = 0;
 let bgOffset = 0;
@@ -147,7 +147,6 @@ window.addEventListener('keydown', e => {
         if(e.code === "ArrowUp") menuIndex = (menuIndex + 2) % 3;
         if(e.code === "ArrowDown") menuIndex = (menuIndex + 1) % 3;
         
-        // ★修正ポイント: 難易度変更時に即座にcurrentDiffを更新する
         if(menuIndex === 0) {
             if(e.code === "ArrowLeft") {
                 diffIndex = (diffIndex + 3) % 4;
@@ -168,11 +167,13 @@ window.addEventListener('keydown', e => {
     } 
     else if (state === "PLAYING") {
         if(e.code === "KeyX") useBomb();
+        if(e.code === "Escape") state = "PAUSED"; // ポーズ機能
     }
-    else if (state === "INTERMISSION") {
-        if(e.code === "KeyZ") nextStage();
+    else if (state === "PAUSED") {
+        if(e.code === "Escape") state = "PLAYING";
         if(e.code === "KeyS") saveToBrowser();
         if(e.code === "KeyC") generateCode();
+        if(e.code === "KeyQ") state = "TITLE";
     }
     else if (["GAMEOVER", "CLEAR"].includes(state)) {
         if(e.code === "KeyZ") state = "TITLE";
@@ -190,20 +191,28 @@ function loop() {
         updateGame();
         drawGameEntities();
         drawUI();
-    } else {
+    } 
+    else if (state === "PAUSED") {
+        drawGameEntities(); 
+        drawUI();
+        drawOverlay(); // PAUSE画面
+    }
+    else {
+        // TITLE, GAMEOVER, CLEAR
         if(state !== "TITLE") { drawGameEntities(); drawUI(); }
         else drawUI();
         drawOverlay();
     }
     
-    frame++;
-    bgOffset = (bgOffset + 1) % 40;
+    if(state !== "PAUSED") {
+        frame++;
+        bgOffset = (bgOffset + 1) % 40;
+    }
     requestAnimationFrame(loop);
 }
 
 /* --- ゲームロジック --- */
 function startGame() {
-    // currentDiffはタイトル画面ですでに更新されているのでそのまま使用
     player.lives = 3; player.bombs = 3; player.power = 0;
     score = 0; 
     nextExtendScore = 100000; 
@@ -232,6 +241,7 @@ function addScore(amount) {
 function updateGame() {
     if(!isBossActive) stageTimer++;
 
+    // 移動
     let moveSpd = (player.slow ? 2.0 : 5.0);
     if(keys['ArrowLeft'] && player.x > 15) player.x -= moveSpd;
     if(keys['ArrowRight'] && player.x < PLAY_W-15) player.x += moveSpd;
@@ -240,6 +250,7 @@ function updateGame() {
     if(player.invincible > 0) player.invincible--;
     player.angle = frame * 0.05;
 
+    // ショット
     if(keys['KeyZ'] && frame % 4 === 0) {
         let pLvl = Math.floor(player.power / 10);
         let col = COLORS.cyan;
@@ -264,6 +275,7 @@ function updateGame() {
         }
     }
 
+    // アイテム
     items.forEach((it, i) => {
         it.angle += 0.1;
         let dist = Math.hypot(it.x - player.x, it.y - player.y);
@@ -306,18 +318,36 @@ function updateGame() {
 
 function manageStages() {
     if(isBossActive) { updateBoss(); return; }
+    
+    // stageTimerが負の数（ボス撃破直後の休憩時間）の場合は敵を出さない
+    if(stageTimer < 0) {
+        if(stageTimer === -50) showStageTitle("STAGE " + stage + " START");
+        return;
+    }
+
     let t = stageTimer;
     let r = currentDiff.rank;
     const spawn = (type, x, hp) => spawnEnemy(x, -40, type, hp * r);
 
-    if(t === 1000) { startBoss(stage, 2500, false); return; }
+    // ボス出現（ステージが進むごとに少し出現が遅くなる＝ステージが長くなる）
+    let bossTime = 1500 + (stage * 300); 
+    if(t === bossTime) { 
+        let bossHp = 2000 + (stage * 1000);
+        startBoss(stage, bossHp, false); 
+        return; 
+    }
 
-    if(stage === 1) {
-        if(t%80===0) spawn('cube', Math.random()*PLAY_W, 5);
-        if(t>500 && t%150===0) spawn('tetra', Math.random()*PLAY_W, 8);
-    } else if(stage >= 2) {
-        if(t%60===0) spawn('cube', Math.random()*PLAY_W, 6);
-        if(t%120===0) spawn('octa', Math.random()*PLAY_W, 15);
+    // 雑魚敵パターン
+    // ステージが進むほど敵の密度が少し上がる
+    let density = Math.max(20, 80 - (stage * 5)); // 出現間隔
+    let hpMult = 1.0 + (stage * 0.2); // HP倍率
+
+    if(t % density === 0) {
+        let type = (Math.random() > 0.5) ? 'cube' : ((stage > 1 && Math.random()>0.5)?'tetra':'cube');
+        spawn(type, Math.random()*PLAY_W, 5 * hpMult);
+    }
+    if(stage >= 2 && t % (density*2) === 0) {
+        spawn('octa', Math.random()*PLAY_W, 12 * hpMult);
     }
 }
 
@@ -357,15 +387,18 @@ function updateBoss() {
     boss.x = PLAY_W/2 + Math.sin(bt * 0.01) * (PLAY_W/3);
     boss.y = 120 + Math.cos(bt * 0.02) * 20;
 
+    // 攻撃パターン (ステージが進むと少し弾速アップ)
+    let sMul = 1.0 + (stage * 0.1);
+
     if(boss.phase === 0) {
-        if(bt % 60 === 0) fireCircle(boss, 16, 2.5*spd, COLORS.green, 'poly', 3);
-        if(bt % 40 === 0) fireNWay(boss, 3, 3*spd, COLORS.white, 'beam', 0, 0);
+        if(bt % 60 === 0) fireCircle(boss, 16, 2.5*spd*sMul, COLORS.green, 'poly', 3);
+        if(bt % 40 === 0) fireNWay(boss, 3, 3*spd*sMul, COLORS.white, 'beam', 0, 0);
     } else if(boss.phase === 1) {
-        if(bt % 8 === 0) fire(boss.x, boss.y, Math.cos(bt*0.1)*3*spd, Math.sin(bt*0.1)*3*spd, COLORS.yellow, 'poly', 4);
-        if(bt % 90 === 0) fireAimed(boss, 5*spd, COLORS.orange, 'beam');
+        if(bt % 8 === 0) fire(boss.x, boss.y, Math.cos(bt*0.1)*3*spd*sMul, Math.sin(bt*0.1)*3*spd*sMul, COLORS.yellow, 'poly', 4);
+        if(bt % 90 === 0) fireAimed(boss, 5*spd*sMul, COLORS.orange, 'beam');
     } else if(boss.phase === 2) {
-        if(bt % 25 === 0) fireCircle(boss, 24, 3*spd, COLORS.red, 'poly', 5);
-        if(bt % 5 === 0) fire(boss.x + (Math.random()-0.5)*100, boss.y, 0, 4*spd, COLORS.magenta, 'beam');
+        if(bt % 25 === 0) fireCircle(boss, 24, 3*spd*sMul, COLORS.red, 'poly', 5);
+        if(bt % 5 === 0) fire(boss.x + (Math.random()-0.5)*100, boss.y, 0, 4*spd*sMul, COLORS.magenta, 'beam');
     }
 
     if(boss.hp <= 0) {
@@ -374,8 +407,17 @@ function updateBoss() {
         explode(boss.x, boss.y, COLORS.cyan, 150, true);
         addScore(50000);
         spawnItem(boss.x, boss.y, 'bomb');
-        if(stage < 5) { state = "INTERMISSION"; } 
-        else { state = "CLEAR"; }
+
+        if(stage >= 5) {
+            state = "CLEAR"; // 5面クリアでエンディング
+        } else {
+            // シームレス移行: ステージを加算し、タイマーをマイナス(待機時間)に設定
+            stage++;
+            stageTimer = -240; // 約4秒間のインターバル
+            showFloatingText("STAGE CLEAR!", PLAY_W/2, H/2 - 50, COLORS.cyan);
+            // オートセーブ
+            localStorage.setItem('dm_geo_save', JSON.stringify({s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex}));
+        }
     }
 }
 
@@ -543,24 +585,24 @@ function drawUI() {
     ctx.fillStyle = COLORS.magenta; ctx.font = "24px 'Orbitron'";
     ctx.fillText("GEOMETRIC", x, 50); ctx.fillText("NEO", x, 80);
 
-    ctx.fillStyle = COLORS.cyan; ctx.font = "18px 'Orbitron'"; ctx.fillText("SCORE", x, 140);
-    ctx.fillStyle = "#fff"; ctx.font = "24px 'Share Tech Mono'"; ctx.fillText(Math.floor(score).toString().padStart(9, '0'), x, 170);
+    ctx.fillStyle = COLORS.cyan; ctx.font = "18px 'Orbitron'"; ctx.fillText("STAGE", x, 140);
+    ctx.fillStyle = "#fff"; ctx.font = "24px 'Share Tech Mono'"; ctx.fillText(stage, x, 170);
+
+    ctx.fillStyle = COLORS.cyan; ctx.font = "18px 'Orbitron'"; ctx.fillText("SCORE", x, 210);
+    ctx.fillStyle = "#fff"; ctx.font = "24px 'Share Tech Mono'"; ctx.fillText(Math.floor(score).toString().padStart(9, '0'), x, 240);
     ctx.fillStyle = "#666"; ctx.font = "12px 'Share Tech Mono'";
-    ctx.fillText(`NEXT: ${nextExtendScore}`, x, 190);
+    ctx.fillText(`NEXT: ${nextExtendScore}`, x, 260);
 
-    ctx.fillStyle = COLORS.green; ctx.font = "18px 'Orbitron'"; ctx.fillText("LIVES", x, 230);
-    for(let i=0; i<player.lives; i++) drawPolygon(ctx, x + 10 + i*30, 260, 3, 10, -Math.PI/2, true, COLORS.green);
+    ctx.fillStyle = COLORS.green; ctx.font = "18px 'Orbitron'"; ctx.fillText("LIVES", x, 300);
+    for(let i=0; i<player.lives; i++) drawPolygon(ctx, x + 10 + i*30, 330, 3, 10, -Math.PI/2, true, COLORS.green);
 
-    ctx.fillStyle = COLORS.magenta; ctx.font = "18px 'Orbitron'"; ctx.fillText("BOMB (X)", x, 310);
-    for(let i=0; i<player.bombs; i++) drawPolygon(ctx, x + 10 + i*30, 340, 4, 8, 0, true, COLORS.magenta);
+    ctx.fillStyle = COLORS.magenta; ctx.font = "18px 'Orbitron'"; ctx.fillText("BOMB (X)", x, 380);
+    for(let i=0; i<player.bombs; i++) drawPolygon(ctx, x + 10 + i*30, 410, 4, 8, 0, true, COLORS.magenta);
 
-    ctx.fillStyle = COLORS.yellow; ctx.font = "18px 'Orbitron'"; ctx.fillText("POWER", x, 390);
-    ctx.fillStyle = "#fff"; ctx.font = "24px 'Share Tech Mono'"; ctx.fillText(`${player.power} / ${player.maxPower}`, x, 420);
-    ctx.strokeStyle = "#555"; ctx.strokeRect(x, 430, 120, 8);
-    ctx.fillStyle = COLORS.yellow; ctx.fillRect(x+1, 431, 118 * (player.power/player.maxPower), 6);
-
-    ctx.fillStyle = "#888"; ctx.font = "16px 'Orbitron'"; ctx.fillText("DIFFICULTY:", x, 550);
-    ctx.fillStyle = "#fff"; ctx.fillText(currentDiff.name, x, 575);
+    ctx.fillStyle = COLORS.yellow; ctx.font = "18px 'Orbitron'"; ctx.fillText("POWER", x, 460);
+    ctx.fillStyle = "#fff"; ctx.font = "24px 'Share Tech Mono'"; ctx.fillText(`${player.power} / ${player.maxPower}`, x, 490);
+    ctx.strokeStyle = "#555"; ctx.strokeRect(x, 500, 120, 8);
+    ctx.fillStyle = COLORS.yellow; ctx.fillRect(x+1, 501, 118 * (player.power/player.maxPower), 6);
 }
 
 function drawOverlay() {
@@ -572,7 +614,6 @@ function drawOverlay() {
         ctx.shadowBlur=20; ctx.shadowColor="#0ff"; ctx.fillText("弾幕・夢幻", CX, 180);
         ctx.shadowBlur=0;
         
-        // 操作説明
         ctx.fillStyle = "#888"; ctx.font = "14px 'Share Tech Mono'";
         ctx.fillText("← → CHANGE DIFFICULTY", CX, 230);
 
@@ -582,19 +623,28 @@ function drawOverlay() {
             ctx.fillStyle = sel ? COLORS.cyan : "#555";
             ctx.font = sel ? "bold 24px 'Orbitron'" : "20px 'Orbitron'";
             let txt = (sel ? "> " : "") + m;
-            // 修正：currentDiff.nameを表示（変数が即座に更新されるためこれでOK）
             if(i===0 && sel) txt += ` < ${currentDiff.name} >`;
             ctx.fillText(txt, CX, 350 + i*50);
         });
-    } else if(state === "INTERMISSION") {
+    } else if(state === "PAUSED") {
         ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,PLAY_W,H);
-        ctx.fillStyle = COLORS.green; ctx.font = "30px 'Orbitron'"; ctx.fillText("STAGE CLEAR", CX, 250);
+        ctx.fillStyle = COLORS.yellow; ctx.font = "30px 'Orbitron'"; ctx.fillText("PAUSED", CX, 200);
         ctx.fillStyle = "#fff"; ctx.font = "18px 'Share Tech Mono'";
-        ctx.fillText("Z: NEXT STAGE", CX, 350); ctx.fillText("S: SAVE TO BROWSER", CX, 390); ctx.fillText("C: GET CODE", CX, 430);
+        ctx.fillText("ESC: RESUME", CX, 300);
+        ctx.fillText("S: SAVE TO BROWSER", CX, 340);
+        ctx.fillText("C: GET CODE", CX, 380);
+        ctx.fillText("Q: TITLE", CX, 420);
     } else if(state === "GAMEOVER") {
         ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,PLAY_W,H);
         ctx.fillStyle = COLORS.red; ctx.font = "40px 'Orbitron'"; ctx.fillText("GAME OVER", CX, 300);
         ctx.fillStyle = "#fff"; ctx.font = "20px 'Orbitron'"; ctx.fillText("Z: TITLE", CX, 360);
+    } else if(state === "CLEAR") {
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,PLAY_W,H);
+        ctx.fillStyle = COLORS.cyan; ctx.font = "40px 'Orbitron'"; ctx.fillText("ALL CLEAR!", CX, 250);
+        ctx.fillStyle = "#fff"; ctx.font = "20px 'Share Tech Mono'"; 
+        ctx.fillText("SCORE: " + score, CX, 320);
+        ctx.fillText("THANK YOU FOR PLAYING", CX, 380);
+        ctx.fillText("Z: TITLE", CX, 450);
     }
 }
 
@@ -612,13 +662,12 @@ function drawPolygon(c, x, y, sides, size, angle, filled, color, glow=false) {
 function showStageTitle(t) { const el = document.getElementById('stageMsg'); el.innerText = t; el.style.opacity=1; setTimeout(()=>el.style.opacity=0, 3000); }
 function showFloatingText(text, x, y, color) { floatingTexts.push({text, x, y, color, life: 60}); }
 
-function saveToBrowser() { localStorage.setItem('dm_geo_save', JSON.stringify({s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex})); showStageTitle("SAVED!"); }
+function saveToBrowser() { localStorage.setItem('dm_geo_save', JSON.stringify({s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex})); showFloatingText("SAVED!", PLAY_W/2, H/2, COLORS.white); }
 function loadFromBrowser() { let d = JSON.parse(localStorage.getItem('dm_geo_save')); if(d) applyData(d); else alert("NO DATA"); }
 function generateCode() { let d = {s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex}; document.getElementById('codeDisplay').innerText = btoa(JSON.stringify(d)); document.getElementById('codeOverlay').style.display='flex'; }
 function closeCodeOverlay(){ document.getElementById('codeOverlay').style.display='none'; }
 function loadFromCodeInput() { let c = prompt("CODE:"); if(c) { try { applyData(JSON.parse(atob(c))); } catch(e){alert("INVALID");} } }
 function applyData(d) { score=d.s; stage=d.st; player.lives=d.l; player.bombs=d.b; player.power=d.p; diffIndex=d.d; currentDiff=DIFFICULTIES[diffIndex]; startGame(); }
-function nextStage() { stage++; startGame(); }
 
 init();
 </script>
