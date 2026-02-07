@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>弾幕・夢幻 - Geometric Neo (Fixed Performance)</title>
+    <title>弾幕・夢幻 - Geometric Neo (Smooth Motion Fix)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
         
@@ -77,7 +77,7 @@
 
 <script>
 /**
- * 弾幕・夢幻 - Geometric Neo (Fixed Performance & Stutter)
+ * 弾幕・夢幻 - Geometric Neo (Ultra Smooth Boss Motion)
  */
 
 const canvas = document.getElementById('canvas');
@@ -313,7 +313,7 @@ function updateGame() {
     updateEntities();
     checkCollision();
     
-    // ▼ 重要修正: パーティクルの掃除（これがないと無限に増えて重くなる）
+    // パーティクルの掃除
     particles = particles.filter(p => p.life > 0);
     
     // フローティングテキスト掃除
@@ -393,61 +393,70 @@ function startBoss(type, hp, isMid) {
 }
 
 function updateBoss() {
-    // スムーズな入場
-    if(boss.y < 120) {
-        boss.y += 2;
-        // 入場中はtimerを進めず、角度だけ回す
+    let targetX, targetY;
+    
+    // 入場フェーズ
+    if(boss.y < 118) { // 少し余裕を持って判定
+        targetX = PLAY_W/2;
+        targetY = 120;
         boss.angle += 0.02;
-        // X座標は中央固定（これにより入場完了時に変な場所にテレポートしない）
-        boss.x = PLAY_W/2;
-        return; 
-    }
+    } 
+    // 戦闘フェーズ
+    else {
+        boss.timer++; boss.angle += 0.02;
+        let bt = boss.timer;
+        
+        // フェーズ管理（大ボス）
+        if(!boss.isMid) {
+            let hpRatio = boss.hp / boss.maxHp;
+            let oldPhase = boss.phase;
+            if (hpRatio > 0.66) boss.phase = 0;
+            else if (hpRatio > 0.33) boss.phase = 1;
+            else boss.phase = 2;
 
-    // ここから戦闘パターン
-    boss.timer++; boss.angle += 0.02;
-    let bt = boss.timer;
-    let spd = currentDiff.spd;
+            if(boss.phase === 0) boss.color = COLORS.green;
+            else if(boss.phase === 1) boss.color = COLORS.yellow;
+            else boss.color = COLORS.red;
 
-    if(!boss.isMid) {
-        let hpRatio = boss.hp / boss.maxHp;
-        let oldPhase = boss.phase;
-        if (hpRatio > 0.66) boss.phase = 0;
-        else if (hpRatio > 0.33) boss.phase = 1;
-        else boss.phase = 2;
+            if(oldPhase !== boss.phase) {
+                enemyBullets.forEach(b => explode(b.x, b.y, b.color, 3));
+                enemyBullets = [];
+                showFloatingText("PHASE CHANGE!", boss.x, boss.y-50, boss.color);
+            }
+        }
+        
+        // --- 修正: 目標座標の計算 ---
+        // Y軸: sinを使うことで 120 + 0 = 120 から滑らかにスタートさせる
+        // X軸: 左右に揺れる
+        targetX = PLAY_W/2 + Math.sin(bt * 0.01) * (PLAY_W/3);
+        targetY = 120 + Math.sin(bt * 0.03) * 20; 
 
-        if(boss.phase === 0) boss.color = COLORS.green;
-        else if(boss.phase === 1) boss.color = COLORS.yellow;
-        else boss.color = COLORS.red;
-
-        if(oldPhase !== boss.phase) {
-            enemyBullets.forEach(b => explode(b.x, b.y, b.color, 3));
-            enemyBullets = [];
-            showFloatingText("PHASE CHANGE!", boss.x, boss.y-50, boss.color);
+        // 攻撃ロジック
+        let spd = currentDiff.spd;
+        let sMul = 1.0 + (stage * 0.1);
+        if(boss.isMid) {
+            if(bt % 40 === 0) fireAimed(boss, 6*spd*sMul, COLORS.orange, 'poly');
+            if(bt % 20 === 0) fireCircle(boss, 8, 3*spd*sMul, COLORS.yellow, 'beam', 0);
+        } else {
+            if(boss.phase === 0) {
+                if(bt % 60 === 0) fireCircle(boss, 16, 2.5*spd*sMul, COLORS.green, 'poly', 3);
+                if(bt % 40 === 0) fireNWay(boss, 3, 3*spd*sMul, COLORS.white, 'beam', 0, 0);
+            } else if(boss.phase === 1) {
+                if(bt % 8 === 0) fire(boss.x, boss.y, Math.cos(bt*0.1)*3*spd*sMul, Math.sin(bt*0.1)*3*spd*sMul, COLORS.yellow, 'poly', 4);
+                if(bt % 90 === 0) fireAimed(boss, 5*spd*sMul, COLORS.orange, 'beam');
+            } else if(boss.phase === 2) {
+                if(bt % 25 === 0) fireCircle(boss, 24, 3*spd*sMul, COLORS.red, 'poly', 5);
+                if(bt % 5 === 0) fire(boss.x + (Math.random()-0.5)*100, boss.y, 0, 4*spd*sMul, COLORS.magenta, 'beam');
+            }
         }
     }
+    
+    // --- 重要修正: スムージング移動 (Lerp) ---
+    // 現在位置から目標位置へ 5% ずつ近づくことで、どのような急な値の変化も滑らかにする
+    boss.x += (targetX - boss.x) * 0.05;
+    boss.y += (targetY - boss.y) * 0.05;
 
-    // 動きの計算（btが0から始まるので中央からスムーズに動き出す）
-    boss.x = PLAY_W/2 + Math.sin(bt * 0.01) * (PLAY_W/3);
-    boss.y = 120 + Math.cos(bt * 0.02) * 20;
-
-    let sMul = 1.0 + (stage * 0.1);
-
-    if(boss.isMid) {
-        if(bt % 40 === 0) fireAimed(boss, 6*spd*sMul, COLORS.orange, 'poly');
-        if(bt % 20 === 0) fireCircle(boss, 8, 3*spd*sMul, COLORS.yellow, 'beam', 0);
-    } else {
-        if(boss.phase === 0) {
-            if(bt % 60 === 0) fireCircle(boss, 16, 2.5*spd*sMul, COLORS.green, 'poly', 3);
-            if(bt % 40 === 0) fireNWay(boss, 3, 3*spd*sMul, COLORS.white, 'beam', 0, 0);
-        } else if(boss.phase === 1) {
-            if(bt % 8 === 0) fire(boss.x, boss.y, Math.cos(bt*0.1)*3*spd*sMul, Math.sin(bt*0.1)*3*spd*sMul, COLORS.yellow, 'poly', 4);
-            if(bt % 90 === 0) fireAimed(boss, 5*spd*sMul, COLORS.orange, 'beam');
-        } else if(boss.phase === 2) {
-            if(bt % 25 === 0) fireCircle(boss, 24, 3*spd*sMul, COLORS.red, 'poly', 5);
-            if(bt % 5 === 0) fire(boss.x + (Math.random()-0.5)*100, boss.y, 0, 4*spd*sMul, COLORS.magenta, 'beam');
-        }
-    }
-
+    // 撃破判定
     if(boss.hp <= 0) {
         isBossActive = false; boss.active = false;
         enemyBullets = [];
