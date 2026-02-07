@@ -5,53 +5,68 @@
     <title>第九曼荼羅 - The 9th Mandala -</title>
     <style>
         :root {
-            /* 初期テーマカラー：深紫（無明） */
-            --theme-color: #6a0dad;
+            --theme-color: #6a0dad; /* 初期: 紫 */
             --theme-glow: rgba(106, 13, 173, 0.5);
             --bg-black: #020202;
+            --text-gold: #d4af37;
         }
 
         body {
             background-color: var(--bg-black);
-            /* 背景をより暗くし、中心からテーマカラーが微かに滲むように調整 */
-            background-image: radial-gradient(circle at center, rgba(0,0,0,0) 0%, var(--bg-black) 80%),
+            background-image: radial-gradient(circle at center, rgba(0,0,0,0) 0%, var(--bg-black) 90%),
                               radial-gradient(circle at center, var(--theme-glow) 0%, transparent 60%);
-            color: var(--theme-color);
+            color: var(--text-gold);
             font-family: 'Yu Mincho', 'MS Mincho', serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             min-height: 100vh;
             margin: 0;
-            overflow: hidden;
+            overflow-y: auto; /* ショップが増えたのでスクロール許可 */
             user-select: none;
-            -webkit-user-select: none;
             transition: color 1s ease, background-image 1s ease;
         }
 
-        /* ヘッダーエリア */
+        /* レイアウト */
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+            padding-bottom: 50px;
+        }
+
+        /* ヘッダー */
         #header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-top: 20px;
+            margin-bottom: 20px;
             z-index: 10;
             text-shadow: 0 0 15px var(--theme-glow);
         }
 
-        h1 { font-size: 2.5rem; letter-spacing: 0.3rem; margin: 0; transition: all 1s ease; }
-        .stats-container { font-size: 1.2rem; margin-top: 15px; border-top: 1px solid var(--theme-color); padding-top: 15px; }
-        #virtue { font-family: monospace; font-size: 1.5rem; }
+        h1 { font-size: 2rem; letter-spacing: 0.3rem; margin: 0; }
+        .stats-container { 
+            font-size: 1.1rem; 
+            margin-top: 10px; 
+            border-top: 1px solid var(--theme-color); 
+            padding-top: 10px; 
+        }
+        #virtue-display { font-size: 1.8rem; font-weight: bold; font-family: monospace; }
+        .sub-stats { font-size: 0.9rem; color: #ccc; }
 
-        /* 曼荼羅 */
+        /* 曼荼羅エリア */
         #mandala-stage {
             position: relative;
-            width: 450px;
-            height: 450px;
+            width: 350px;
+            height: 350px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             margin-bottom: 30px;
+            flex-shrink: 0;
         }
 
         .mandala-layer {
@@ -60,19 +75,18 @@
             border-radius: 50%;
             opacity: 0.7;
             box-shadow: 0 0 10px var(--theme-glow), inset 0 0 5px var(--theme-glow);
-            transition: all 1s ease, animation-duration 2s ease;
+            transition: all 1s ease;
         }
 
-        #layer1 { width: 420px; height: 420px; border-style: double; border-width: 4px; animation: rotate 60s linear infinite; }
-        #layer2 { width: 340px; height: 340px; border-style: dashed; animation: rotate 45s linear infinite reverse; }
-        #layer3 { width: 240px; height: 240px; border-style: dotted; border-width: 3px; animation: rotate 30s linear infinite; }
+        #layer1 { width: 320px; height: 320px; border-style: double; border-width: 4px; animation: rotate 60s linear infinite; }
+        #layer2 { width: 240px; height: 240px; border-style: dashed; animation: rotate 45s linear infinite reverse; }
+        #layer3 { width: 160px; height: 160px; border-style: dotted; border-width: 3px; animation: rotate 30s linear infinite; }
         
         #core {
-            width: 120px;
-            height: 120px;
-            /* 中心もテーマカラーで発光 */
+            width: 90px;
+            height: 90px;
             background: radial-gradient(circle, var(--theme-color) 20%, transparent 80%);
-            border: 2px solid var(--theme-color);
+            border: 1px solid var(--theme-color);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -80,10 +94,10 @@
             color: #fff;
             text-shadow: 0 0 5px var(--theme-color);
             font-weight: bold;
-            font-size: 3rem;
+            font-size: 2.5rem;
             z-index: 5;
-            box-shadow: 0 0 40px var(--theme-glow), inset 0 0 20px var(--theme-glow);
-            transition: all 0.3s ease, background 1s ease, box-shadow 1s ease, border-color 1s ease;
+            box-shadow: 0 0 40px var(--theme-glow);
+            transition: all 0.3s ease;
         }
 
         @keyframes rotate {
@@ -94,202 +108,426 @@
         /* クリックエフェクト */
         .virtue-pop {
             position: absolute;
-            color: var(--theme-color);
+            color: #fff;
             font-weight: bold;
             font-family: monospace;
-            text-shadow: 0 0 5px var(--theme-glow);
             pointer-events: none;
-            animation: riseFade 1s ease-out forwards;
+            animation: riseFade 0.8s ease-out forwards;
             z-index: 100;
+            text-shadow: 0 0 5px var(--theme-color);
         }
 
         @keyframes riseFade {
             0% { opacity: 1; transform: translateY(0) scale(1); }
-            100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1.2); }
         }
 
-        /* ショップエリア */
-        #shop {
+        /* ショップUI */
+        .shop-section {
+            width: 90%;
+            margin-bottom: 20px;
+        }
+        .shop-title {
+            font-size: 1.2rem;
+            border-bottom: 1px solid var(--text-gold);
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+        }
+        
+        .shop-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            width: 80%;
-            max-width: 600px;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        @media (min-width: 600px) {
+            .shop-grid { grid-template-columns: 1fr 1fr; }
         }
 
-        .upgrade-card {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid var(--theme-color);
-            box-shadow: inset 0 0 10px var(--theme-glow);
-            padding: 15px;
-            text-align: center;
-            transition: 0.3s;
+        .item-card {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid #444;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.2s;
+        }
+        .item-card:hover { border-color: var(--text-gold); }
+
+        .item-info { display: flex; flex-direction: column; text-align: left; }
+        .item-name { font-weight: bold; color: var(--text-gold); }
+        .item-effect { font-size: 0.8rem; color: #aaa; }
+        .item-count { font-size: 0.8rem; color: #fff; }
+
+        .buy-btn {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: monospace;
+            min-width: 100px;
+            text-align: right;
+        }
+        .buy-btn:hover:not(:disabled) { background: var(--theme-color); border-color: #fff; }
+        .buy-btn:disabled { color: #555; border-color: #222; background: #111; cursor: not-allowed; }
+
+        /* 解脱・転生UI */
+        #liberation-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            color: black;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 3s ease forwards;
+        }
+        
+        #liberation-text {
+            font-size: 5rem;
+            font-weight: bold;
+            margin-bottom: 50px;
+            letter-spacing: 1rem;
         }
 
-        button {
-            background: var(--theme-color);
-            color: #000;
-            border: none;
-            padding: 10px 15px;
-            margin-top: 15px;
+        #prestige-btn {
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            border: 2px solid black;
+            background: transparent;
             cursor: pointer;
             font-family: serif;
+            transition: 0.3s;
+        }
+        #prestige-btn:hover { background: black; color: white; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        #karma-display {
+            color: #ff4500;
             font-weight: bold;
-            width: 100%;
-            transition: all 0.3s ease;
-            box-shadow: 0 0 10px var(--theme-glow);
         }
-
-        button:hover:not(:disabled) {
-            filter: brightness(1.2);
-            box-shadow: 0 0 20px var(--theme-glow);
-        }
-
-        button:disabled {
-            background: #333;
-            color: #666;
-            box-shadow: none;
-            cursor: not-allowed;
-            border: 1px solid #444;
-        }
-
-        .count { font-size: 0.9rem; color: rgba(255,255,255,0.7); display: block; margin-top: 5px; }
     </style>
 </head>
 <body oncontextmenu="return false;">
 
-    <div id="header">
-        <h1 id="rank-name">第零曼荼羅：無明</h1>
-        <div class="stats-container">
-            徳：<span id="virtue">0</span><br>
-            <small>毎秒の自動功徳: <span id="per-sec">0</span></small>
+    <div class="container">
+        <div id="header">
+            <h1 id="rank-name">第零曼荼羅：無明</h1>
+            <div class="stats-container">
+                徳: <span id="virtue-display">0</span>
+                <div class="sub-stats">
+                    <span id="ips-display">0</span> ips (祈り/秒)<br>
+                    カルマ: <span id="karma-display">0</span> (生産量 +<span id="karma-bonus">0</span>%)
+                </div>
+            </div>
+        </div>
+
+        <div id="mandala-stage" onclick="clickMandala(event)">
+            <div id="layer1" class="mandala-layer"></div>
+            <div id="layer2" class="mandala-layer"></div>
+            <div id="layer3" class="mandala-layer"></div>
+            <div id="core">唵</div>
+        </div>
+
+        <div class="shop-section">
+            <div class="shop-title">僧侶の勧誘 (自動生産)</div>
+            <div class="shop-grid" id="unit-shop">
+                </div>
+        </div>
+
+        <div class="shop-section">
+            <div class="shop-title">写経の奉納 (生産倍率)</div>
+            <div class="shop-grid" id="upgrade-shop">
+                </div>
         </div>
     </div>
 
-    <div id="mandala-stage" onclick="clickMandala(event)">
-        <div id="layer1" class="mandala-layer"></div>
-        <div id="layer2" class="mandala-layer"></div>
-        <div id="layer3" class="mandala-layer"></div>
-        <div id="core">唵</div>
-    </div>
-
-    <div id="shop">
-        <div class="upgrade-card">
-            <strong>修行僧の招集</strong>
-            <span class="count" id="monk-count">Lv.0</span>
-            <button id="btn-monk" onclick="buyMonk()">徳を捧げる</button>
+    <div id="liberation-overlay">
+        <div id="liberation-text">解放</div>
+        <div style="font-size: 1.2rem; margin-bottom: 20px;">
+            獲得カルマ: <span id="pending-karma">0</span>
         </div>
-        <div class="upgrade-card">
-            <strong>自動詠唱の儀</strong>
-            <span class="count" id="chant-count">Lv.0</span>
-            <button id="btn-chant" onclick="buyChant()">徳を捧げる</button>
-        </div>
+        <button id="prestige-btn" onclick="doPrestige()">輪廻転生する</button>
     </div>
 
     <script>
-        let virtue = 0;
-        let monkCount = 0;
-        let chantPower = 0;
-        let rank = 0;
-
-        const rankData = [
-            { name: "第零曼荼羅：無明", color: "#6a0dad" }, // 紫
-            { name: "第一曼荼羅：胎蔵界", color: "#4b0082" }, // インディゴ
-            { name: "第二曼荼羅：金剛界", color: "#0000ff" }, // 青
-            { name: "第三曼荼羅：阿弥陀", color: "#008000" }, // 緑
-            { name: "第四曼荼羅：蓮華", color: "#adff2f" }, // 黄緑
-            { name: "第五曼荼羅：虚空", color: "#ffff00" }, // 黄
-            { name: "第六曼荼羅：寂静", color: "#ffd700" }, // 黄金
-            { name: "第七曼荼羅：遍照", color: "#ffa500" }, // オレンジ
-            { name: "第八曼荼羅：解脱", color: "#ff4500" }, // 赤橙
-            { name: "第九曼荼羅：不可説不可説転", color: "#ff0000" }  // 赤
+        // --- ゲームデータ設定 ---
+        const unitData = [
+            { id: 0, name: "修行僧", baseRate: 1, baseCost: 15 },
+            { id: 1, name: "東の若僧", baseRate: 70, baseCost: 1500 },
+            { id: 2, name: "南の僧侶", baseRate: 300, baseCost: 8000 },
+            { id: 3, name: "南の高僧", baseRate: 40000, baseCost: 2000000 },
+            { id: 4, name: "西の老僧", baseRate: 2000000, baseCost: 150000000 },
+            { id: 5, name: "北の天才", baseRate: 800000000, baseCost: 50000000000 }
         ];
 
+        const upgradeData = [
+            { id: 0, name: "弟子の写経", mult: 1.01, baseCost: 500 },
+            { id: 1, name: "中品質の写経", mult: 1.05, baseCost: 50000 },
+            { id: 2, name: "完璧な写経", mult: 1.08, baseCost: 10000000 }
+        ];
+
+        const rankNames = [
+            { name: "第零曼荼羅：無明", color: "#6a0dad" },
+            { name: "第一曼荼羅：胎蔵界", color: "#4b0082" },
+            { name: "第二曼荼羅：金剛界", color: "#0000ff" },
+            { name: "第三曼荼羅：阿弥陀", color: "#008000" },
+            { name: "第四曼荼羅：蓮華", color: "#adff2f" },
+            { name: "第五曼荼羅：虚空", color: "#ffff00" },
+            { name: "第六曼荼羅：寂静", color: "#ffd700" },
+            { name: "第七曼荼羅：遍照", color: "#ffa500" },
+            { name: "第八曼荼羅：解脱", color: "#ff4500" },
+            { name: "第九曼荼羅：不可説不可説転", color: "#ff0000" }
+        ];
+
+        // --- 変数管理 ---
+        let game = {
+            virtue: 0,
+            totalVirtue: 0, // 累計（転生計算用）
+            karma: 0,       // 周回ポイント
+            rank: 0,
+            units: [0, 0, 0, 0, 0, 0], // 各ユニットの所持数
+            upgrades: [0, 0, 0]        // 各アップグレードの所持数
+        };
+
+        // --- 初期化処理 ---
+        function init() {
+            createShopUI();
+            loadGame(); // セーブ機能をつけるならここ
+            updateDisplay();
+            gameLoop();
+        }
+
+        // ショップUIの生成
+        function createShopUI() {
+            const unitContainer = document.getElementById('unit-shop');
+            unitData.forEach((u, idx) => {
+                unitContainer.innerHTML += `
+                    <div class="item-card">
+                        <div class="item-info">
+                            <span class="item-name">${u.name}</span>
+                            <span class="item-effect">+${u.baseRate.toLocaleString()} ips</span>
+                            <span class="item-count" id="unit-count-${idx}">所持: 0</span>
+                        </div>
+                        <button class="buy-btn" id="btn-unit-${idx}" onclick="buyUnit(${idx})">
+                            Cost<br>${u.baseCost}
+                        </button>
+                    </div>
+                `;
+            });
+
+            const upgradeContainer = document.getElementById('upgrade-shop');
+            upgradeData.forEach((u, idx) => {
+                upgradeContainer.innerHTML += `
+                    <div class="item-card">
+                        <div class="item-info">
+                            <span class="item-name">${u.name}</span>
+                            <span class="item-effect">ips x${u.mult}</span>
+                            <span class="item-count" id="upgrade-count-${idx}">所持: 0</span>
+                        </div>
+                        <button class="buy-btn" id="btn-upgrade-${idx}" onclick="buyUpgrade(${idx})">
+                            Cost<br>${u.baseCost}
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        // --- コアロジック ---
+
+        // 生産量計算 (IPS)
+        function calculateIPS() {
+            let baseIPS = 0;
+            unitData.forEach((u, i) => {
+                baseIPS += u.baseRate * game.units[i];
+            });
+
+            let multiplier = 1;
+            upgradeData.forEach((u, i) => {
+                multiplier *= Math.pow(u.mult, game.upgrades[i]);
+            });
+
+            // カルマボーナス (1カルマにつき +10%)
+            let karmaMulti = 1 + (game.karma * 0.1);
+
+            return baseIPS * multiplier * karmaMulti;
+        }
+
+        // クリック処理
         function clickMandala(e) {
-            const gain = 1 + (monkCount * 2);
-            virtue += gain;
-            
+            // クリック力 = 1 + (IPS * 5%)
+            let clickPower = 1 + (calculateIPS() * 0.05);
+            addVirtue(clickPower);
+
+            // エフェクト
             const pop = document.createElement('div');
             pop.className = 'virtue-pop';
-            pop.innerText = `+${gain.toLocaleString()}`;
+            pop.innerText = `+${Math.floor(clickPower).toLocaleString()}`;
             pop.style.left = `${e.clientX}px`;
             pop.style.top = `${e.clientY}px`;
             document.body.appendChild(pop);
-            setTimeout(() => pop.remove(), 1000);
+            setTimeout(() => pop.remove(), 800);
 
             const core = document.getElementById('core');
             core.style.transform = 'scale(1.15)';
             setTimeout(() => core.style.transform = 'scale(1)', 100);
-
-            updateDisplay();
         }
 
-        function buyMonk() {
-            let cost = Math.floor(15 * Math.pow(1.25, monkCount));
-            if (virtue >= cost) {
-                virtue -= cost;
-                monkCount++;
-                updateDisplay();
-            }
-        }
+        // 徳の加算とランクアップ判定
+        function addVirtue(amount) {
+            if (game.rank >= 9) return; // 解放後は加算ストップ
 
-        function buyChant() {
-            let cost = Math.floor(100 * Math.pow(1.25, chantPower/5));
-            if (virtue >= cost) {
-                virtue -= cost;
-                chantPower += 5;
-                updateDisplay();
-            }
-        }
-
-        function updateDisplay() {
-            document.getElementById('virtue').innerText = Math.floor(virtue).toLocaleString();
-            document.getElementById('per-sec').innerText = chantPower.toLocaleString();
-            
-            let monkCost = Math.floor(15 * Math.pow(1.25, monkCount));
-            document.getElementById('monk-count').innerText = `Lv.${monkCount} (クリック +${1 + monkCount * 2})`;
-            document.getElementById('btn-monk').innerText = `徳 ${monkCost.toLocaleString()} を捧げる`;
-            document.getElementById('btn-monk').disabled = virtue < monkCost;
-
-            let chantCost = Math.floor(100 * Math.pow(1.25, chantPower/5));
-            document.getElementById('chant-count').innerText = `Lv.${chantPower/5} (毎秒 +${chantPower})`;
-            document.getElementById('btn-chant').innerText = `徳 ${chantCost.toLocaleString()} を捧げる`;
-            document.getElementById('btn-chant').disabled = virtue < chantCost;
+            game.virtue += amount;
+            game.totalVirtue += amount;
 
             // ランクアップ判定 (100の累乗)
-            let nextRankThreshold = Math.pow(100, rank + 1);
-            if (virtue >= nextRankThreshold && rank < 9) {
-                rank++;
-                applyRankTheme(rank);
+            let nextRankThreshold = Math.pow(100, game.rank + 1);
+            
+            // 閾値を超えたかチェック
+            if (game.virtue >= nextRankThreshold && game.rank < 9) {
+                game.rank++;
+                applyRankTheme(game.rank);
+                
+                // 第九曼荼羅到達（エンディング）
+                if (game.rank === 9) {
+                    triggerLiberation();
+                }
             }
         }
 
-        // テーマカラー適用関数
+        // アイテム購入
+        function buyUnit(id) {
+            let u = unitData[id];
+            // コスト計算: Base * 1.15^Count
+            let cost = Math.floor(u.baseCost * Math.pow(1.15, game.units[id]));
+            if (game.virtue >= cost) {
+                game.virtue -= cost;
+                game.units[id]++;
+                updateDisplay();
+            }
+        }
+
+        function buyUpgrade(id) {
+            let u = upgradeData[id];
+            // コスト計算: Base * 1.5^Count (倍率は高騰しやすく)
+            let cost = Math.floor(u.baseCost * Math.pow(1.5, game.upgrades[id]));
+            if (game.virtue >= cost) {
+                game.virtue -= cost;
+                game.upgrades[id]++;
+                updateDisplay();
+            }
+        }
+
+        // --- 表示更新 ---
+        function updateDisplay() {
+            if (game.rank >= 9) return;
+
+            const ips = calculateIPS();
+            
+            // ヘッダー情報
+            document.getElementById('virtue-display').innerText = Math.floor(game.virtue).toLocaleString();
+            document.getElementById('ips-display').innerText = Math.floor(ips).toLocaleString();
+            document.getElementById('karma-display').innerText = game.karma.toLocaleString();
+            document.getElementById('karma-bonus').innerText = (game.karma * 10).toLocaleString();
+
+            // ユニットボタン更新
+            unitData.forEach((u, i) => {
+                let cost = Math.floor(u.baseCost * Math.pow(1.15, game.units[i]));
+                let btn = document.getElementById(`btn-unit-${i}`);
+                let count = document.getElementById(`unit-count-${i}`);
+                
+                btn.innerHTML = `Cost<br>${cost.toLocaleString()}`;
+                btn.disabled = game.virtue < cost;
+                count.innerText = `所持: ${game.units[i]}`;
+            });
+
+            // アップグレードボタン更新
+            upgradeData.forEach((u, i) => {
+                let cost = Math.floor(u.baseCost * Math.pow(1.5, game.upgrades[i]));
+                let btn = document.getElementById(`btn-upgrade-${i}`);
+                let count = document.getElementById(`upgrade-count-${i}`);
+                
+                btn.innerHTML = `Cost<br>${cost.toLocaleString()}`;
+                btn.disabled = game.virtue < cost;
+                count.innerText = `所持: ${game.upgrades[i]}`;
+            });
+        }
+
+        // テーマカラー適用
         function applyRankTheme(currentRank) {
-            const data = rankData[currentRank];
+            const data = rankNames[currentRank];
             document.getElementById('rank-name').innerText = data.name;
             
-            // CSS変数を更新して全体のテーマカラーを変更
             const root = document.documentElement;
             root.style.setProperty('--theme-color', data.color);
-            root.style.setProperty('--theme-glow', `${data.color}80`); // 透明度50%のグロー色を作成
+            root.style.setProperty('--theme-glow', `${data.color}80`);
 
-            // 曼荼羅の回転速度を加速
             const baseSpeed = 60;
             document.getElementById('layer1').style.animationDuration = `${baseSpeed / (currentRank + 1)}s`;
             document.getElementById('layer2').style.animationDuration = `${baseSpeed * 0.75 / (currentRank + 1)}s`;
-            document.getElementById('layer3').style.animationDuration = `${baseSpeed * 0.5 / (currentRank + 1)}s`;
         }
 
-        setInterval(() => {
-            if (chantPower > 0) {
-                virtue += chantPower / 10;
+        // --- ゲームループ ---
+        let lastTime = Date.now();
+        function gameLoop() {
+            if (game.rank < 9) {
+                let now = Date.now();
+                let dt = (now - lastTime) / 1000;
+                lastTime = now;
+
+                let ips = calculateIPS();
+                if (ips > 0) {
+                    addVirtue(ips * dt);
+                }
                 updateDisplay();
             }
-        }, 100);
-        
-        // 初期化
-        updateDisplay();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- 解放（エンディング）処理 ---
+        function triggerLiberation() {
+            const overlay = document.getElementById('liberation-overlay');
+            const pendingKarma = Math.floor(Math.sqrt(game.totalVirtue / 1000000));
+            
+            document.getElementById('pending-karma').innerText = pendingKarma.toLocaleString();
+            overlay.style.display = 'flex';
+        }
+
+        // 転生実行
+        function doPrestige() {
+            // カルマ計算（累積徳に基づく）
+            // 例: 100M徳 -> sqrt(100) = 10 karma
+            const earnedKarma = Math.floor(Math.sqrt(game.totalVirtue / 1000000));
+            
+            // ステータスリセット（カルマは維持）
+            game.karma += earnedKarma;
+            game.virtue = 0;
+            game.totalVirtue = 0;
+            game.rank = 0;
+            game.units = [0,0,0,0,0,0];
+            game.upgrades = [0,0,0];
+
+            // UIリセット
+            document.getElementById('liberation-overlay').style.display = 'none';
+            applyRankTheme(0);
+            updateDisplay();
+            
+            // 時間リセット
+            lastTime = Date.now();
+        }
+
+        // --- スタート ---
+        init();
+
+        // ロード機能（簡易的）
+        function loadGame() {
+            // ローカルストレージ実装などはここに追加可能
+        }
+
     </script>
 </body>
 </html>
