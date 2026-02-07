@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>弾幕・夢幻 - Geometric Neo (Bomb Drop & Extend)</title>
+    <title>弾幕・夢幻 - Geometric Neo (Fixed)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
         
@@ -77,7 +77,7 @@
 
 <script>
 /**
- * 弾幕・夢幻 - Geometric Neo (Bomb Drop & Extend Edition)
+ * 弾幕・夢幻 - Geometric Neo (Fixed Edition)
  */
 
 const canvas = document.getElementById('canvas');
@@ -107,14 +107,14 @@ const DIFFICULTIES = [
 // --- グローバル変数 ---
 let state = "TITLE";
 let menuIndex = 0;
-let diffIndex = 2; 
+let diffIndex = 2; // Default Normal
 let currentDiff = DIFFICULTIES[diffIndex];
 let frame = 0;
 let bgOffset = 0;
 
 let score = 0;
-let nextExtendScore = 100000; // 最初のエクステンド
-const EXTEND_INTERVAL = 150000; // 2回目以降の間隔
+let nextExtendScore = 100000; 
+const EXTEND_INTERVAL = 150000; 
 
 let stage = 1;
 let stageTimer = 0;
@@ -147,9 +147,16 @@ window.addEventListener('keydown', e => {
         if(e.code === "ArrowUp") menuIndex = (menuIndex + 2) % 3;
         if(e.code === "ArrowDown") menuIndex = (menuIndex + 1) % 3;
         
+        // ★修正ポイント: 難易度変更時に即座にcurrentDiffを更新する
         if(menuIndex === 0) {
-            if(e.code === "ArrowLeft") diffIndex = (diffIndex + 3) % 4;
-            if(e.code === "ArrowRight") diffIndex = (diffIndex + 1) % 4;
+            if(e.code === "ArrowLeft") {
+                diffIndex = (diffIndex + 3) % 4;
+                currentDiff = DIFFICULTIES[diffIndex];
+            }
+            if(e.code === "ArrowRight") {
+                diffIndex = (diffIndex + 1) % 4;
+                currentDiff = DIFFICULTIES[diffIndex];
+            }
         }
 
         if(e.code === "KeyZ" || e.code === "Enter") {
@@ -196,10 +203,10 @@ function loop() {
 
 /* --- ゲームロジック --- */
 function startGame() {
-    currentDiff = DIFFICULTIES[diffIndex];
+    // currentDiffはタイトル画面ですでに更新されているのでそのまま使用
     player.lives = 3; player.bombs = 3; player.power = 0;
     score = 0; 
-    nextExtendScore = 100000; // リセット
+    nextExtendScore = 100000; 
     stage = 1;
     resetStageState();
     state = "PLAYING";
@@ -213,13 +220,11 @@ function resetStageState() {
     boss.active = false; isBossActive = false;
 }
 
-// スコア加算とエクステンド判定
 function addScore(amount) {
     score += amount;
     if(score >= nextExtendScore) {
         player.lives++;
         showFloatingText("EXTEND!", player.x, player.y - 40, COLORS.green);
-        // 次の目標設定
         nextExtendScore += EXTEND_INTERVAL;
     }
 }
@@ -227,7 +232,6 @@ function addScore(amount) {
 function updateGame() {
     if(!isBossActive) stageTimer++;
 
-    // 移動
     let moveSpd = (player.slow ? 2.0 : 5.0);
     if(keys['ArrowLeft'] && player.x > 15) player.x -= moveSpd;
     if(keys['ArrowRight'] && player.x < PLAY_W-15) player.x += moveSpd;
@@ -236,7 +240,6 @@ function updateGame() {
     if(player.invincible > 0) player.invincible--;
     player.angle = frame * 0.05;
 
-    // ショット
     if(keys['KeyZ'] && frame % 4 === 0) {
         let pLvl = Math.floor(player.power / 10);
         let col = COLORS.cyan;
@@ -261,10 +264,8 @@ function updateGame() {
         }
     }
 
-    // アイテム処理
     items.forEach((it, i) => {
         it.angle += 0.1;
-        // 吸い寄せ（ボムアイテムは少し吸い寄せ範囲を広く）
         let dist = Math.hypot(it.x - player.x, it.y - player.y);
         let suckRange = (player.y < 180 || it.type === 'bomb') ? 200 : 80;
         
@@ -286,7 +287,6 @@ function updateGame() {
             } else if(it.type === 'score') {
                 addScore(1000); showFloatingText("1000", player.x, player.y-20, COLORS.cyan);
             } else if(it.type === 'bomb') {
-                // ボム取得
                 player.bombs++;
                 addScore(5000);
                 showFloatingText("BOMB +1", player.x, player.y-40, COLORS.magenta);
@@ -298,7 +298,6 @@ function updateGame() {
     updateEntities();
     checkCollision();
     
-    // UIテキスト更新
     for(let i=floatingTexts.length-1; i>=0; i--) {
         let t = floatingTexts[i]; t.y -= 1.0; t.life--;
         if(t.life <= 0) floatingTexts.splice(i, 1);
@@ -339,7 +338,6 @@ function updateBoss() {
     let bt = boss.timer;
     let spd = currentDiff.spd;
 
-    // HP比率で色変化 (緑 -> 黄 -> 赤)
     let hpRatio = boss.hp / boss.maxHp;
     let oldPhase = boss.phase;
     if (hpRatio > 0.66) boss.phase = 0;
@@ -359,7 +357,6 @@ function updateBoss() {
     boss.x = PLAY_W/2 + Math.sin(bt * 0.01) * (PLAY_W/3);
     boss.y = 120 + Math.cos(bt * 0.02) * 20;
 
-    // 攻撃パターン
     if(boss.phase === 0) {
         if(bt % 60 === 0) fireCircle(boss, 16, 2.5*spd, COLORS.green, 'poly', 3);
         if(bt % 40 === 0) fireNWay(boss, 3, 3*spd, COLORS.white, 'beam', 0, 0);
@@ -371,22 +368,17 @@ function updateBoss() {
         if(bt % 5 === 0) fire(boss.x + (Math.random()-0.5)*100, boss.y, 0, 4*spd, COLORS.magenta, 'beam');
     }
 
-    // 撃破処理
     if(boss.hp <= 0) {
         isBossActive = false; boss.active = false;
         enemyBullets = [];
         explode(boss.x, boss.y, COLORS.cyan, 150, true);
         addScore(50000);
-        
-        // ★ボス撃破時にボムアイテムを落とす
         spawnItem(boss.x, boss.y, 'bomb');
-
         if(stage < 5) { state = "INTERMISSION"; } 
         else { state = "CLEAR"; }
     }
 }
 
-// アイテム生成 (type指定があればそれを、なければランダム)
 function spawnItem(x, y, forcedType = null) {
     let type;
     let col;
@@ -517,16 +509,12 @@ function drawGameEntities() {
     });
 
     items.forEach(it => {
-        // アイテム描画: ボムは四角形でマゼンタ、少し大きい
         let size = (it.type === 'bomb') ? 14 : 10;
         let sides = (it.type === 'bomb') ? 4 : 4; 
         let glow = (it.type === 'bomb'); 
         drawPolygon(ctx, it.x, it.y, sides, size, it.angle, true, it.color, glow);
-        
         ctx.fillStyle = "#fff"; ctx.font = "10px sans-serif"; 
-        let txt = 'S';
-        if(it.type==='power') txt='P';
-        if(it.type==='bomb') txt='B';
+        let txt = 'S'; if(it.type==='power') txt='P'; if(it.type==='bomb') txt='B';
         ctx.fillText(txt, it.x-3, it.y+3);
     });
 
@@ -557,8 +545,6 @@ function drawUI() {
 
     ctx.fillStyle = COLORS.cyan; ctx.font = "18px 'Orbitron'"; ctx.fillText("SCORE", x, 140);
     ctx.fillStyle = "#fff"; ctx.font = "24px 'Share Tech Mono'"; ctx.fillText(Math.floor(score).toString().padStart(9, '0'), x, 170);
-
-    // 次のエクステンド表示
     ctx.fillStyle = "#666"; ctx.font = "12px 'Share Tech Mono'";
     ctx.fillText(`NEXT: ${nextExtendScore}`, x, 190);
 
@@ -585,12 +571,18 @@ function drawOverlay() {
         ctx.fillStyle = "#fff"; ctx.font = "40px 'Orbitron'"; 
         ctx.shadowBlur=20; ctx.shadowColor="#0ff"; ctx.fillText("弾幕・夢幻", CX, 180);
         ctx.shadowBlur=0;
+        
+        // 操作説明
+        ctx.fillStyle = "#888"; ctx.font = "14px 'Share Tech Mono'";
+        ctx.fillText("← → CHANGE DIFFICULTY", CX, 230);
+
         let menus = ["NEW GAME", "LOAD", "INPUT CODE"];
         menus.forEach((m, i) => {
             let sel = (i === menuIndex);
             ctx.fillStyle = sel ? COLORS.cyan : "#555";
             ctx.font = sel ? "bold 24px 'Orbitron'" : "20px 'Orbitron'";
             let txt = (sel ? "> " : "") + m;
+            // 修正：currentDiff.nameを表示（変数が即座に更新されるためこれでOK）
             if(i===0 && sel) txt += ` < ${currentDiff.name} >`;
             ctx.fillText(txt, CX, 350 + i*50);
         });
@@ -625,7 +617,7 @@ function loadFromBrowser() { let d = JSON.parse(localStorage.getItem('dm_geo_sav
 function generateCode() { let d = {s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex}; document.getElementById('codeDisplay').innerText = btoa(JSON.stringify(d)); document.getElementById('codeOverlay').style.display='flex'; }
 function closeCodeOverlay(){ document.getElementById('codeOverlay').style.display='none'; }
 function loadFromCodeInput() { let c = prompt("CODE:"); if(c) { try { applyData(JSON.parse(atob(c))); } catch(e){alert("INVALID");} } }
-function applyData(d) { score=d.s; stage=d.st; player.lives=d.l; player.bombs=d.b; player.power=d.p; diffIndex=d.d; startGame(); }
+function applyData(d) { score=d.s; stage=d.st; player.lives=d.l; player.bombs=d.b; player.power=d.p; diffIndex=d.d; currentDiff=DIFFICULTIES[diffIndex]; startGame(); }
 function nextStage() { stage++; startGame(); }
 
 init();
