@@ -2,13 +2,12 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>弾幕・夢幻 - Geometric Neo</title>
+    <title>弾幕・夢幻 - Geometric Neo (Bomb Drop & Extend)</title>
     <style>
-        /* テクノロジー感のあるフォントをインポート */
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
         
         body { 
-            background: #020005; /* 深い黒 */
+            background: #020005; 
             margin: 0; 
             overflow: hidden; 
             display: flex; 
@@ -16,152 +15,159 @@
             align-items: center; 
             height: 100vh; 
             color: #fff;
-            font-family: 'Share Tech Mono', monospace; /* 等幅フォント */
+            font-family: 'Share Tech Mono', monospace;
             user-select: none;
         }
         #gameContainer {
             position: relative;
-            /* ネオンサインのような発光ボーダー */
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(255, 0, 255, 0.2);
-            border: 2px solid #0ff;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.2);
+            border: 1px solid #333;
             background: #000;
+            width: 640px; 
+            height: 640px;
         }
-        canvas { display: block; } /* ピクセル表現ではなく滑らかな図形描画 */
+        canvas { display: block; }
+
+        .overlay-ui { 
+            position: absolute; top: 0; left: 0; width: 480px; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center;
+            text-shadow: 0 0 10px #0ff;
+        }
+        .stage-msg {
+            font-family: 'Orbitron', sans-serif; font-size: 32px; color: #fff;
+            text-shadow: 0 0 20px #0ff; opacity: 0; transition: opacity 1s;
+            position: absolute; top: 30%; width: 100%; text-align: center;
+        }
         
-        /* UIレイヤー */
-        .hud { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            pointer-events: none;
-            text-transform: uppercase; /* 全て大文字でサイバー感 */
+        #codeOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); display: none; z-index: 100;
+            flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: auto;
         }
-        .score-box {
-            position: absolute; top: 10px; right: 15px;
-            text-align: right; font-size: 22px; color: #0ff;
-            text-shadow: 0 0 5px #0ff;
+        .code-box {
+            background: #111; border: 1px solid #0ff; padding: 20px;
+            color: #0ff; font-family: 'Share Tech Mono'; font-size: 16px;
+            max-width: 80%; word-break: break-all; user-select: text; margin-bottom: 20px;
         }
-        .info-box {
-            position: absolute; bottom: 10px; left: 10px;
-            font-size: 16px; color: #f0f; text-shadow: 0 0 5px #f0f;
-            background: rgba(0,0,0,0.7); padding: 10px; border: 1px solid #f0f;
-            box-shadow: 0 0 10px rgba(255,0,255,0.3);
+        .btn {
+            padding: 10px 30px; border: 1px solid #f0f; color: #f0f; 
+            background: transparent; cursor: pointer; font-family: 'Orbitron'; 
+            text-transform: uppercase; font-size: 18px; transition: 0.2s;
         }
-        .stage-title {
-            position: absolute; top: 35%; width: 100%;
-            text-align: center; font-size: 40px; color: #fff;
-            font-family: 'Orbitron', sans-serif;
-            text-shadow: 0 0 20px #0ff, 0 0 40px #f0f;
-            letter-spacing: 0.2em; opacity: 0; transition: opacity 0.8s; z-index: 10;
-        }
-        /* ボスUI */
-        .boss-ui {
-            position: absolute; top: 10px; left: 15px; display: none;
-        }
-        .boss-name { 
-            font-size: 18px; color: #f00; margin-bottom: 4px; 
-            text-shadow: 0 0 10px #f00; font-family: 'Orbitron', sans-serif;
-        }
-        .boss-hp-frame { 
-            width: 300px; height: 12px; background: #100; 
-            border: 2px solid #f00; box-shadow: 0 0 15px #f00; 
-            transform: skewX(-20deg); /* 斜めにしてスピード感 */
-            overflow: hidden;
-        }
-        .hp-fill { 
-            width: 100%; height: 100%; 
-            background: linear-gradient(90deg, #f00, #ff0, #0ff); 
-            box-shadow: 0 0 10px #ff0; transition: width 0.1s;
-        }
+        .btn:hover { background: #f0f; color: #000; box-shadow: 0 0 15px #f0f; }
     </style>
 </head>
 <body>
 
 <div id="gameContainer">
-    <canvas id="canvas" width="480" height="640"></canvas>
-    <div class="hud">
-        <div class="boss-ui" id="bossUI">
-            <div class="boss-name" id="bossName">SYSTEM: BOSS DETECTED</div>
-            <div class="boss-hp-frame"><div class="hp-fill" id="bossBar"></div></div>
-        </div>
-        <div class="score-box" id="scoreText">SCORE: 0000000</div>
-        <div class="info-box" id="infoText">SYSTEM BOOTING...</div>
-        <div class="stage-title" id="stageMsg"></div>
+    <canvas id="canvas" width="640" height="640"></canvas>
+    
+    <div class="overlay-ui">
+        <div class="stage-msg" id="stageMsg"></div>
+    </div>
+
+    <div id="codeOverlay">
+        <h2 style="color:#0ff; font-family:'Orbitron'; margin-bottom:20px;">RESURRECTION CODE</h2>
+        <div class="code-box" id="codeDisplay">Loading...</div>
+        <button class="btn" onclick="closeCodeOverlay()">CLOSE</button>
     </div>
 </div>
 
 <script>
 /**
- * 弾幕・夢幻 - Geometric Neo Edition
+ * 弾幕・夢幻 - Geometric Neo (Bomb Drop & Extend Edition)
  */
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const W = canvas.width;
-const H = canvas.height;
 
-// --- ネオンカラーパレット ---
+// --- 画面設定 ---
+const W = 640; 
+const H = 640; 
+const PLAY_W = 480; 
+const UI_X = 480; 
+
+// --- カラー ---
 const COLORS = {
-    bg_grid: "#001a33",
+    bg: "#020005", grid: "#001a33",
     cyan: "#00ffff", magenta: "#ff00ff", yellow: "#ffff00", green: "#00ff00",
-    red: "#ff3333", blue: "#3366ff", white: "#ffffff"
+    red: "#ff3333", blue: "#3366ff", white: "#ffffff",
+    orange: "#ffaa00", purple: "#aa00ff"
 };
 
-// 難易度設定 (速度係数を調整)
 const DIFFICULTIES = [
-    { name: "BEGINNER (入門)", rank: 0.4, spd: 0.5 },
-    { name: "EASY (凡人)",     rank: 0.7, spd: 0.7 },
-    { name: "NORMAL (達人)",   rank: 1.0, spd: 0.9 },
-    { name: "HARD (修羅)",     rank: 1.5, spd: 1.1 }
+    { name: "BEGINNER", rank: 0.5, spd: 0.6 },
+    { name: "EASY",     rank: 0.8, spd: 0.8 },
+    { name: "NORMAL",   rank: 1.0, spd: 1.0 },
+    { name: "HARD",     rank: 1.5, spd: 1.2 }
 ];
 
 // --- グローバル変数 ---
-let state = "TITLE"; 
-let diffIndex = 2; // デフォルト NORMAL
+let state = "TITLE";
+let menuIndex = 0;
+let diffIndex = 2; 
 let currentDiff = DIFFICULTIES[diffIndex];
 let frame = 0;
+let bgOffset = 0;
+
 let score = 0;
+let nextExtendScore = 100000; // 最初のエクステンド
+const EXTEND_INTERVAL = 150000; // 2回目以降の間隔
+
 let stage = 1;
 let stageTimer = 0;
 let isBossActive = false;
-let bgOffset = 0; // 背景スクロール用
 
-// プレイヤー (三角形)
 let player = { 
-    x: W/2, y: H-100, 
-    lives: 3, bombs: 3, power: 0, maxPower: 40,
+    x: PLAY_W/2, y: H-100, 
+    lives: 3, bombs: 3, power: 0, maxPower: 50,
     invincible: 0, slow: false, angle: 0
 };
 
-// エンティティ
-let bullets = [];
-let enemies = [];
-let enemyBullets = [];
-let items = [];
-let particles = [];
-let floatingTexts = [];
-let trails = []; // 弾の軌跡用
+let bullets = [], enemies = [], enemyBullets = [], items = [], particles = [], floatingTexts = [];
 
-// ボス管理
-let boss = { active: false, isMid: false, x: W/2, y: -100, hp: 0, maxHp: 0, type: 0, phase: 0, timer: 0, angle: 0 };
+let boss = { 
+    active: false, x: PLAY_W/2, y: -100, 
+    hp: 0, maxHp: 0, phase: 0, color: COLORS.green,
+    timer: 0, angle: 0, type: 0 
+};
 
-/* --- 初期化 --- */
-function init() {
-    // グラフィック生成は不要。描画時に直接CanvasAPIで描く。
-    requestAnimationFrame(loop);
-}
+/* --- 初期化・ループ --- */
+function init() { requestAnimationFrame(loop); }
 
-/* --- 入力 --- */
+/* --- 入力管理 --- */
 let keys = {};
 window.addEventListener('keydown', e => {
     keys[e.code] = true;
     if(e.code === "ShiftLeft" || e.code === "ShiftRight") player.slow = true;
 
     if(state === "TITLE") {
-        if(e.code === "ArrowUp") diffIndex = (diffIndex + 3) % 4;
-        if(e.code === "ArrowDown") diffIndex = (diffIndex + 1) % 4;
-        if(e.code === "KeyZ") startGame();
-    } else if (state === "PLAYING") {
-        if(e.code === "KeyZ") useBomb();
-    } else if (["GAMEOVER", "CLEAR"].includes(state)) {
+        if(e.code === "ArrowUp") menuIndex = (menuIndex + 2) % 3;
+        if(e.code === "ArrowDown") menuIndex = (menuIndex + 1) % 3;
+        
+        if(menuIndex === 0) {
+            if(e.code === "ArrowLeft") diffIndex = (diffIndex + 3) % 4;
+            if(e.code === "ArrowRight") diffIndex = (diffIndex + 1) % 4;
+        }
+
+        if(e.code === "KeyZ" || e.code === "Enter") {
+            if(menuIndex === 0) startGame();
+            if(menuIndex === 1) loadFromBrowser();
+            if(menuIndex === 2) generateCode();
+        }
+        if(menuIndex === 2 && (e.code === "KeyZ" || e.code === "Enter")) loadFromCodeInput();
+    } 
+    else if (state === "PLAYING") {
+        if(e.code === "KeyX") useBomb();
+    }
+    else if (state === "INTERMISSION") {
+        if(e.code === "KeyZ") nextStage();
+        if(e.code === "KeyS") saveToBrowser();
+        if(e.code === "KeyC") generateCode();
+    }
+    else if (["GAMEOVER", "CLEAR"].includes(state)) {
         if(e.code === "KeyZ") state = "TITLE";
     }
 });
@@ -170,112 +176,121 @@ window.addEventListener('keyup', e => {
     if(e.code === "ShiftLeft" || e.code === "ShiftRight") player.slow = false;
 });
 
-/* --- ループ --- */
 function loop() {
-    // 背景描画（サイバーグリッド）
     drawBackground();
 
     if(state === "PLAYING") {
         updateGame();
-        drawGame();
+        drawGameEntities();
+        drawUI();
     } else {
-        if(state !== "TITLE") drawGame();
+        if(state !== "TITLE") { drawGameEntities(); drawUI(); }
+        else drawUI();
         drawOverlay();
     }
     
     frame++;
-    bgOffset = (bgOffset + 1) % 40; // 背景スクロール
+    bgOffset = (bgOffset + 1) % 40;
     requestAnimationFrame(loop);
 }
 
-// 幾何学的な背景を描画
-function drawBackground() {
-    // 画面を少し暗くクリア（残像効果のため完全には消さない）
-    ctx.fillStyle = "rgba(0, 5, 15, 0.8)";
-    ctx.fillRect(0, 0, W, H);
-    
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(0, 255, 255, 0.2)";
-    ctx.beginPath();
-    // 縦グリッド線
-    for(let x=0; x<=W; x+=40) {
-        ctx.moveTo(x, 0); ctx.lineTo(x, H);
-    }
-    // 横グリッド線（スクロール）
-    for(let y=bgOffset-40; y<=H; y+=40) {
-        ctx.moveTo(0, y); ctx.lineTo(W, y);
-    }
-    ctx.stroke();
-
-    // 遠景の幾何学模様
-    ctx.strokeStyle = (stage%2===0) ? "rgba(255, 0, 255, 0.1)" : "rgba(0, 255, 0, 0.1)";
-    for(let i=0; i<5; i++) {
-        let s = (frame*0.2 + i*100) % H;
-        let size = (i+1)*50;
-        drawPolygon(W/2, s, (i+3), size, frame*0.01*(i%2?-1:1), false);
-    }
-}
-
+/* --- ゲームロジック --- */
 function startGame() {
     currentDiff = DIFFICULTIES[diffIndex];
-    player.x = W/2; player.y = H-100;
     player.lives = 3; player.bombs = 3; player.power = 0;
-    score = 0; stage = 1; stageTimer = 0;
-    bullets = []; enemies = []; enemyBullets = []; items = []; particles = []; floatingTexts = []; trails = [];
-    boss.active = false; isBossActive = false;
-    document.getElementById('bossUI').style.display = 'none';
+    score = 0; 
+    nextExtendScore = 100000; // リセット
+    stage = 1;
+    resetStageState();
     state = "PLAYING";
     showStageTitle("STAGE 1: CYBER FIELD");
-    updateUI();
 }
 
-/* --- ゲーム更新 --- */
+function resetStageState() {
+    player.x = PLAY_W/2; player.y = H-100;
+    stageTimer = 0;
+    bullets = []; enemies = []; enemyBullets = []; items = []; particles = [];
+    boss.active = false; isBossActive = false;
+}
+
+// スコア加算とエクステンド判定
+function addScore(amount) {
+    score += amount;
+    if(score >= nextExtendScore) {
+        player.lives++;
+        showFloatingText("EXTEND!", player.x, player.y - 40, COLORS.green);
+        // 次の目標設定
+        nextExtendScore += EXTEND_INTERVAL;
+    }
+}
+
 function updateGame() {
     if(!isBossActive) stageTimer++;
 
-    // 自機移動
-    let moveSpd = (player.slow ? 2.0 : 4.5);
+    // 移動
+    let moveSpd = (player.slow ? 2.0 : 5.0);
     if(keys['ArrowLeft'] && player.x > 15) player.x -= moveSpd;
-    if(keys['ArrowRight'] && player.x < W-15) player.x += moveSpd;
+    if(keys['ArrowRight'] && player.x < PLAY_W-15) player.x += moveSpd;
     if(keys['ArrowUp'] && player.y > 15) player.y -= moveSpd;
     if(keys['ArrowDown'] && player.y < H-15) player.y += moveSpd;
     if(player.invincible > 0) player.invincible--;
-    player.angle = frame * 0.05; // 自機をゆっくり回転させる
+    player.angle = frame * 0.05;
 
     // ショット
-    if(keys['KeyX'] && frame % 5 === 0) {
+    if(keys['KeyZ'] && frame % 4 === 0) {
         let pLvl = Math.floor(player.power / 10);
         let col = COLORS.cyan;
-        if(player.slow) { // 集中（直線的なレーザー風）
-            bullets.push({x: player.x-5, y: player.y, vx: 0, vy: -16, color: col, type: 'beam'});
-            bullets.push({x: player.x+5, y: player.y, vx: 0, vy: -16, color: col, type: 'beam'});
-            if(pLvl >= 1) { bullets.push({x: player.x-12, y: player.y+8, vx: 0, vy: -14, color: col, type: 'beam'}); bullets.push({x: player.x+12, y: player.y+8, vx: 0, vy: -14, color: col, type: 'beam'}); }
-        } else { // 拡散（多角形の弾）
-            bullets.push({x: player.x-8, y: player.y, vx: 0, vy: -12, color: col, type: 'poly', sides:3});
-            bullets.push({x: player.x+8, y: player.y, vx: 0, vy: -12, color: col, type: 'poly', sides:3});
-            if(pLvl >= 1) { bullets.push({x: player.x-16, y: player.y+4, vx: -2, vy: -11, color: col, type: 'poly', sides:4}); bullets.push({x: player.x+16, y: player.y+4, vx: 2, vy: -11, color: col, type: 'poly', sides:4}); }
+        if(player.slow) {
+            bullets.push({x: player.x-6, y: player.y, vx: 0, vy: -18, color: col, type: 'beam'});
+            bullets.push({x: player.x+6, y: player.y, vx: 0, vy: -18, color: col, type: 'beam'});
+            if(pLvl >= 1) { 
+                bullets.push({x: player.x-14, y: player.y+5, vx: 0, vy: -15, color: col, type: 'beam'}); 
+                bullets.push({x: player.x+14, y: player.y+5, vx: 0, vy: -15, color: col, type: 'beam'}); 
+            }
+        } else {
+            bullets.push({x: player.x-8, y: player.y, vx: 0, vy: -14, color: col, type: 'poly', sides:3});
+            bullets.push({x: player.x+8, y: player.y, vx: 0, vy: -14, color: col, type: 'poly', sides:3});
+            if(pLvl >= 1) { 
+                bullets.push({x: player.x-16, y: player.y+5, vx: -3, vy: -12, color: col, type: 'poly', sides:4}); 
+                bullets.push({x: player.x+16, y: player.y+5, vx: 3, vy: -12, color: col, type: 'poly', sides:4}); 
+            }
+            if(pLvl >= 3) {
+                bullets.push({x: player.x-24, y: player.y+10, vx: -5, vy: -10, color: col, type: 'poly', sides:4}); 
+                bullets.push({x: player.x+24, y: player.y+10, vx: 5, vy: -10, color: col, type: 'poly', sides:4}); 
+            }
         }
     }
 
-    // アイテム回収
+    // アイテム処理
     items.forEach((it, i) => {
-        it.angle += 0.1; // 回転
-        if(player.y < 150 || Math.hypot(it.x - player.x, it.y - player.y) < 60) {
-            let a = Math.atan2(player.y - it.y, player.x - it.x);
-            it.x += Math.cos(a)*9; it.y += Math.sin(a)*9;
-        } else { it.y += 2.0; }
+        it.angle += 0.1;
+        // 吸い寄せ（ボムアイテムは少し吸い寄せ範囲を広く）
+        let dist = Math.hypot(it.x - player.x, it.y - player.y);
+        let suckRange = (player.y < 180 || it.type === 'bomb') ? 200 : 80;
         
-        if(Math.hypot(it.x - player.x, it.y - player.y) < 20) {
+        if(dist < suckRange) {
+            let a = Math.atan2(player.y - it.y, player.x - it.x);
+            it.x += Math.cos(a)*10; it.y += Math.sin(a)*10;
+        } else { it.y += 2.5; }
+        
+        if(dist < 25) {
             items.splice(i, 1);
-            explode(it.x, it.y, it.color, 5, true); // 取得エフェクト
-            score += 100;
             if(it.type === 'power') {
+                addScore(100);
                 if(player.power < player.maxPower) {
                     player.power++;
-                    if(player.power%10===0) showFloatingText("POWER LEVEL UP!", player.x, player.y-30, COLORS.yellow);
-                } else { score+=500; showFloatingText("+500", player.x, player.y-20, COLORS.white); }
+                    if(player.power%10===0) showFloatingText("POWER UP!", player.x, player.y-30, COLORS.yellow);
+                } else {
+                    addScore(500); showFloatingText("MAX!", player.x, player.y-20, COLORS.white);
+                }
+            } else if(it.type === 'score') {
+                addScore(1000); showFloatingText("1000", player.x, player.y-20, COLORS.cyan);
+            } else if(it.type === 'bomb') {
+                // ボム取得
+                player.bombs++;
+                addScore(5000);
+                showFloatingText("BOMB +1", player.x, player.y-40, COLORS.magenta);
             }
-            updateUI();
         } else if(it.y > H+20) items.splice(i, 1);
     });
 
@@ -285,453 +300,333 @@ function updateGame() {
     
     // UIテキスト更新
     for(let i=floatingTexts.length-1; i>=0; i--) {
-        let t = floatingTexts[i]; t.y -= 0.8; t.life--;
+        let t = floatingTexts[i]; t.y -= 1.0; t.life--;
         if(t.life <= 0) floatingTexts.splice(i, 1);
     }
 }
 
-/* --- ステージ進行 --- */
 function manageStages() {
     if(isBossActive) { updateBoss(); return; }
-
-    let r = currentDiff.rank;
     let t = stageTimer;
+    let r = currentDiff.rank;
     const spawn = (type, x, hp) => spawnEnemy(x, -40, type, hp * r);
 
-    if(t === 1300) {
-        startBoss(stage, `MID-BOSS: PROTOTYPE-${stage}`, 1000 + stage*300, true);
-        return;
-    }
+    if(t === 1000) { startBoss(stage, 2500, false); return; }
 
-    // --- Stage 1: CYBER FIELD ---
     if(stage === 1) {
-        if(t%90===0) spawn('cube', Math.random()*W, 4); // 基本の立方体
-        if(t>1600 && t%180===0) spawn('tetra', Math.random()*W, 8); // 高速な四面体
-        if(t > 3000) startBoss(1, "GEOMETRIC GUARDIAN", 1800, false);
-    }
-    // --- Stage 2: MATRIX STREAM ---
-    else if(stage === 2) {
-        if(t%70===0) spawn('tetra', Math.random()*W, 6);
-        if(t>1600 && t%220===0) spawn('octa', W/2, 25); // 硬い八面体
-        if(t > 3200) startBoss(2, "DATA CONSTRUCT", 2500, false);
-    }
-    // --- Stage 3: NEON ABYSS ---
-    else if(stage === 3) {
-        if(t%50===0) spawn('cube', Math.random()*W, 8);
-        if(t>1600 && t%150===0) { spawn('octa', 80, 35); spawn('octa', W-80, 35); }
-        if(t > 3500) startBoss(3, "SYSTEM CORE", 3500, false);
-    }
-    // --- Stage 4: VECTOR SPACE ---
-    else if(stage === 4) {
-        if(t%40===0) spawn('tetra', Math.random()*W, 10);
-        if(t>1500 && t%90===0) spawn(Math.random()<0.5?'cube':'octa', Math.random()*W, 15);
-        if(t > 3800) startBoss(4, "DIMENSIONAL RIFT", 4500, false);
-    }
-    // --- Stage 5: POLYGON NEXUS ---
-    else if(stage === 5) {
-        if(t%30===0) spawn(['cube','tetra','octa'][Math.floor(Math.random()*3)], Math.random()*W, 12);
-        if(t>1500 && t%100===0) spawn('octa', Math.random()*W, 60);
-        if(t > 4000) startBoss(5, "THE ARCHITECT", 7000, false);
-    }
-    // --- Extra: ZERO POINT ---
-    else if(stage === 6) {
-        // ボス戦のみ
+        if(t%80===0) spawn('cube', Math.random()*PLAY_W, 5);
+        if(t>500 && t%150===0) spawn('tetra', Math.random()*PLAY_W, 8);
+    } else if(stage >= 2) {
+        if(t%60===0) spawn('cube', Math.random()*PLAY_W, 6);
+        if(t%120===0) spawn('octa', Math.random()*PLAY_W, 15);
     }
 }
 
-/* --- ボス戦 --- */
-function startBoss(type, name, hp, isMid) {
+function startBoss(type, hp, isMid) {
     if(isBossActive) return;
     isBossActive = true;
     enemies.forEach(e => explode(e.x, e.y, e.color, 15)); enemies = []; enemyBullets = [];
-    
-    boss.active = true; boss.type = type; boss.name = name; boss.isMid = isMid;
-    boss.maxHp = hp * currentDiff.rank; boss.hp = boss.maxHp;
-    boss.x = W/2; boss.y = -80; boss.timer = 0; boss.phase = 1; boss.angle = 0;
-    
-    document.getElementById('bossUI').style.display = "block";
-    document.getElementById('bossName').innerText = boss.name;
-    document.getElementById('bossBar').style.background = isMid ? `linear-gradient(90deg, ${COLORS.yellow}, ${COLORS.red})` : `linear-gradient(90deg, ${COLORS.red}, ${COLORS.magenta}, ${COLORS.cyan})`;
-    
-    showStageTitle(isMid ? "WARNING: SUB-ROUTINE DETECTED" : "ALERT: BOSS INITIALIZED");
+    boss = { 
+        active: true, type, maxHp: hp*currentDiff.rank, hp: hp*currentDiff.rank, 
+        x: PLAY_W/2, y: -80, timer: 0, angle: 0, phase: 0, color: COLORS.green 
+    };
+    showStageTitle("WARNING: BOSS APPROACHING");
 }
 
 function updateBoss() {
     if(boss.y < 120) boss.y+=2;
     boss.timer++; boss.angle += 0.02;
     let bt = boss.timer;
-    let r = currentDiff.rank;
-    let s = currentDiff.spd;
+    let spd = currentDiff.spd;
 
+    // HP比率で色変化 (緑 -> 黄 -> 赤)
     let hpRatio = boss.hp / boss.maxHp;
-    document.getElementById('bossBar').style.width = (hpRatio*100) + "%";
-    if(!boss.isMid) {
-        if(hpRatio < 0.3) boss.phase = 3; else if(hpRatio < 0.7) boss.phase = 2; else boss.phase = 1;
+    let oldPhase = boss.phase;
+    if (hpRatio > 0.66) boss.phase = 0;
+    else if (hpRatio > 0.33) boss.phase = 1;
+    else boss.phase = 2;
+
+    if(boss.phase === 0) boss.color = COLORS.green;
+    else if(boss.phase === 1) boss.color = COLORS.yellow;
+    else boss.color = COLORS.red;
+
+    if(oldPhase !== boss.phase) {
+        enemyBullets.forEach(b => explode(b.x, b.y, b.color, 3));
+        enemyBullets = [];
+        showFloatingText("PHASE CHANGE!", boss.x, boss.y-50, boss.color);
     }
 
-    boss.x = W/2 + Math.cos(bt * 0.015) * (W/3);
-    boss.y = 120 + Math.sin(bt * 0.02) * 30;
+    boss.x = PLAY_W/2 + Math.sin(bt * 0.01) * (PLAY_W/3);
+    boss.y = 120 + Math.cos(bt * 0.02) * 20;
 
-    // --- 攻撃パターン (幾何学弾幕) ---
-    let bCol = boss.isMid ? COLORS.yellow : COLORS.red;
-    if(boss.phase === 2) bCol = COLORS.magenta;
-    if(boss.phase === 3) bCol = COLORS.cyan;
-
-    if(boss.isMid) {
-        if(bt % 50 === 0) fireNWay(boss, 12, 2.5*s, bCol, 'poly', 4, bt*0.1); // 回転する四角弾
-        if(bt % 35 === 0) fireAimed(boss, 4*s, COLORS.red, 'beam'); // 高速ビーム
-    } else {
-        switch(boss.type) {
-            case 1: // Stage 1
-                if(boss.phase===1 && bt%80===0) fireCircle(boss, 16, 2*s, bCol, 'poly', 3);
-                if(boss.phase===2 && bt%25===0) fire(boss.x, boss.y, (Math.random()-.5)*4, 2*s, bCol, 'poly', 5);
-                if(boss.phase===3 && bt%35===0) fireAimed(boss, 4*s, bCol, 'beam');
-                break;
-            case 2: // Stage 2
-                if(boss.phase===1 && bt%10===0) fire(boss.x, boss.y, 0, 3.5*s, bCol, 'beam');
-                if(boss.phase===2 && bt%50===0) { fireNWay(boss, 8, 2.5*s, bCol, 'poly', 4, 0.2); fireNWay(boss, 8, 2.5*s, bCol, 'poly', 4, -0.2); }
-                if(boss.phase===3 && bt%4===0) fire(boss.x, boss.y, Math.sin(bt*0.3)*4, 3*s, bCol, 'beam');
-                break;
-            case 3: // Stage 3
-                if(boss.phase===1 && bt%90===0) fireCircle(boss, 24, 1.8*s, bCol, 'poly', 6);
-                if(boss.phase===2 && bt%45===0) { fireAimed(boss, 3*s, COLORS.red, 'beam'); fireNWay(boss, 12, 2*s, bCol, 'poly', 3); }
-                if(boss.phase===3 && bt%70===0) fireCircle(boss, 40, 1.5*s, bCol, 'cross');
-                break;
-            case 4: // Stage 4
-                if(boss.phase===1 && bt%50===0) { fireNWay(boss, 6, 2.5*s, bCol, 'poly', 5, -0.5); fireNWay(boss, 6, 2.5*s, bCol, 'poly', 5, 0.5); }
-                if(boss.phase===2 && bt%8===0) fire(boss.x, boss.y, Math.sin(bt*0.15)*6, 3*s, bCol, 'beam');
-                if(boss.phase===3 && bt%35===0) { fireCircle(boss, 20, 4*s, bCol, 'cross'); fireAimed(boss, 6*s, COLORS.white, 'beam'); }
-                break;
-            case 5: // Stage 5
-                if(boss.phase===1 && bt%18===0) fireNWay(boss, 9, 2.5*s, bCol, 'poly', 8);
-                if(boss.phase===2 && bt%4===0) fire(boss.x + (Math.random()-.5)*120, boss.y, 0, (Math.random()+1.5)*s, bCol, 'beam');
-                if(boss.phase===3) { 
-                    if(bt%50===0) fireCircle(boss, 50, 1.8*s, bCol, 'ring');
-                    if(bt%25===0) fireAimed(boss, 5*s, COLORS.white, 'beam');
-                }
-                break;
-            case 6: // True Boss
-                let c = [COLORS.red, COLORS.blue, COLORS.yellow, COLORS.magenta][Math.floor(bt/80)%4];
-                if(bt%70===0) fireCircle(boss, 60, 2*s, c, 'cross');
-                if(bt%12===0) fire(boss.x, boss.y, Math.cos(bt*0.15)*5, Math.sin(bt*0.15)*5, COLORS.white, 'poly', 3);
-                if(bt%90===0) fireAimed(boss, 7*s, COLORS.red, 'beam');
-                if(boss.hp < boss.maxHp*0.3 && bt%4===0) fire(boss.x, boss.y, (Math.random()-.5)*12, (Math.random()-.5)*12, COLORS.yellow, 'beam');
-                break;
-        }
+    // 攻撃パターン
+    if(boss.phase === 0) {
+        if(bt % 60 === 0) fireCircle(boss, 16, 2.5*spd, COLORS.green, 'poly', 3);
+        if(bt % 40 === 0) fireNWay(boss, 3, 3*spd, COLORS.white, 'beam', 0, 0);
+    } else if(boss.phase === 1) {
+        if(bt % 8 === 0) fire(boss.x, boss.y, Math.cos(bt*0.1)*3*spd, Math.sin(bt*0.1)*3*spd, COLORS.yellow, 'poly', 4);
+        if(bt % 90 === 0) fireAimed(boss, 5*spd, COLORS.orange, 'beam');
+    } else if(boss.phase === 2) {
+        if(bt % 25 === 0) fireCircle(boss, 24, 3*spd, COLORS.red, 'poly', 5);
+        if(bt % 5 === 0) fire(boss.x + (Math.random()-0.5)*100, boss.y, 0, 4*spd, COLORS.magenta, 'beam');
     }
 
+    // 撃破処理
     if(boss.hp <= 0) {
         isBossActive = false; boss.active = false;
-        document.getElementById('bossUI').style.display = "none";
         enemyBullets = [];
-        explode(boss.x, boss.y, bCol, 150, true); // 大爆発
+        explode(boss.x, boss.y, COLORS.cyan, 150, true);
+        addScore(50000);
         
-        if(boss.isMid) {
-            showStageTitle("SYSTEM RESTORED (+2000 PTS)"); score += 2000;
-        } else {
-            score += 10000;
-            if(stage < 5) {
-                stage++; stageTimer = 0; showStageTitle(`STAGE ${stage}: START`);
-            } else if(stage === 5) {
-                stage = 6; stageTimer = 0;
-                setTimeout(() => startBoss(6, "TRUE ADMINISTRATOR: CHAOS", 12000, false), 3000);
-            } else {
-                state = "CLEAR";
-            }
-        }
+        // ★ボス撃破時にボムアイテムを落とす
+        spawnItem(boss.x, boss.y, 'bomb');
+
+        if(stage < 5) { state = "INTERMISSION"; } 
+        else { state = "CLEAR"; }
     }
 }
 
-/* --- 弾幕・アイテム ヘルパー --- */
+// アイテム生成 (type指定があればそれを、なければランダム)
+function spawnItem(x, y, forcedType = null) {
+    let type;
+    let col;
+    if (forcedType) {
+        type = forcedType;
+        if(type === 'bomb') col = COLORS.magenta;
+        else if(type === 'power') col = COLORS.red;
+        else col = COLORS.yellow;
+    } else {
+        type = Math.random() < 0.5 ? 'power' : 'score';
+        col = type==='power' ? COLORS.red : COLORS.yellow;
+    }
+    items.push({ x, y, type, angle: 0, color: col });
+}
+
 function spawnEnemy(x, y, type, hp) { 
-    let color = (type==='cube') ? COLORS.blue : (type==='tetra') ? COLORS.red : COLORS.green;
-    enemies.push({ x, y, type, hp, maxHp: hp, time: 0, angle: 0, color: color }); 
+    let col = type==='cube'?COLORS.blue : type==='tetra'?COLORS.red : COLORS.green;
+    enemies.push({ x, y, type, hp, maxHp: hp, time: 0, angle: 0, color: col }); 
 }
-function spawnItem(x, y, type) {
-    items.push({ x, y, type, angle: 0, color: (type==='power'?COLORS.red:COLORS.yellow) });
-}
+function fire(x, y, vx, vy, color, type='orb', sides=3) { enemyBullets.push({ x, y, vx, vy, color, type, sides, angle: 0 }); }
+function fireAimed(o, s, c, t='orb') { let a = Math.atan2(player.y - o.y, player.x - o.x); fire(o.x, o.y, Math.cos(a)*s, Math.sin(a)*s, c, t); }
+function fireNWay(o, n, s, c, t, si, off=0) { for(let i=0; i<n; i++) { let a = off + (Math.PI*2/n)*i - Math.PI/2; fire(o.x, o.y, Math.cos(a)*s, Math.sin(a)*s, c, t, si); } }
+function fireCircle(o, n, s, c, t, si) { for(let i=0; i<n; i++) { let a = (Math.PI*2/n)*i; fire(o.x, o.y, Math.cos(a)*s, Math.sin(a)*s, c, t, si); } }
+function explode(x,y,c,n,big=false) { for(let i=0;i<n;i++) particles.push({x,y,vx:(Math.random()-.5)*(big?10:5),vy:(Math.random()-.5)*(big?10:5),life:big?40:20,color:c,size:big?4:2}); }
 
-function fire(x, y, vx, vy, color, type='orb', sides=3) { 
-    enemyBullets.push({ x, y, vx, vy, color, type, sides, angle: 0 }); 
-    // 軌跡を追加
-    if(type === 'beam' || type === 'cross') {
-        trails.push({x, y, vx, vy, color, life: 10, width: (type==='beam'?4:8)});
-    }
-}
-function fireAimed(origin, speed, color, type='orb', sides=3) {
-    let a = Math.atan2(player.y - origin.y, player.x - origin.x);
-    fire(origin.x, origin.y, Math.cos(a)*speed, Math.sin(a)*speed, color, type, sides);
-}
-function fireNWay(origin, count, speed, color, type='orb', sides=3, offset=0) {
-    for(let i=0; i<count; i++) {
-        let a = offset + (Math.PI*2/count)*i - (Math.PI/2);
-        fire(origin.x, origin.y, Math.cos(a)*speed, Math.sin(a)*speed, color, type, sides);
-    }
-}
-function fireCircle(origin, count, speed, color, type='orb', sides=3) {
-    for(let i=0; i<count; i++) {
-        let a = (Math.PI*2/count)*i;
-        fire(origin.x, origin.y, Math.cos(a)*speed, Math.sin(a)*speed, color, type, sides);
+function useBomb() {
+    if(player.bombs>0 && state==="PLAYING") {
+        player.bombs--; enemyBullets=[];
+        enemies.forEach(e=>{e.hp=0; spawnItem(e.x,e.y); explode(e.x,e.y,COLORS.magenta,15);}); enemies=[];
+        if(boss.active) boss.hp -= 500;
+        let f = document.createElement('div');
+        f.style.cssText=`position:absolute;top:0;left:0;width:${PLAY_W}px;height:100%;background:#fff;opacity:0.8;transition:0.5s;pointer-events:none;`;
+        document.getElementById('gameContainer').appendChild(f); setTimeout(()=>f.remove(),500);
+        showFloatingText("BOMB!", player.x, player.y-50, COLORS.magenta);
     }
 }
 
-/* --- 更新 & 判定 --- */
 function updateEntities() {
-    // 弾の軌跡
-    for(let i=trails.length-1; i>=0; i--) {
-        let t = trails[i]; t.x+=t.vx; t.y+=t.vy; t.life--;
-        if(t.life<=0) trails.splice(i,1);
-    }
-
-    // 自機弾
-    for(let i=bullets.length-1; i>=0; i--) {
-        let b = bullets[i]; b.x+=b.vx; b.y+=b.vy; b.angle+=0.2;
-        if(b.y < -20) bullets.splice(i,1);
-    }
-    // 敵
-    for(let i=enemies.length-1; i>=0; i--) {
-        let e = enemies[i]; e.time++; e.angle += (e.type==='tetra' ? 0.05 : 0.02);
-        e.y += (e.type==='octa'? 0.6 : 1.8) * currentDiff.spd;
-        if(e.type==='cube' && e.time%120===0) fireAimed(e, 2*currentDiff.spd, e.color, 'poly', 4);
-        if(e.type==='octa' && e.time%150===0) fireNWay(e, 6, 2*currentDiff.spd, e.color, 'poly', 8);
-        if(e.y > H+50) enemies.splice(i,1);
-    }
-    // 敵弾
-    for(let i=enemyBullets.length-1; i>=0; i--) {
-        let b = enemyBullets[i]; b.x+=b.vx; b.y+=b.vy; b.angle += 0.05;
-        if(b.x<-50||b.x>W+50||b.y<-50||b.y>H+50) enemyBullets.splice(i,1);
-    }
+    bullets.forEach((b,i) => { b.x+=b.vx; b.y+=b.vy; if(b.y<-20) bullets.splice(i,1); });
+    enemies.forEach((e,i) => { 
+        e.y += currentDiff.spd * 2; e.time++; e.angle+=0.05;
+        if(e.time%60===0 && e.y < H-50) fireAimed(e, 3*currentDiff.spd, e.color, 'orb');
+        if(e.y > H+50) enemies.splice(i,1); 
+    });
+    enemyBullets.forEach((b,i) => { 
+        b.x+=b.vx; b.y+=b.vy; b.angle+=0.1; 
+        if(b.x<-50||b.x>PLAY_W+50||b.y<-50||b.y>H+50) enemyBullets.splice(i,1); 
+    });
 }
 
 function checkCollision() {
-    // 自機弾 -> 敵
     for(let i=bullets.length-1; i>=0; i--) {
         let b = bullets[i]; let hit = false;
         for(let j=enemies.length-1; j>=0; j--) {
             let e = enemies[j];
-            let size = e.type==='octa' ? 28 : 20;
-            if(Math.hypot(b.x-e.x, b.y-e.y) < size) {
+            if(Math.hypot(b.x-e.x, b.y-e.y) < 30) {
                 e.hp--; hit=true; 
                 if(e.hp<=0) {
-                    spawnItem(e.x, e.y, Math.random()<0.3 ? 'power' : 'score');
-                    explode(e.x, e.y, e.color, 8); enemies.splice(j,1); score+=100;
+                    spawnItem(e.x, e.y); 
+                    explode(e.x, e.y, e.color, 8); enemies.splice(j,1); addScore(100);
                 }
                 break;
             }
         }
-        if(!hit && boss.active && Math.hypot(b.x-boss.x, b.y-boss.y) < 45) {
+        if(!hit && boss.active && Math.hypot(b.x-boss.x, b.y-boss.y) < 60) {
             boss.hp--; hit=true;
-             // ボス被弾時のエフェクトは負荷軽減のため控えめに
-             if(frame%5===0) explode(b.x, b.y, b.color, 1);
+            if(frame%4===0) explode(b.x, b.y, b.color, 1);
         }
         if(hit) bullets.splice(i,1);
     }
-    
-    // 敵攻撃 -> 自機
+
     if(state==="PLAYING" && player.invincible<=0) {
         let hit = false;
         for(let e of enemies) if(Math.hypot(e.x-player.x, e.y-player.y) < 20) hit=true;
-        for(let b of enemyBullets) {
-            let safe = player.slow ? 2 : 4; 
-            if(Math.hypot(b.x-player.x, b.y-player.y) < safe+5) hit=true;
-        }
-        if(boss.active && Math.hypot(boss.x-player.x, boss.y-player.y) < 35) hit=true;
-
-        if(hit) {
-            player.lives--; player.invincible=150; player.power = Math.max(0, player.power-10);
-            explode(player.x, player.y, COLORS.red, 60, true); // 派手な被弾エフェクト
-            enemyBullets=[]; 
-            if(player.lives<0) state="GAMEOVER";
-            updateUI();
-        }
-    }
-    if(frame%10===0) updateUI();
-}
-
-// エフェクト・描画ヘルパー
-function explode(x,y,c,n,big=false) {
-    for(let i=0;i<n;i++) {
-        let spd = big ? (Math.random()*8+2) : (Math.random()*5+1);
-        particles.push({x,y,vx:(Math.random()-.5)*spd,vy:(Math.random()-.5)*spd,life:big?40:25,color:c, size:big?Math.random()*5+2:Math.random()*3+1});
-    }
-}
-function showFloatingText(text, x, y, color) { floatingTexts.push({text, x, y, color, life: 60}); }
-function showStageTitle(t) {
-    const el = document.getElementById('stageMsg');
-    el.innerText = t; el.style.opacity=1; setTimeout(()=>el.style.opacity=0, 3000);
-}
-function updateUI() {
-    document.getElementById('scoreText').innerText = `SCORE: ${Math.floor(score).toString().padStart(7,'0')}`;
-    document.getElementById('infoText').innerHTML = 
-        `LIFE: ${"■".repeat(Math.max(0,player.lives))}<br>` +
-        `BOMB: ${"□".repeat(Math.max(0,player.bombs))}<br>` +
-        `PWR : ${player.power.toString().padStart(2,'0')}/${player.maxPower}`;
-}
-function useBomb() {
-    if(player.bombs>0 && state==="PLAYING") {
-        player.bombs--; enemyBullets=[];
-        enemies.forEach(e=>{e.hp=0; explode(e.x,e.y,COLORS.magenta,15);}); enemies=[];
-        if(boss.active) boss.hp -= 400;
-        updateUI();
-        // ボムエフェクト（画面フラッシュ）
-        let flash = document.createElement('div');
-        flash.style.cssText="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(45deg, #f0f, #0ff);opacity:0.6;mix-blend-mode:screen;transition:0.5s";
-        document.getElementById('gameContainer').appendChild(flash);
-        setTimeout(()=>flash.remove(),500);
-    }
-}
-
-/* --- 描画 (Canvas APIによる幾何学図形描画) --- */
-function drawGame() {
-    // 弾の軌跡描画
-    ctx.globalCompositeOperation = "lighter"; // 加算合成で発光させる
-    trails.forEach(t => {
-        ctx.beginPath();
-        ctx.moveTo(t.x, t.y);
-        ctx.lineTo(t.x - t.vx*3, t.y - t.vy*3);
-        ctx.lineWidth = t.width * (t.life/10);
-        ctx.strokeStyle = t.color; ctx.globalAlpha = t.life/10;
-        ctx.stroke();
-    });
-    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
-
-    // 自機 (回転する三角形)
-    if(player.invincible%10 < 5) {
-        drawPolygon(player.x, player.y, 3, 20, player.angle, true, COLORS.cyan, true);
-        if(player.slow) { // 低速時のコア表示
-            drawPolygon(player.x, player.y, 4, 6, -player.angle*2, true, COLORS.red, true);
-            ctx.strokeStyle = COLORS.cyan; ctx.lineWidth=1;
-            ctx.beginPath(); ctx.arc(player.x, player.y, 35, 0, Math.PI*2); ctx.stroke();
-        }
-    }
-    
-    // 敵
-    enemies.forEach(e => {
-        let sides = (e.type==='cube') ? 4 : (e.type==='tetra') ? 3 : 8;
-        drawPolygon(e.x, e.y, sides, sides*5, e.angle, true, e.color);
-    });
-
-    // ボス
-    if(boss.active) {
-        let sides = boss.isMid ? 6 : (boss.type === 6 ? 12 : 8);
-        let size = boss.isMid ? 50 : 70;
-        let col = boss.isMid ? COLORS.yellow : (boss.phase===1 ? COLORS.red : (boss.phase===2 ? COLORS.magenta : COLORS.cyan));
-        if(boss.type === 6) col = `hsl(${frame%360}, 80%, 60%)`; // 裏ボスは虹色
+        for(let b of enemyBullets) if(Math.hypot(b.x-player.x, b.y-player.y) < (player.slow?4:7)) hit=true;
+        if(boss.active && Math.hypot(boss.x-player.x, boss.y-player.y) < 40) hit=true;
         
-        // ボス本体
-        drawPolygon(boss.x, boss.y, sides, size, boss.angle, true, col, true);
-        // ボス魔法陣
-        ctx.save(); ctx.translate(boss.x, boss.y); ctx.rotate(-boss.angle*0.5);
-        ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.globalAlpha = 0.5 + Math.sin(frame*0.1)*0.2;
-        ctx.beginPath(); ctx.arc(0,0, size+30, 0, Math.PI*2); ctx.stroke();
-        drawPolygon(0, 0, sides, size+20, 0, false, col); // 外枠
-        ctx.restore();
+        if(hit) {
+            player.lives--; player.invincible=120; player.power=Math.max(0,player.power-10);
+            explode(player.x, player.y, COLORS.red, 50, true); enemyBullets=[];
+            if(player.lives<0) state="GAMEOVER";
+        }
     }
+}
 
-    // アイテム (回転する四角形)
-    items.forEach(it => {
-        drawPolygon(it.x, it.y, 4, 12, it.angle, true, it.color, true);
-        ctx.fillStyle = COLORS.white; ctx.font = "bold 12px sans-serif"; ctx.textAlign="center";
-        ctx.fillText(it.type==='power'?"P":"S", it.x, it.y+4);
-    });
+function drawBackground() {
+    ctx.fillStyle = "#000"; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = "rgba(0, 5, 20, 1)"; ctx.fillRect(0, 0, PLAY_W, H);
+    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(0, 255, 255, 0.15)";
+    ctx.beginPath();
+    for(let x=0; x<=PLAY_W; x+=40) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for(let y=bgOffset-40; y<=H; y+=40) { ctx.moveTo(0, y); ctx.lineTo(PLAY_W, y); }
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,0,255,0.05)";
+    drawPolygon(ctx, PLAY_W/2, (frame*0.5)%H, 6, 200, frame*0.01, false, null);
+}
 
-    // 自機弾
-    bullets.forEach(b => {
-        if(b.type === 'beam') {
-            ctx.fillStyle = b.color; ctx.fillRect(b.x-2, b.y-10, 4, 20);
-        } else {
-            drawPolygon(b.x, b.y, b.sides, 8, b.angle, true, b.color);
-        }
-    });
-
-    // 敵弾
-    enemyBullets.forEach(b => {
-        if(b.type === 'beam') {
-            ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx));
-            ctx.fillStyle = b.color; ctx.fillRect(-10, -3, 20, 6); ctx.restore();
-        } else if(b.type === 'cross' || b.type === 'ring') {
-             drawPolygon(b.x, b.y, 4, 10, b.angle, true, b.color, false);
-             if(b.type==='ring') { ctx.beginPath(); ctx.arc(b.x,b.y,4,0,Math.PI*2); ctx.fillStyle=COLORS.white; ctx.fill(); }
-        } else {
-            drawPolygon(b.x, b.y, b.sides, 8, b.angle, true, b.color);
-        }
-    });
-    
-    // パーティクル (発光する矩形)
+function drawGameEntities() {
     ctx.globalCompositeOperation = "lighter";
     particles.forEach(p => {
-        ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life/40);
-        let s = p.size || 4;
-        ctx.fillRect(p.x-s/2, p.y-s/2, s, s);
-        p.x += p.vx; p.y += p.vy; p.life--;
+        ctx.fillStyle=p.color; ctx.globalAlpha=p.life/30; 
+        ctx.fillRect(p.x-p.size/2, p.y-p.size/2, p.size, p.size);
+        p.x+=p.vx; p.y+=p.vy; p.life--; 
     });
-    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha=1; ctx.globalCompositeOperation = "source-over";
 
-    // 浮遊テキスト
+    if(player.invincible%10 < 5) drawPolygon(ctx, player.x, player.y, 3, 15, player.angle, true, COLORS.cyan, true);
+    if(player.slow) { ctx.fillStyle="#f00"; ctx.beginPath(); ctx.arc(player.x,player.y,4,0,Math.PI*2); ctx.fill(); }
+
+    enemies.forEach(e => drawPolygon(ctx, e.x, e.y, (e.type==='cube'?4:3), 25, e.angle, true, e.color));
+
+    if(boss.active) {
+        drawPolygon(ctx, boss.x, boss.y, 6 + boss.phase*2, 60, boss.angle, true, boss.color, true);
+        ctx.strokeStyle = boss.color; ctx.lineWidth=2; ctx.globalAlpha=0.6;
+        ctx.beginPath(); ctx.arc(boss.x, boss.y, 80 + Math.sin(frame*0.1)*10, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha=1;
+    }
+
+    bullets.forEach(b => {
+        if(b.type==='beam') { ctx.fillStyle=b.color; ctx.fillRect(b.x-2, b.y-10, 4, 20); }
+        else drawPolygon(ctx, b.x, b.y, b.sides, 6, b.angle, true, b.color);
+    });
+    enemyBullets.forEach(b => {
+        if(b.type==='beam') {
+            ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy,b.vx));
+            ctx.fillStyle=b.color; ctx.fillRect(-10,-3,20,6); ctx.restore();
+        } else drawPolygon(ctx, b.x, b.y, b.sides||3, 8, b.angle, true, b.color);
+    });
+
+    items.forEach(it => {
+        // アイテム描画: ボムは四角形でマゼンタ、少し大きい
+        let size = (it.type === 'bomb') ? 14 : 10;
+        let sides = (it.type === 'bomb') ? 4 : 4; 
+        let glow = (it.type === 'bomb'); 
+        drawPolygon(ctx, it.x, it.y, sides, size, it.angle, true, it.color, glow);
+        
+        ctx.fillStyle = "#fff"; ctx.font = "10px sans-serif"; 
+        let txt = 'S';
+        if(it.type==='power') txt='P';
+        if(it.type==='bomb') txt='B';
+        ctx.fillText(txt, it.x-3, it.y+3);
+    });
+
     floatingTexts.forEach(t => {
-        ctx.fillStyle = t.color; ctx.font = "bold 16px 'Orbitron'"; ctx.textAlign="center";
+        ctx.fillStyle=t.color; ctx.font="bold 14px 'Orbitron'"; ctx.textAlign="center"; 
         ctx.fillText(t.text, t.x, t.y);
     });
+
+    if(boss.active) {
+        let hpPct = boss.hp / boss.maxHp;
+        ctx.strokeStyle = "#fff"; ctx.lineWidth=2;
+        ctx.strokeRect(40, 20, PLAY_W-80, 10);
+        ctx.fillStyle = boss.color;
+        ctx.fillRect(42, 22, (PLAY_W-84) * hpPct, 6);
+    }
 }
 
-// 汎用多角形描画関数 (グロー効果付き)
-function drawPolygon(x, y, sides, size, angle, filled, color, glow=false) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    ctx.beginPath();
-    ctx.moveTo(size, 0);
-    for (let i = 1; i < sides; i++) {
-        ctx.lineTo(size * Math.cos(i * 2 * Math.PI / sides), size * Math.sin(i * 2 * Math.PI / sides));
-    }
-    ctx.closePath();
+function drawUI() {
+    ctx.fillStyle = "#050510"; ctx.fillRect(UI_X, 0, W-UI_X, H);
+    ctx.strokeStyle = COLORS.cyan; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(UI_X, 0); ctx.lineTo(UI_X, H); ctx.stroke();
+
+    ctx.textAlign = "left"; 
+    let x = UI_X + 20;
     
-    if(glow) {
-        ctx.shadowBlur = 15; ctx.shadowColor = color;
-    }
-    if (filled) {
-        ctx.fillStyle = color; ctx.fill();
-        // 輪郭を少し明るく
-        ctx.lineWidth = 2; ctx.strokeStyle = COLORS.white; ctx.globalAlpha=0.5; ctx.stroke();
-    } else {
-        ctx.lineWidth = 2; ctx.strokeStyle = color; ctx.stroke();
-    }
-    ctx.restore();
+    ctx.fillStyle = COLORS.magenta; ctx.font = "24px 'Orbitron'";
+    ctx.fillText("GEOMETRIC", x, 50); ctx.fillText("NEO", x, 80);
+
+    ctx.fillStyle = COLORS.cyan; ctx.font = "18px 'Orbitron'"; ctx.fillText("SCORE", x, 140);
+    ctx.fillStyle = "#fff"; ctx.font = "24px 'Share Tech Mono'"; ctx.fillText(Math.floor(score).toString().padStart(9, '0'), x, 170);
+
+    // 次のエクステンド表示
+    ctx.fillStyle = "#666"; ctx.font = "12px 'Share Tech Mono'";
+    ctx.fillText(`NEXT: ${nextExtendScore}`, x, 190);
+
+    ctx.fillStyle = COLORS.green; ctx.font = "18px 'Orbitron'"; ctx.fillText("LIVES", x, 230);
+    for(let i=0; i<player.lives; i++) drawPolygon(ctx, x + 10 + i*30, 260, 3, 10, -Math.PI/2, true, COLORS.green);
+
+    ctx.fillStyle = COLORS.magenta; ctx.font = "18px 'Orbitron'"; ctx.fillText("BOMB (X)", x, 310);
+    for(let i=0; i<player.bombs; i++) drawPolygon(ctx, x + 10 + i*30, 340, 4, 8, 0, true, COLORS.magenta);
+
+    ctx.fillStyle = COLORS.yellow; ctx.font = "18px 'Orbitron'"; ctx.fillText("POWER", x, 390);
+    ctx.fillStyle = "#fff"; ctx.font = "24px 'Share Tech Mono'"; ctx.fillText(`${player.power} / ${player.maxPower}`, x, 420);
+    ctx.strokeStyle = "#555"; ctx.strokeRect(x, 430, 120, 8);
+    ctx.fillStyle = COLORS.yellow; ctx.fillRect(x+1, 431, 118 * (player.power/player.maxPower), 6);
+
+    ctx.fillStyle = "#888"; ctx.font = "16px 'Orbitron'"; ctx.fillText("DIFFICULTY:", x, 550);
+    ctx.fillStyle = "#fff"; ctx.fillText(currentDiff.name, x, 575);
 }
 
 function drawOverlay() {
-    ctx.fillStyle = "rgba(0, 5, 15, 0.85)"; ctx.fillRect(0,0,W,H);
-    ctx.textAlign = "center"; ctx.font = "'Orbitron', sans-serif";
-    
+    ctx.textAlign = "center";
+    let CX = PLAY_W / 2;
     if(state === "TITLE") {
-        ctx.fillStyle = "#fff"; ctx.font = "50px 'Orbitron'"; 
-        ctx.shadowBlur=20; ctx.shadowColor="#0ff"; ctx.fillText("弾幕・夢幻", W/2, 160);
-        ctx.shadowColor="#f0f"; ctx.font = "28px 'Orbitron'"; ctx.fillText("GEOMETRIC NEO", W/2, 210);
+        ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0,0,PLAY_W,H);
+        ctx.fillStyle = "#fff"; ctx.font = "40px 'Orbitron'"; 
+        ctx.shadowBlur=20; ctx.shadowColor="#0ff"; ctx.fillText("弾幕・夢幻", CX, 180);
         ctx.shadowBlur=0;
-        
-        DIFFICULTIES.forEach((d, i) => {
-            let selected = (i===diffIndex);
-            ctx.fillStyle = selected ? COLORS.cyan : "#888";
-            ctx.font = selected ? "bold 24px 'Orbitron'" : "20px 'Orbitron'";
-            if(selected) { ctx.shadowBlur=10; ctx.shadowColor=COLORS.cyan; }
-            ctx.fillText((selected?"> ":"") + d.name, W/2, 320+i*50);
-            ctx.shadowBlur=0;
+        let menus = ["NEW GAME", "LOAD", "INPUT CODE"];
+        menus.forEach((m, i) => {
+            let sel = (i === menuIndex);
+            ctx.fillStyle = sel ? COLORS.cyan : "#555";
+            ctx.font = sel ? "bold 24px 'Orbitron'" : "20px 'Orbitron'";
+            let txt = (sel ? "> " : "") + m;
+            if(i===0 && sel) txt += ` < ${currentDiff.name} >`;
+            ctx.fillText(txt, CX, 350 + i*50);
         });
-        ctx.fillStyle=COLORS.magenta; ctx.font="14px 'Share Tech Mono'";
-        ctx.fillText("MOVE:ARROW / SHOT:X / BOMB:Z / SLOW:SHIFT", W/2, 560);
+    } else if(state === "INTERMISSION") {
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,PLAY_W,H);
+        ctx.fillStyle = COLORS.green; ctx.font = "30px 'Orbitron'"; ctx.fillText("STAGE CLEAR", CX, 250);
+        ctx.fillStyle = "#fff"; ctx.font = "18px 'Share Tech Mono'";
+        ctx.fillText("Z: NEXT STAGE", CX, 350); ctx.fillText("S: SAVE TO BROWSER", CX, 390); ctx.fillText("C: GET CODE", CX, 430);
     } else if(state === "GAMEOVER") {
-        ctx.fillStyle = COLORS.red; ctx.font = "46px 'Orbitron'"; ctx.shadowBlur=15; ctx.shadowColor=COLORS.red;
-        ctx.fillText("SYSTEM FAILURE", W/2, H/2); ctx.shadowBlur=0;
-        ctx.fillStyle = "#fff"; ctx.font = "22px 'Orbitron'"; ctx.fillText("REBOOT: Z KEY", W/2, H/2+60);
-    } else if(state === "CLEAR") {
-        ctx.fillStyle = COLORS.cyan; ctx.font = "46px 'Orbitron'"; ctx.shadowBlur=15; ctx.shadowColor=COLORS.cyan;
-        ctx.fillText("MISSION COMPLETE", W/2, H/2); ctx.shadowBlur=0;
-        ctx.fillStyle = "#fff"; ctx.font = "22px 'Orbitron'"; 
-        ctx.fillText(`FINAL SCORE: ${Math.floor(score)}`, W/2, H/2+60);
-        ctx.fillText("DIFFICULTY: " + currentDiff.name.split(' ')[0], W/2, H/2+100);
-        ctx.fillText("RETURN: Z KEY", W/2, H/2+150);
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,PLAY_W,H);
+        ctx.fillStyle = COLORS.red; ctx.font = "40px 'Orbitron'"; ctx.fillText("GAME OVER", CX, 300);
+        ctx.fillStyle = "#fff"; ctx.font = "20px 'Orbitron'"; ctx.fillText("Z: TITLE", CX, 360);
     }
 }
+
+function drawPolygon(c, x, y, sides, size, angle, filled, color, glow=false) {
+    c.save(); c.translate(x, y); c.rotate(angle);
+    c.beginPath(); c.moveTo(size, 0);
+    for (let i=1; i<sides; i++) c.lineTo(size * Math.cos(i*2*Math.PI/sides), size * Math.sin(i*2*Math.PI/sides));
+    c.closePath();
+    if(glow) { c.shadowBlur=10; c.shadowColor=color; }
+    if (filled) { c.fillStyle=color; c.fill(); c.lineWidth=1; c.strokeStyle="#fff"; c.stroke(); }
+    else { c.lineWidth=2; c.strokeStyle=color; c.stroke(); }
+    c.restore();
+}
+
+function showStageTitle(t) { const el = document.getElementById('stageMsg'); el.innerText = t; el.style.opacity=1; setTimeout(()=>el.style.opacity=0, 3000); }
+function showFloatingText(text, x, y, color) { floatingTexts.push({text, x, y, color, life: 60}); }
+
+function saveToBrowser() { localStorage.setItem('dm_geo_save', JSON.stringify({s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex})); showStageTitle("SAVED!"); }
+function loadFromBrowser() { let d = JSON.parse(localStorage.getItem('dm_geo_save')); if(d) applyData(d); else alert("NO DATA"); }
+function generateCode() { let d = {s:score, st:stage, l:player.lives, b:player.bombs, p:player.power, d:diffIndex}; document.getElementById('codeDisplay').innerText = btoa(JSON.stringify(d)); document.getElementById('codeOverlay').style.display='flex'; }
+function closeCodeOverlay(){ document.getElementById('codeOverlay').style.display='none'; }
+function loadFromCodeInput() { let c = prompt("CODE:"); if(c) { try { applyData(JSON.parse(atob(c))); } catch(e){alert("INVALID");} } }
+function applyData(d) { score=d.s; stage=d.st; player.lives=d.l; player.bombs=d.b; player.power=d.p; diffIndex=d.d; startGame(); }
+function nextStage() { stage++; startGame(); }
 
 init();
 </script>
