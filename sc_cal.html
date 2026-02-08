@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Web Scientific Calculator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --panel-color: #2d2d2d;
+            --text-color: #ffffff;
+            --accent-color: #4CAF50;
+            --btn-bg: #3a3a3a;
+            --btn-hover: #505050;
+            --operator-bg: #ff9800;
+            --function-bg: #2196F3;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 電卓本体 */
+        .calculator {
+            flex: 1;
+            min-width: 350px;
+            background-color: var(--panel-color);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        /* ディスプレイエリア */
+        .display-area {
+            background-color: #000;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: right;
+        }
+
+        #history-display {
+            color: #888;
+            font-size: 0.9em;
+            height: 60px;
+            overflow-y: auto;
+            margin-bottom: 5px;
+            white-space: pre-wrap;
+        }
+
+        #input-display {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.8em;
+            text-align: right;
+            outline: none;
+            font-family: 'Courier New', monospace;
+        }
+
+        #result-display {
+            color: var(--accent-color);
+            font-size: 1.2em;
+            min-height: 1.2em;
+        }
+
+        /* ツールバー (Rad/Deg など) */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: 1px solid #555;
+            color: #aaa;
+            padding: 2px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+        .mode-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        /* ボタンパッド */
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            flex-grow: 1;
+        }
+
+        button {
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.1s;
+            padding: 15px 5px;
+            color: white;
+            background-color: var(--btn-bg);
+        }
+
+        button:hover { background-color: var(--btn-hover); }
+        button:active { transform: scale(0.98); }
+
+        .btn-func { background-color: #333; color: #add8e6; font-size: 0.9rem; }
+        .btn-op { background-color: #444; color: #ffcc80; }
+        .btn-eq { background-color: var(--operator-bg); color: black; font-weight: bold; }
+        .btn-ac { background-color: #d32f2f; }
+        .btn-graph { background-color: var(--function-bg); }
+
+        /* サイドパネル (グラフ・履歴・ヘルプ) */
+        .side-panel {
+            flex: 1;
+            min-width: 350px;
+            background-color: var(--panel-color);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .panel-header {
+            font-weight: bold;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+        }
+
+        #graph-container {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            min-height: 300px;
+        }
+
+        .help-text {
+            font-size: 0.85em;
+            color: #ccc;
+            line-height: 1.4;
+            background: #222;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        code {
+            background: #444;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #ff9800;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="calculator">
+        <div class="display-area">
+            <div id="history-display"></div>
+            <input type="text" id="input-display" placeholder="式を入力" autocomplete="off">
+            <div id="result-display">0</div>
+        </div>
+
+        <div class="toolbar">
+            <div>
+                <button class="mode-btn active" id="btn-deg" onclick="setAngleMode('deg')">DEG</button>
+                <button class="mode-btn" id="btn-rad" onclick="setAngleMode('rad')">RAD</button>
+            </div>
+            <div style="font-size: 0.8em; color:#888;">Math.js & Plotly Powered</div>
+        </div>
+
+        <div class="keypad">
+            <button class="btn-func" onclick="insert('(')">(</button>
+            <button class="btn-func" onclick="insert(')')">)</button>
+            <button class="btn-func" onclick="clearInput()">C</button>
+            <button class="btn-ac" onclick="allClear()">AC</button>
+            <button class="btn-graph" onclick="plotGraph()">Graph</button>
+
+            <button class="btn-func" onclick="insert('sin(')">sin</button>
+            <button class="btn-func" onclick="insert('cos(')">cos</button>
+            <button class="btn-func" onclick="insert('tan(')">tan</button>
+            <button class="btn-func" onclick="insert('^')">x^y</button>
+            <button class="btn-func" onclick="insert('sqrt(')">√</button>
+
+            <button class="btn-func" onclick="insert('log10(')">log</button>
+            <button class="btn-func" onclick="insert('log(')">ln</button>
+            <button class="btn-func" onclick="insert('pi')">π</button>
+            <button class="btn-func" onclick="insert('e')">e</button>
+            <button class="btn-func" onclick="insert('abs(')">abs</button>
+
+            <button class="btn-func" onclick="insert('i')">i</button>
+            <button class="btn-func" onclick="insert('derivative(\'x^2\', \'x\')')">d/dx</button>
+            <button class="btn-func" onclick="insert('cross([1,0,0], [0,1,0])')">vec</button>
+            <button class="btn-func" onclick="solveEquation()">Solve</button>
+            <button class="btn-op" onclick="insert('/')">÷</button>
+
+            <button onclick="insert('7')">7</button>
+            <button onclick="insert('8')">8</button>
+            <button onclick="insert('9')">9</button>
+            <button class="btn-func" onclick="insert('factorial(')">n!</button>
+            <button class="btn-op" onclick="insert('*')">×</button>
+
+            <button onclick="insert('4')">4</button>
+            <button onclick="insert('5')">5</button>
+            <button onclick="insert('6')">6</button>
+            <button class="btn-func" onclick="insert('combinations(')">nCr</button>
+            <button class="btn-op" onclick="insert('-')">-</button>
+
+            <button onclick="insert('1')">1</button>
+            <button onclick="insert('2')">2</button>
+            <button onclick="insert('3')">3</button>
+            <button class="btn-func" onclick="insert('permutations(')">nPr</button>
+            <button class="btn-op" onclick="insert('+')">+</button>
+
+            <button onclick="insert('0')">0</button>
+            <button onclick="insert('.')">.</button>
+            <button onclick="insert(',')">,</button>
+            <button class="btn-func" onclick="insert('Ans')">Ans</button>
+            <button class="btn-eq" onclick="calculate()">=</button>
+        </div>
+    </div>
+
+    <div class="side-panel">
+        <div class="panel-header">Graph Plotter (y = f(x))</div>
+        <div id="graph-container"></div>
+        
+        <div class="panel-header">Quick Guide</div>
+        <div class="help-text">
+            <ul>
+                <li><strong>複素数:</strong> <code>3 + 4i</code> のように入力。絶対値は <code>abs(3+4i)</code></li>
+                <li><strong>微分:</strong> <code>derivative('式', '変数')</code> 例: <code>derivative('x^2', 'x')</code></li>
+                <li><strong>ベクトル/行列:</strong> <code>[1, 2]</code> や <code>det([1,2;3,4])</code></li>
+                <li><strong>Solve:</strong> 式に <code>x</code> を含めて [Solve] を押すと、<code>f(x)=0</code> の解を探索します(Newton法)。</li>
+                <li><strong>グラフ:</strong> 式に <code>x</code> を含めて [Graph] を押してください。</li>
+                <li><strong>キーボード入力:</strong> 直接入力可能です。Enterで計算。</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 初期設定
+    let angleMode = 'deg'; // deg または rad
+    let lastAns = '0';
+    const inputField = document.getElementById('input-display');
+    const resultField = document.getElementById('result-display');
+    const historyField = document.getElementById('history-display');
+
+    // キーボード入力対応
+    inputField.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            calculate();
+        }
+    });
+
+    // 角度モード切替
+    function setAngleMode(mode) {
+        angleMode = mode;
+        document.getElementById('btn-deg').classList.toggle('active', mode === 'deg');
+        document.getElementById('btn-rad').classList.toggle('active', mode === 'rad');
+    }
+
+    // 文字挿入
+    function insert(value) {
+        inputField.focus();
+        // カーソル位置に挿入
+        const startPos = inputField.selectionStart;
+        const endPos = inputField.selectionEnd;
+        const text = inputField.value;
+        inputField.value = text.substring(0, startPos) + value + text.substring(endPos);
+        
+        // カーソルを進める
+        const newPos = startPos + value.length;
+        inputField.setSelectionRange(newPos, newPos);
+    }
+
+    // クリア
+    function clearInput() {
+        const text = inputField.value;
+        inputField.value = text.slice(0, -1);
+    }
+
+    function allClear() {
+        inputField.value = '';
+        resultField.innerText = '0';
+        // グラフもクリア
+        Plotly.purge('graph-container');
+    }
+
+    // 履歴に追加
+    function addToHistory(expression, result) {
+        const line = document.createElement('div');
+        line.innerText = `${expression} = ${result}`;
+        line.style.cursor = 'pointer';
+        line.onclick = () => { inputField.value = expression; };
+        historyField.prepend(line);
+    }
+
+    // 計算実行
+    function calculate() {
+        let expression = inputField.value;
+        if (!expression) return;
+
+        // Ansの置換
+        expression = expression.replace(/Ans/g, `(${lastAns})`);
+
+        try {
+            // Math.jsの設定（角度モード対応のため、式を少し加工して渡すのが簡易的だが
+            // ここではmath.evaluateのscopeを使う手もあるが、単に単位変換を行う）
+            // Math.jsの三角関数はデフォルトRAD。DEGの場合は単位をつけるか変換が必要。
+            // 簡易的に、ユーザーにはRADでの入力を基本としつつ、DEGモードなら三角関数の中身を変換するロジックを入れるか、
+            // math.jsのconfigでやるのが正攻法だがCDN版だとconfigがglobalになりがち。
+            // 今回はシンプルに、DEGモードなら sin(x) -> sin(x deg) と解釈させるよう文字列置換を行う。
+            
+            let evalExpr = expression;
+            if (angleMode === 'deg') {
+                // sin(30) -> sin(30 deg) のように置換したいが、複雑なパースが必要。
+                // 簡易実装として、math.jsのユニット機能を利用することを推奨するが、
+                // ここでは math.evaluate に設定を渡せないため、式変形で対応せず
+                // 結果に影響する関数のみ、ラッパーを通して計算する方が安全。
+                // ただし、今回は「高機能」を見せるため、math.jsの単位機能を活用する。
+                // ユーザーが 'sin(90 deg)' と打てば動くが、自動でやりたい。
+                
+                // 抜本的解決: math.jsのインスタンスを作成して設定する（以下で対応）
+            }
+
+            // math.jsの再構成（毎回やるのは重いが、モード切替確実のため）
+            const mathConfig = math.create(math.all, {});
+            
+            // 三角関数のオーバーライド（Deg対応）
+            if (angleMode === 'deg') {
+                const _sin = mathConfig.sin;
+                const _cos = mathConfig.cos;
+                const _tan = mathConfig.tan;
+                
+                mathConfig.import({
+                    sin: function(x) { return _sin(math.unit(x, 'deg')); },
+                    cos: function(x) { return _cos(math.unit(x, 'deg')); },
+                    tan: function(x) { return _tan(math.unit(x, 'deg')); }
+                }, {override: true});
+            }
+
+            const result = mathConfig.evaluate(evalExpr);
+            
+            // 結果のフォーマット
+            let resultStr = math.format(result, {precision: 10});
+            
+            // 複素数やオブジェクトの場合の表示調整
+            if (typeof result === 'object' && result.re !== undefined) {
+                resultStr = result.toString();
+            }
+
+            resultField.innerText = resultStr;
+            lastAns = resultStr;
+            addToHistory(expression, resultStr);
+
+        } catch (error) {
+            resultField.innerText = "Error: " + error.message;
+        }
+    }
+
+    // グラフ描画機能
+    function plotGraph() {
+        const expression = inputField.value;
+        if (!expression || expression.indexOf('x') === -1) {
+            alert("式に変数 'x' を含めてください (例: sin(x) * x)");
+            return;
+        }
+
+        try {
+            const expr = math.compile(expression);
+            const xValues = math.range(-10, 10, 0.1).toArray();
+            const yValues = xValues.map(x => {
+                // Evaluate with x. Handle potential errors (e.g. division by zero)
+                try {
+                    return expr.evaluate({x: x});
+                } catch {
+                    return null;
+                }
+            });
+
+            const trace = {
+                x: xValues,
+                y: yValues,
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: '#2196F3', width: 2}
+            };
+
+            const layout = {
+                margin: {t: 20, r: 20, b: 40, l: 40},
+                xaxis: {title: 'x'},
+                yaxis: {title: 'f(x)'}
+            };
+
+            Plotly.newPlot('graph-container', [trace], layout, {responsive: true});
+
+        } catch (error) {
+            alert("グラフ描画エラー: " + error.message);
+        }
+    }
+
+    // 簡易ソルブ機能 (Newton-Raphson法)
+    function solveEquation() {
+        const expression = inputField.value;
+        // f(x) = 0 を解く
+        if (!expression.includes('x')) {
+            alert("変数 x を含む式を入力してください (例: x^2 - 4)");
+            return;
+        }
+
+        try {
+            const f = math.compile(expression);
+            const derivativeStr = math.derivative(expression, 'x').toString();
+            const df = math.compile(derivativeStr);
+
+            let x = 1; // 初期値
+            for (let i = 0; i < 20; i++) {
+                let y = f.evaluate({x: x});
+                let dy = df.evaluate({x: x});
+                if (Math.abs(dy) < 1e-7) break; // 傾き0回避
+                let x_new = x - y / dy;
+                if (Math.abs(x_new - x) < 1e-7) {
+                    x = x_new;
+                    break;
+                }
+                x = x_new;
+            }
+            
+            resultField.innerText = "x ≈ " + x;
+            addToHistory(`Solve(${expression})`, x);
+
+        } catch (e) {
+            alert("解けませんでした。初期値を変えるか、単純な式にしてください。");
+        }
+    }
+</script>
+
+</body>
+</html>
