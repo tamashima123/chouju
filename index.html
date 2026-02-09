@@ -1,3 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>長寿の庭園</title>
+    <link rel="icon" href="naga.gif">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Serif JP', serif;
+            margin: 0; padding: 0;
+            height: 100vh; overflow: hidden;
+            background-image: url('https://news.1242.com/wp-content/uploads/2023/05/2044016_sTR.jpg');
+            background-size: cover; background-position: center;
+            display: flex; justify-content: center; align-items: center;
+            flex-direction: column;
+        }
+
+        /* 中央コンテナ */
+        .center-container {
+            text-align: center;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 15px; z-index: 10;
+            width: 100%; max-width: 800px;
+        }
+
+        .main-title {
+            color: #fff; font-size: 4em; letter-spacing: 0.2em; font-weight: 700;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.6); margin: 0; cursor: default;
+            animation: fadeInSlow 1.5s ease-out;
+        }
+
+        .clock-display {
+            color: #fff; font-size: 1.8em; letter-spacing: 0.1em;
+            text-shadow: 1px 1px 5px rgba(0,0,0,0.5); font-weight: 400;
+            animation: fadeInSlow 2s ease-out;
+        }
+
+        /* 検索ボックス */
+        .search-box {
+            margin-top: 5px; animation: fadeInSlow 2.5s ease-out;
+            position: relative; z-index: 20;
+        }
+        .search-input {
+            width: 300px; padding: 12px 20px; border-radius: 30px; border: none;
+            background-color: rgba(255, 255, 255, 0.7); backdrop-filter: blur(5px);
+            font-family: 'Noto Serif JP', serif; font-size: 1em; text-align: center;
+            color: #333; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            outline: none; transition: all 0.3s ease;
+        }
+        .search-input:focus {
+            background-color: rgba(255, 255, 255, 0.95); width: 350px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+
+        /* --- お知らせ機能のスタイル --- */
+        .news-container {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            width: 90%; max-width: 500px;
+            padding: 15px;
+            margin-top: 10px;
+            text-align: left;
+            color: #fff;
+            animation: fadeInSlow 2.8s ease-out;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .news-title {
+            font-size: 1.0em;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            padding-bottom: 5px; margin-bottom: 10px;
+            font-weight: bold; letter-spacing: 0.1em;
+        }
+        .news-list {
+            list-style: none; padding: 0; margin: 0;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        .news-item {
+            font-size: 0.9em; margin-bottom: 8px;
+            display: flex; gap: 15px; align-items: baseline;
+        }
+        .news-date {
+            color: #ddd; font-size: 0.85em; font-family: monospace; white-space: nowrap;
+        }
+        .news-content {
+            color: #fff; line-height: 1.4;
+        }
+        /* スクロールバーのデザイン */
+        .news-list::-webkit-scrollbar { width: 6px; }
+        .news-list::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.3); border-radius: 3px; }
+
+        /* ブックマークエリア */
+        .bookmark-area {
+            display: flex; flex-wrap: wrap; justify-content: center;
+            gap: 15px; margin-top: 20px; animation: fadeInSlow 3s ease-out;
+            max-width: 600px;
+        }
+        .bookmark-item {
+            display: inline-block; padding: 8px 16px;
+            background-color: rgba(0, 0, 0, 0.4); color: #fff;
+            text-decoration: none; border-radius: 4px; font-size: 0.9em;
+            backdrop-filter: blur(4px); border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.2s;
+        }
+        .bookmark-item:hover {
+            background-color: rgba(255, 255, 255, 0.9); color: #333;
+            transform: translateY(-2px);
+        }
+        .add-btn {
+            padding: 8px 16px; background-color: rgba(255, 255, 255, 0.2);
+            color: #fff; border: 1px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 4px; cursor: pointer; font-size: 0.9em; transition: 0.2s;
+        }
+        .add-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
+
+        /* モーダル */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2000;
+            justify-content: center; align-items: center;
+        }
+        .modal-box {
+            background: white; padding: 25px; border-radius: 4px;
+            text-align: center; width: 320px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .modal-box h3 { margin-top: 0; color: #4a5c6a; }
+        .modal-box input {
+            width: 90%; padding: 10px; margin: 8px 0;
+            border: 1px solid #ccc; border-radius: 4px;
+            font-family: 'Noto Serif JP', serif;
+        }
+        .modal-buttons {
+            display: flex; justify-content: center; gap: 10px; margin-top: 15px;
+        }
+        .btn {
+            padding: 8px 15px; cursor: pointer; border: none; border-radius: 3px;
+            font-family: 'Noto Serif JP', serif; font-weight: bold;
+        }
+        .btn-cancel { background: #eee; color: #333; }
+        .btn-save { background: #4a5c6a; color: white; }
+        .btn-delete { background: #e74c3c; color: white; }
+
+        @keyframes fadeInSlow {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ナビゲーション */
+        .top-nav {
+            position: absolute; top: 40px; right: 50px;
+            display: flex; gap: 20px; z-index: 1000; flex-wrap: wrap; justify-content: flex-end;
+        }
+        .nav-item { position: relative; cursor: default; }
+        .category-name {
+            color: #fff; font-size: 1.1em; padding: 10px 20px;
+            background-color: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px);
+            border-radius: 4px; border: 1px solid rgba(255,255,255,0.3);
+            transition: 0.3s; white-space: nowrap;
+        }
+        .nav-item:hover .category-name { background-color: rgba(255, 255, 255, 0.9); color: #333; }
+        .dropdown {
+            position: absolute; top: 100%; right: 0; width: 180px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 4px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            padding: 10px 0; margin-top: 10px;
+            opacity: 0; visibility: hidden; transform: translateY(-10px); transition: 0.4s;
+        }
+        .nav-item:hover .dropdown { opacity: 1; visibility: visible; transform: translateY(0); }
+        .dropdown a {
+            display: block; padding: 12px 20px; color: #333;
+            text-decoration: none; font-size: 0.95em;
+            border-bottom: 1px dotted #ccc; transition: 0.2s;
+        }
+        .dropdown a:last-child { border-bottom: none; }
+        .dropdown a:hover { background-color: #f0f0f0; padding-left: 25px; }
+
+        /* --- おみくじ機能 (左下固定) --- */
+        .omikuji-container {
+            position: fixed; bottom: 30px; left: 30px; z-index: 2000;
+            display: flex; flex-direction: column-reverse; align-items: center;
+        }
+        .omikuji-btn {
+            font-size: 2em; cursor: pointer; padding: 10px;
+            background-color: rgba(0,0,0,0.4); border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: transform 0.2s, background-color 0.2s; backdrop-filter: blur(5px);
+        }
+        .omikuji-btn:hover { transform: scale(1.1) rotate(-10deg); background-color: rgba(255, 255, 255, 0.2); }
+        .omikuji-btn:active { transform: scale(0.95); }
+
+        .omikuji-result {
+            background-color: rgba(255, 250, 240, 0.95); color: #333;
+            padding: 15px 20px; border-radius: 8px; margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2); text-align: center;
+            position: relative; opacity: 0; visibility: hidden;
+            transform: translateY(10px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            border: 1px solid #d4c4b4; min-width: 150px;
+        }
+        .omikuji-result::after {
+            content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+            border-width: 10px 10px 0 10px; border-style: solid;
+            border-color: rgba(255, 250, 240, 0.95) transparent transparent transparent;
+        }
+        .omikuji-result.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        .result-unsei { font-size: 1.8em; font-weight: bold; color: #d35400; display: block; margin-bottom: 5px; }
+        .result-kotoba { font-size: 0.9em; color: #555; }
+
+        @media (max-width: 768px) {
+            .main-title { font-size: 2.2em; }
+            .top-nav { top: 20px; right: 10px; left: 10px; justify-content: center; }
+            .omikuji-container { bottom: 20px; left: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="center-container">
+        <div class="main-title">長寿の庭園</div>
+        <div id="clock" class="clock-display">00:00:00</div>
+        
+        <form action="https://www.google.com/search" method="get" target="_blank" class="search-box">
+            <input type="text" name="q" class="search-input" placeholder="Google 検索" autocomplete="off">
+        </form>
+
+        <div class="news-container">
+            <div class="news-title">お知らせ</div>
+            <ul class="news-list" id="news-list">
+                <li style="color:#ccc; list-style:none; font-size:0.8em;">読み込み中...</li>
+            </ul>
+        </div>
+
+        <div class="bookmark-area" id="bookmark-list">
+            <div class="add-btn" onclick="openAddModal()">＋ 追加</div>
+        </div>
+    </div>
+
+    <nav class="top-nav">
+        <div class="nav-item"><div class="category-name">学習</div><div class="dropdown"><a href="cobun_card.html">古典単語帳</a><a href="kanji_quiz.html">漢字クイズ</a><a href="daigaku_quiz.html">大学クイズ</a></div></div>
+        <div class="nav-item"><div class="category-name">道具</div><div class="dropdown"><a href="timer.html">集中タイマー</a><a href="sc_cal.html">関数電卓</a><a href="kansu.html">関数表示アプリ</a></div></div>
+        <div class="nav-item"><div class="category-name">ゲーム</div><div class="dropdown"><a href="shogi.html">将棋</a><a href="othello.html">オセロ</a><a href="rogue.html">ローグライク</a><a href="mine.html">マインスイーパー</a><a href="ball.html">スイカゲーム</a><a href="tetris.html">テトリス</a><a href="stg.html">シューティング</a><a href="click.html">クリッカー</a></div></div>
+    </nav>
+
+    <div class="omikuji-container">
+        <div id="omikuji-result" class="omikuji-result"><span id="result-unsei" class="result-unsei"></span><span id="result-kotoba" class="result-kotoba"></span></div>
+        <div class="omikuji-btn" onclick="drawOmikuji()">⛩️</div>
+    </div>
+
+    <div id="modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 id="modal-title">ショートカットを追加</h3>
+            <input type="text" id="bm-name" placeholder="サイト名（例：Youtube）">
+            <input type="text" id="bm-url" placeholder="URL（例：https://youtube.com）">
+            <div class="modal-buttons">
+                <button class="btn btn-cancel" onclick="closeModal()">中止</button>
+                <button class="btn btn-delete" id="btn-delete" onclick="deleteCurrentBookmark()" style="display:none;">削除</button>
+                <button class="btn btn-save" onclick="saveBookmark()">保存</button>
+            </div>
+        </div>
+    </div>
+
 <script>
         // --- 時計処理 ---
         function updateClock() {
@@ -110,3 +375,5 @@
         function closeModal() { modal.style.display = 'none'; }
         renderBookmarks();
     </script>
+</body>
+</html>
