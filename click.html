@@ -3,654 +3,865 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第九曼荼羅 - The Infinite Mandala (Ver.Endless)</title>
+    <title>ニルヴァーナ・クリッカー Ver2.0</title>
     <style>
         :root {
-            --theme-color: #6a0dad;
-            --theme-glow: rgba(106, 13, 173, 0.5);
-            --bg-black: #050505;
-            --text-gold: #d4af37;
-            --card-bg: rgba(20, 20, 20, 0.85);
-            --panel-bg: rgba(10, 10, 10, 0.6);
-            --karma-color: #ff4500;
+            --bg-color: #1a1a1a;
+            --panel-color: rgba(42, 42, 42, 0.95);
+            --text-color: #e0e0e0;
+            --accent-color: #d4af37; /* Gold */
+            --red-accent: #b22222;   /* Mappo Red */
+            --karma-color: #9370db;  /* Purple */
+            --mappo-bg: #2b0000;
         }
 
         body {
-            background-color: var(--bg-black);
-            background-image: radial-gradient(circle at 30% 50%, rgba(0,0,0,0) 0%, var(--bg-black) 90%),
-                              radial-gradient(circle at 30% 50%, var(--theme-glow) 0%, transparent 60%);
-            color: var(--text-gold);
-            font-family: 'Yu Mincho', 'MS Mincho', serif;
+            font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             margin: 0;
+            padding: 0;
             height: 100vh;
             overflow: hidden;
+            display: grid;
+            grid-template-columns: 340px 1fr 400px;
             user-select: none;
-            transition: color 1s ease, background-image 1s ease;
+            transition: background 1s ease, filter 0.5s;
         }
 
-        /* レイアウト */
-        .main-wrapper { display: flex; height: 100vh; width: 100%; }
-
-        /* 左パネル */
-        .left-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            position: relative;
-            min-width: 320px;
-        }
-
-        #header { text-align: center; margin-bottom: 20px; z-index: 20; text-shadow: 0 0 10px var(--theme-glow); }
-        h1 { font-size: 1.8rem; letter-spacing: 0.2rem; margin: 0; }
-        .stats-main { font-size: 2.5rem; font-weight: bold; font-family: 'Times New Roman', serif; margin: 10px 0; color: #fff; text-shadow: 0 0 8px var(--theme-color); }
-        .sub-stats { font-size: 0.95rem; color: #ccc; line-height: 1.5; }
+        /* --- 背景進化 & 末法モード --- */
+        body.bg-lv1 { background: #1a1a1a; }
+        body.bg-lv2 { background: linear-gradient(to bottom, #2c3e50, #000000); }
+        body.bg-lv3 { background: linear-gradient(to bottom, #d4af37 0%, #b8860b 100%); }
+        body.bg-lv4 { background: radial-gradient(circle, #1a0b2e 0%, #000000 100%); }
+        body.bg-lv5 { background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIiBmaWxsLW9wYWNpdHk9IjAuMSIgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIvPjwvc3ZnPg=='), linear-gradient(to bottom, #000022, #000000); }
         
-        #mandala-stage {
-            position: relative; width: 350px; height: 350px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: transform 0.1s;
+        body.mappo-mode {
+            background: var(--mappo-bg) !important;
+            animation: tremor 0.5s infinite;
         }
-        #mandala-stage:active { transform: scale(0.98); }
+        body.mappo-mode #center-panel { filter: sepia(100%) hue-rotate(-50deg) saturate(300%); }
+        @keyframes tremor { 0% { transform: translate(0,0); } 25% { transform: translate(1px,1px); } 50% { transform: translate(-1px,-1px); } 75% { transform: translate(-1px,1px); } 100% { transform: translate(0,0); } }
 
-        .mandala-layer {
-            position: absolute; border: 2px solid var(--theme-color);
-            border-radius: 50%; opacity: 0.8; box-shadow: 0 0 15px var(--theme-glow);
-            transition: all 1s ease;
-        }
-        #layer1 { width: 320px; height: 320px; border-style: double; border-width: 4px; animation: rotate 60s linear infinite; }
-        #layer2 { width: 240px; height: 240px; border-style: dashed; animation: rotate 45s linear infinite reverse; }
-        #layer3 { width: 160px; height: 160px; border-style: dotted; border-width: 3px; animation: rotate 30s linear infinite; }
+        /* --- パネル共通 --- */
+        .panel { padding: 15px; display: flex; flex-direction: column; z-index: 10; backdrop-filter: blur(5px); border-color: var(--accent-color); }
+        .btn { background: transparent; color: var(--accent-color); border: 1px solid var(--accent-color); padding: 5px 10px; margin: 2px; cursor: pointer; transition: 0.2s; font-family: inherit; }
+        .btn:hover { background: var(--accent-color); color: black; }
+        .btn-danger { border-color: var(--red-accent); color: var(--red-accent); }
+        .btn-danger:hover { background: var(--red-accent); color: white; }
+
+        /* --- 左パネル --- */
+        #left-panel { background-color: rgba(10, 10, 10, 0.9); border-right: 2px solid var(--accent-color); text-align: center; }
+        #toku-display { font-size: 2em; font-weight: bold; color: var(--accent-color); text-shadow: 0 0 10px rgba(212, 175, 55, 0.5); margin-bottom: 5px; }
+        #karma-display { color: var(--karma-color); font-weight: bold; display:none; }
         
-        #core {
-            width: 90px; height: 90px;
-            background: radial-gradient(circle, var(--theme-color) 30%, transparent 80%);
-            border: 1px solid var(--theme-color); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; text-shadow: 0 0 5px var(--theme-color);
-            font-weight: bold; font-size: 2.5rem; z-index: 5;
-            box-shadow: 0 0 40px var(--theme-glow); transition: all 0.2s ease;
+        #mokugyo-wrapper { position: relative; margin: 30px auto; width: 220px; height: 220px; cursor: pointer; }
+        #mokugyo-img {
+            width: 100%; height: 100%; border-radius: 50%;
+            background: radial-gradient(circle, #8b4513 0%, #3e1e05 100%);
+            border: 6px solid #d4af37;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 80px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            transition: transform 0.05s, border-color 0.5s, box-shadow 0.5s;
         }
-        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        /* 右パネル */
-        .right-panel {
-            flex: 0 0 450px; background: var(--panel-bg);
-            border-left: 1px solid #333; overflow-y: auto; padding: 20px;
-            box-shadow: -5px 0 20px rgba(0,0,0,0.5); backdrop-filter: blur(5px);
-        }
-
-        /* セクション共通 */
-        .system-section, .shop-section { margin-bottom: 25px; }
-        .system-title { font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #444; color: #fff; display: flex; justify-content: space-between; }
-        .shop-title {
-            font-size: 1.1rem; border-bottom: 1px solid var(--text-gold);
-            margin-bottom: 10px; padding-bottom: 5px; color: #fff;
-            position: sticky; top: 0; background: var(--bg-black); z-index: 10;
-        }
-
-        /* ボタン */
-        .sys-btn {
-            background: #222; color: #ccc; border: 1px solid #555;
-            padding: 6px 10px; cursor: pointer; font-size: 0.8rem; margin: 2px;
-            transition: 0.2s;
-        }
-        .sys-btn:hover { background: #444; color: #fff; border-color: var(--text-gold); }
+        #mokugyo-wrapper:active #mokugyo-img { transform: scale(0.95); }
         
-        .reincarnate-btn {
-            width: 100%; padding: 10px; margin-top: 10px;
-            background: #200; border: 1px solid var(--karma-color); color: var(--karma-color);
-            font-weight: bold; cursor: pointer; font-family: serif;
-        }
-        .reincarnate-btn:hover:not(:disabled) { background: var(--karma-color); color: #fff; }
-        .reincarnate-btn:disabled { border-color: #444; color: #666; background: #111; cursor: not-allowed;}
+        /* 木魚の進化スタイル */
+        .mokugyo-lv2 { border-color: #fff !important; box-shadow: 0 0 20px #fff !important; background: radial-gradient(circle, #ffd700 0%, #b8860b 100%) !important; }
+        .mokugyo-lv3 { border-color: #00ffff !important; box-shadow: 0 0 30px #00ffff !important; background: radial-gradient(circle, #e0ffff 0%, #00ced1 100%) !important; }
+        .mokugyo-lv4 { border-color: #ff00ff !important; box-shadow: 0 0 50px #ff00ff !important; background: black !important; color: white; }
+        .mokugyo-mappo { border-color: #ff0000 !important; box-shadow: 0 0 50px red !important; background: #300 !important; color: red; }
 
-        /* アイテムカード */
-        .item-card {
-            background: var(--card-bg); border: 1px solid #444;
-            padding: 8px 12px; margin-bottom: 8px;
-            display: flex; justify-content: space-between; align-items: center;
-            transition: 0.2s;
-        }
-        .item-card.karma-item { border-color: #522; background: rgba(40,10,10,0.8); }
-        .item-card:hover { border-color: var(--text-gold); background: rgba(50, 50, 50, 0.95); }
+        /* --- 中央パネル --- */
+        #center-panel { position: relative; display: flex; flex-direction: column; overflow: hidden; }
+        #news-ticker { background: rgba(0,0,0,0.8); color: var(--accent-color); padding: 8px; white-space: nowrap; overflow: hidden; font-family: monospace; border-bottom: 1px solid var(--accent-color); cursor: pointer; }
+        #visual-area { flex-grow: 1; display: flex; justify-content: center; align-items: center; flex-direction: column; pointer-events: none; }
+        #message-log { font-size: 12px; color: #aaa; text-align: center; height: 150px; overflow: hidden; display: flex; flex-direction: column-reverse; text-shadow: 1px 1px 2px black; }
+        
+        /* 蜘蛛の糸 / 邪鬼 */
+        .falling-item { position: absolute; top: -100px; left: 50%; cursor: pointer; z-index: 100; transition: top 0.5s; filter: drop-shadow(0 0 5px gold); font-size: 40px; }
+        .falling-item.oni { filter: drop-shadow(0 0 10px red); font-size: 60px; }
 
-        .item-info { display: flex; flex-direction: column; text-align: left; flex: 1; padding-right: 10px; }
-        .item-name { font-weight: bold; color: var(--text-gold); font-size: 0.95rem; }
-        .item-effect { font-size: 0.8rem; color: #aaa; margin: 2px 0; }
-        .item-count { font-size: 0.75rem; color: #fff; opacity: 0.7; }
+        /* --- 右パネル (タブ) --- */
+        #right-panel { background-color: var(--panel-color); border-left: 2px solid var(--accent-color); padding: 0; }
+        #tabs { display: flex; background: #222; }
+        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; color: #666; font-size: 12px; border-bottom: 1px solid #444; }
+        .tab.active { background: #333; color: var(--accent-color); font-weight: bold; border-bottom: 3px solid var(--accent-color); }
+        .tab.mappo-tab { color: var(--red-accent); }
 
-        .buy-btn {
-            background: linear-gradient(to bottom, #333, #222); color: #fff;
-            border: 1px solid #555; padding: 8px 10px; cursor: pointer;
-            font-family: 'Times New Roman', serif; min-width: 90px; text-align: right; border-radius: 4px;
-        }
-        .buy-btn.karma-buy { background: linear-gradient(to bottom, #500, #300); border-color: #a44; }
-        .buy-btn:hover:not(:disabled) { background: linear-gradient(to bottom, var(--theme-color), #222); border-color: #fff; }
-        .buy-btn:disabled { color: #555; border-color: #222; background: #111; cursor: not-allowed; }
+        #store-container { padding: 10px; overflow-y: auto; height: 100%; }
+        
+        /* アイテムリスト */
+        .item { background: #333; border: 1px solid #555; margin-bottom: 5px; padding: 8px; cursor: pointer; display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; }
+        .item:hover { background: #444; border-color: var(--accent-color); }
+        .item.locked { opacity: 0.5; pointer-events: none; filter: grayscale(100%); }
+        .item h4 { margin: 0; font-size: 14px; }
+        .item p { margin: 0; font-size: 10px; color: #aaa; }
+        .item-cost { color: var(--accent-color); font-size: 11px; font-weight: bold; }
 
-        /* モバイル */
-        @media (max-width: 800px) {
-            .main-wrapper { flex-direction: column; overflow-y: auto; }
-            .left-panel { flex: 0 0 auto; min-height: 450px; }
-            .right-panel { flex: 1; border-left: none; border-top: 1px solid #333; overflow-y: visible; }
-            body { overflow: auto; }
-        }
+        /* 枯山水グリッド */
+        #garden-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 10px; background: #222; border: 4px double #666; width: 200px; margin: 0 auto; }
+        .garden-cell { width: 60px; height: 60px; background: #ddd; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; border: 1px solid #999; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2); }
+        .garden-cell:hover { opacity: 0.8; }
 
-        /* エフェクト */
-        .virtue-pop {
-            position: absolute; color: #fff; font-weight: bold; pointer-events: none;
-            animation: riseFade 0.6s ease-out forwards; z-index: 100;
-            text-shadow: 0 0 3px #000; font-family: 'Times New Roman', serif;
-        }
-        @keyframes riseFade { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-50px) scale(1.3); } }
+        /* 秘宝グリッド */
+        #artifact-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 10px; }
+        .artifact-slot { width: 100%; aspect-ratio: 1; background: #222; border: 1px solid #444; display: flex; justify-content: center; align-items: center; font-size: 24px; opacity: 0.3; }
+        .artifact-slot.found { opacity: 1; border-color: var(--accent-color); background: radial-gradient(circle, #444, #222); box-shadow: 0 0 5px var(--accent-color); }
 
-        #toast {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.9); color: #000; padding: 10px 20px;
-            border-radius: 20px; font-weight: bold; opacity: 0; transition: opacity 0.5s;
-            pointer-events: none; z-index: 1000;
-        }
+        /* --- モーダル --- */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .modal.show { opacity: 1; pointer-events: auto; }
+        .modal-content { background: #1a1a1a; border: 2px solid var(--accent-color); padding: 20px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; text-align: center; border-radius: 8px; box-shadow: 0 0 50px rgba(212, 175, 55, 0.2); }
 
-        /* 転生演出 */
-        #liberation-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #fff; color: #000; display: none;
-            flex-direction: column; align-items: center; justify-content: center;
-            z-index: 9999; animation: fadeIn 2s ease forwards;
-        }
-        #prestige-btn-main { padding: 15px 40px; font-size: 1.5rem; border: 2px solid #000; background: transparent; cursor: pointer; transition: 0.3s; }
-        #prestige-btn-main:hover { background: #000; color: #fff; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* 曼荼羅スキルツリー */
+        #mandala-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; padding: 20px; background: radial-gradient(circle, #330033, #000); border: 2px solid var(--karma-color); margin: 10px 0; }
+        .mandala-node { width: 60px; height: 60px; border-radius: 50%; background: #444; border: 2px solid #666; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; position: relative; }
+        .mandala-node.unlocked { background: var(--karma-color); border-color: #fff; box-shadow: 0 0 15px var(--karma-color); color: #fff; }
+        .mandala-node.can-buy { border-color: var(--accent-color); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        
+        /* 浮遊テキスト */
+        .float-text { position: absolute; font-weight: bold; pointer-events: none; animation: floatUp 1s forwards; text-shadow: 0 0 3px black; z-index: 200; }
+        @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
 
+        textarea { width: 100%; height: 60px; background: #333; color: #fff; border: 1px solid #555; margin-bottom: 10px; }
     </style>
 </head>
-<body oncontextmenu="return false;">
+<body>
 
-    <div class="main-wrapper">
-        <div class="left-panel">
-            <div id="header">
-                <h1 id="rank-name">第零曼荼羅：無明</h1>
-                <div style="font-size: 0.8rem; opacity: 0.6; margin-bottom: 5px;">
-                    輪廻回数: <span id="transmigration-count">0</span>
-                </div>
-                <div class="stats-main" id="virtue-display">0</div>
-                <div class="sub-stats">
-                    <span class="click-power-text">クリック: <span id="click-display">1</span></span><br>
-                    自動生産: <span id="ips-display">0</span> ips<br>
-                    所持カルマ: <span id="karma-display" style="color: var(--karma-color); font-weight:bold;">0</span> 
-                </div>
-            </div>
-
-            <div id="mandala-stage" onclick="clickMandala(event)">
-                <div id="layer1" class="mandala-layer"></div>
-                <div id="layer2" class="mandala-layer"></div>
-                <div id="layer3" class="mandala-layer"></div>
-                <div id="core">唵</div>
-            </div>
-        </div>
-
-        <div class="right-panel">
-            
-            <div class="system-section">
-                <div class="system-title">記録と輪廻</div>
-                <div class="system-buttons">
-                    <button class="sys-btn" onclick="saveGame()">保存</button>
-                    <button class="sys-btn" onclick="exportSave()">呪文表示</button>
-                    <button class="sys-btn" onclick="importSave()">呪文詠唱</button>
-                    <button class="sys-btn" onclick="resetGame()" style="color:#faa;">完全初期化</button>
-                </div>
-                
-                <div id="manual-reincarnate-area" style="margin-top:15px; border-top:1px solid #444; padding-top:10px;">
-                    <div style="font-size:0.8rem; color:#aaa;">次の転生で獲得: <span id="pending-karma-ui" style="color:#fff; font-weight:bold;">0</span> カルマ</div>
-                    <button id="manual-prestige-btn" class="reincarnate-btn" onclick="triggerLiberation(true)" disabled>
-                        輪廻転生する
-                    </button>
-                </div>
-            </div>
-
-            <div class="shop-section" id="karma-shop-section" style="display:none;">
-                <div class="shop-title"><span style="color: var(--karma-color);">カルマの秘蹟 (永続強化)</span></div>
-                <div id="karma-shop"></div>
-            </div>
-
-            <div class="shop-section">
-                <div class="shop-title"><span>基礎作法 (クリック)</span></div>
-                <div id="click-shop"></div>
-            </div>
-            <div class="shop-section">
-                <div class="shop-title"><span>僧侶と諸天 (自動)</span></div>
-                <div id="unit-shop"></div>
-            </div>
-            <div class="shop-section">
-                <div class="shop-title"><span>経典と秘宝 (倍率)</span></div>
-                <div id="upgrade-shop"></div>
-            </div>
-        </div>
+<div id="left-panel" class="panel">
+    <div style="margin-bottom: 20px;">
+        <div id="toku-display">0 徳</div>
+        <div id="tps-display" style="font-size: 0.9em; color: #888;">毎秒: 0 徳</div>
+        <div id="karma-display">業: 0</div>
     </div>
 
-    <div id="toast">記録しました</div>
-
-    <div id="liberation-overlay">
-        <div id="liberation-title" style="font-size: 3rem; font-weight: bold; margin-bottom: 20px; letter-spacing: 0.5rem;">解脱</div>
-        <div style="font-size: 1.2rem; margin-bottom: 30px; text-align: center;">
-            今生での徳: <span id="total-virtue-end">0</span><br>
-            獲得カルマ: <span id="pending-karma" style="font-weight:bold; font-size:1.5rem; color:var(--karma-color);">0</span>
-        </div>
-        <button id="prestige-btn-main" onclick="doPrestige()">輪廻の輪へ</button>
+    <div id="mokugyo-wrapper" onmousedown="clickMokugyo(event)">
+        <div id="mokugyo-img">木魚</div>
     </div>
 
-    <script>
-        // --- 数値フォーマッター ---
-        function formatVirtue(num) {
-            if (num < 10000) return Math.floor(num).toLocaleString();
-            if (num >= 1e68) return num.toExponential(2).replace("+", ""); // 無量大数を超えたら指数表記
+    <div style="flex-grow:1"></div>
+    
+    <div style="font-size: 0.8em; color: #666;">
+        <button class="btn" onclick="saveGame(true)">記録 (Save)</button>
+        <button class="btn" onclick="openModal('settings-modal')">設定 (Menu)</button>
+        <button class="btn btn-danger" onclick="openModal('prestige-modal')">輪廻 (Prestige)</button>
+    </div>
+</div>
 
-            const units = ["", "万", "億", "兆", "京", "垓", "𥝱", "穣", "溝", "澗", "正", "載", "極", "恒河沙", "阿僧祇", "那由他", "不可思議", "無量大数"];
-            let unitIndex = 0;
-            let tempNum = num;
-            while (tempNum >= 10000 && unitIndex < units.length - 1) {
-                tempNum /= 10000;
-                unitIndex++;
-            }
-            return tempNum.toFixed(2) + units[unitIndex];
-        }
+<div id="center-panel">
+    <div id="news-ticker" onclick="clickNews()">
+        <span id="news-text">ニュース: 読み込み中...</span>
+    </div>
+    
+    <div id="visual-area">
+        <h1 style="opacity: 0.3; margin-top: 50px;">ニルヴァーナ・クリッカー <span style="font-size:0.5em">Ver2.0</span></h1>
+        <div id="message-log"></div>
+    </div>
 
-        // --- データ定義 ---
-        const clickData = [ { name: "清貧", power: 1, cost: 10 } ];
+    <div id="falling-item" class="falling-item" onclick="clickFallingItem()"></div>
+</div>
+
+<div id="right-panel" class="panel">
+    <div id="tabs">
+        <div class="tab active" onclick="switchTab('facilities')">伽藍</div>
+        <div class="tab" onclick="switchTab('upgrades')">経典</div>
+        <div class="tab" onclick="switchTab('garden')">枯山水</div>
+        <div class="tab" onclick="switchTab('artifacts')">秘宝</div>
+    </div>
+    
+    <div id="store-container">
+        </div>
+</div>
+
+<div id="settings-modal" class="modal">
+    <div class="modal-content">
+        <h2>設定・データ管理</h2>
+        <button class="btn" onclick="toggleMute()">音量 ON/OFF</button>
+        <hr style="border-color: #444;">
+        <h3>データの呪文 (Import/Export)</h3>
+        <textarea id="save-string" placeholder="ここに呪文（セーブデータ）が表示されます"></textarea>
+        <div>
+            <button class="btn" onclick="exportSave()">呪文を唱える (Export)</button>
+            <button class="btn btn-danger" onclick="importSave()">呪文を聞く (Import)</button>
+        </div>
+        <hr style="border-color: #444;">
+        <button class="btn btn-danger" onclick="hardReset()">完全初期化</button>
+        <br><br>
+        <button class="btn" onclick="closeModal('settings-modal')">閉じる</button>
+    </div>
+</div>
+
+<div id="prestige-modal" class="modal">
+    <div class="modal-content">
+        <h2 style="color: var(--karma-color)">輪廻転生 (Prestige)</h2>
+        <p>現世の徳を捨て、「業(Karma)」を得て生まれ変わります。<br>
+           獲得予定の業: <span id="prestige-gain" style="font-size:1.5em; font-weight:bold;">0</span></p>
         
-        const unitData = [
-            { name: "修行僧", rate: 1, cost: 15 },
-            { name: "東の若僧", rate: 70, cost: 1500 },
-            { name: "南の僧侶", rate: 300, cost: 8000 },
-            { name: "南の高僧", rate: 40000, cost: 2000000 },
-            { name: "西の老僧", rate: 2000000, cost: 150000000 },
-            { name: "北の天才", rate: 800000000, cost: 50000000000 },
-            { name: "無名天", rate: 10000000000, cost: 3000000000000 }, 
-            { name: "怒れる明王", rate: 1000000000000, cost: 500000000000000 }, 
-            { name: "慈愛の菩薩", rate: 100000000000000, cost: 80000000000000000 }, 
-            { name: "圧巻の如来", rate: 10000000000000000, cost: 9000000000000000000 }
-        ];
+        <h3>曼荼羅スキルツリー</h3>
+        <div id="mandala-container">
+            </div>
+        <div id="skill-desc" style="height: 40px; color: #ccc; font-size: 12px; margin-bottom: 10px;">スキルを選択してください</div>
 
-        const upgradeData = [
-            { name: "弟子の写経", mult: 1.01, cost: 500 },
-            { name: "中品質の写経", mult: 1.05, cost: 50000 },
-            { name: "完璧な写経", mult: 1.08, cost: 10000000 },
-            { name: "唐の経典", mult: 1.09, cost: 500000000 }, 
-            { name: "天竺の経典", mult: 1.10, cost: 200000000000 },
-            { name: "聖人のミイラ", mult: 1.20, cost: 100000000000000 }
-        ];
+        <button class="btn btn-danger" style="width: 80%; padding: 15px;" onclick="doPrestige()">転生を実行する</button>
+        <br><br>
+        <button class="btn" onclick="closeModal('prestige-modal')">今はやめる</button>
+    </div>
+</div>
 
-        // 永続アップグレード（カルマショップ）
-        const karmaShopData = [
-            { name: "徳の残滓", desc: "初期の徳 +1000", type: "start", val: 1000, cost: 1, max: 10 },
-            { name: "阿頼耶識", desc: "カルマボーナス効果 +10%", type: "bonus", val: 0.1, cost: 5, max: 50 },
-            { name: "時間の超越", desc: "全生産力 +50%", type: "prod", val: 0.5, cost: 10, max: 100 },
-            { name: "指先の宇宙", desc: "クリック基礎力 +100%", type: "click", val: 1.0, cost: 20, max: 20 },
-        ];
+<div id="offline-modal" class="modal">
+    <div class="modal-content">
+        <h2>瞑想の成果</h2>
+        <p>あなたがいない間、弟子たちが徳を積みました。</p>
+        <h3 id="offline-gain-text" style="color: var(--accent-color)">0 徳</h3>
+        <button class="btn" onclick="closeModal('offline-modal')">受け取る</button>
+    </div>
+</div>
 
-        const rankNames = [
-            { name: "第零曼荼羅：無明", color: "#6a0dad" },
-            { name: "第一曼荼羅：胎蔵界", color: "#4b0082" },
-            { name: "第二曼荼羅：金剛界", color: "#0000ff" },
-            { name: "第三曼荼羅：阿弥陀", color: "#008000" },
-            { name: "第四曼荼羅：蓮華", color: "#adff2f" },
-            { name: "第五曼荼羅：虚空", color: "#ffff00" },
-            { name: "第六曼荼羅：寂静", color: "#ffd700" },
-            { name: "第七曼荼羅：遍照", color: "#ffa500" },
-            { name: "第八曼荼羅：解脱", color: "#ff4500" },
-            { name: "第九曼荼羅：不可説不可説転", color: "#ff0000" }
-        ];
+<script>
+    // ==========================================
+    //  ゲームデータ定義
+    // ==========================================
+    const units = ["", "万", "億", "兆", "京", "垓", "𥝱", "穣", "溝", "澗", "正", "載", "極", "恒河沙", "阿僧祇", "那由他", "不可思議", "無量大数", "涅槃"];
 
-        let game = {
-            virtue: 0,
-            totalVirtue: 0,
-            karma: 0,
-            rank: 0,
-            transmigrations: 0, // 転生回数
-            clicks: new Array(clickData.length).fill(0),
-            units: new Array(unitData.length).fill(0),
-            upgrades: new Array(upgradeData.length).fill(0),
-            karmaUpgrades: new Array(karmaShopData.length).fill(0), // 永続強化所持数
-            lastSave: Date.now()
-        };
+    const facilityData = [
+        { id: 0, name: "小坊主", desc: "ポクポク叩く。", baseCost: 15, baseProd: 1, icon: "👶" },
+        { id: 1, name: "写経ロボ", desc: "自動化された信仰。", baseCost: 100, baseProd: 5, icon: "🤖" },
+        { id: 2, name: "高僧", desc: "法力が高い。", baseCost: 1100, baseProd: 20, icon: "🙏" },
+        { id: 3, name: "千手観音", desc: "圧倒的手数。", baseCost: 12000, baseProd: 100, icon: "🖐️" },
+        { id: 4, name: "五重塔ロケット", desc: "宇宙へ。", baseCost: 130000, baseProd: 500, icon: "🚀" },
+        { id: 5, name: "阿修羅軍団", desc: "闘争的布教。", baseCost: 1400000, baseProd: 2500, icon: "👹" },
+        { id: 6, name: "サイバー曼荼羅", desc: "電脳浄土。", baseCost: 20000000, baseProd: 12000, icon: "🌐" },
+        { id: 7, name: "銀河大仏", desc: "星を継ぐもの。", baseCost: 330000000, baseProd: 60000, icon: "🌌" }
+    ];
 
-        // --- 初期化 ---
-        function init() {
-            createShopUI();
-            loadGame(); 
-            
-            // 2周目以降ならカルマショップ表示
-            if (game.transmigrations > 0 || game.karma > 0) {
-                document.getElementById('karma-shop-section').style.display = 'block';
+    const upgradeData = [
+        { id: "c1", name: "硬いバチ", desc: "クリック2倍", cost: 500, type: "click", val: 2, req: g => g.clickCount >= 100 },
+        { id: "f1", name: "エナドリ", desc: "小坊主2倍", cost: 1000, type: "facility", target: 0, val: 2, req: g => g.facilities[0] >= 10 },
+        { id: "g1", name: "黄金の茶室", desc: "全体1.2倍", cost: 50000, type: "global", val: 1.2, req: g => g.totalToku >= 10000 },
+        { id: "mappo", name: "禁断の経典", desc: "【警告】世界が変わります。邪鬼が出現。", cost: 666666, type: "event", req: g => g.totalToku >= 500000 },
+        { id: "c2", name: "指の筋トレ", desc: "クリック5倍", cost: 1000000, type: "click", val: 5, req: g => g.clickCount >= 1000 },
+        { id: "zen", name: "庭師の心得", desc: "「枯山水」を解禁。", cost: 2000000, type: "unlock_garden", req: g => g.totalToku >= 1000000 },
+    ];
+
+    const mandalaSkills = [
+        { id: "k1", name: "来世の記憶", desc: "転生時、小坊主の数を維持する", cost: 1, icon: "🧠" },
+        { id: "k2", name: "第三の目", desc: "秘宝のドロップ率 2倍", cost: 3, icon: "👁️" },
+        { id: "k3", name: "不動心", desc: "末法モードでの「徳没収」を防ぐ", cost: 5, icon: "🛡️" },
+        { id: "k4", name: "阿頼耶識", desc: "オフライン進行効率 100%", cost: 10, icon: "💾" },
+        { id: "k5", name: "解脱", desc: "全体生産量 5倍", cost: 50, icon: "☸️" }
+    ];
+
+    const artifacts = [
+        { id: 0, name: "仏の白毫", desc: "クリック+50%", chance: 0.001, icon: "⚪" },
+        { id: 1, name: "三蔵の靴", desc: "全体+20%", chance: 0.0005, icon: "👞" },
+        { id: 2, name: "蓮の種", desc: "枯山水コスト半減", chance: 0.0008, icon: "🌰" },
+        { id: 3, name: "壊れた鐘", desc: "末法ボーナス+50%", chance: 0.002, icon: "🔔" } // 末法限定
+    ];
+
+    const gardenStones = ["🪨", "🌲", "🏮", "🐸"]; // 単純化: ランダム配置
+
+    // ==========================================
+    //  ゲーム状態管理
+    // ==========================================
+    let game = {
+        toku: 0,
+        totalToku: 0,
+        allTimeToku: 0,
+        karma: 0,
+        startTime: Date.now(),
+        lastSaveTime: Date.now(),
+        clickCount: 0,
+        facilities: Array(facilityData.length).fill(0),
+        upgrades: [],     // 購入済みID
+        skills: [],       // 習得済みスキルID
+        artifacts: [],    // 入手済み秘宝ID
+        garden: Array(9).fill(null), // 枯山水グリッド
+        mappoLevel: 0,    // 0:平和, 1:末法
+        settings: { muted: false }
+    };
+
+    let audioCtx = null;
+    let fallingItemActive = false;
+    let multipliers = { click: 1, global: 1, facilities: [] };
+    let currentTab = 'facilities';
+
+    // ==========================================
+    //  初期化・ループ
+    // ==========================================
+    window.onload = () => {
+        loadGame();
+        setInterval(gameLoop, 100);
+        setInterval(saveGame, 30000);
+        setInterval(updateNews, 15000);
+        setTimeout(scheduleFallingItem, 60000);
+        updateVisuals();
+    };
+
+    function gameLoop() {
+        // 生産
+        calcMultipliers();
+        let tps = getTpS();
+        if (tps > 0) addToku(tps / 10);
+
+        // UI更新
+        document.getElementById('toku-display').innerText = formatNumber(game.toku) + " 徳";
+        document.getElementById('tps-display').innerText = "毎秒: " + formatNumber(tps) + " 徳";
+        document.title = formatNumber(game.toku) + " 徳 - ニルヴァーナ";
+        
+        // 購入ボタン状態など
+        if(currentTab === 'facilities') renderFacilities(false); 
+        // 重くなるのでDOM全書き換えはしないアプローチ推奨だが、今回は簡易実装
+
+        updateVisuals();
+    }
+
+    function calcMultipliers() {
+        let m = { click: 1, global: 1, facilities: Array(facilityData.length).fill(1) };
+        
+        // 1. アップグレード
+        game.upgrades.forEach(uid => {
+            let u = upgradeData.find(d => d.id === uid);
+            if(u) {
+                if(u.type === 'click') m.click *= u.val;
+                if(u.type === 'global') m.global *= u.val;
+                if(u.type === 'facility') m.facilities[u.target] *= u.val;
             }
+        });
+
+        // 2. 秘宝
+        if(game.artifacts.includes(0)) m.click *= 1.5;
+        if(game.artifacts.includes(1)) m.global *= 1.2;
+
+        // 3. 枯山水 (簡易: 配置数 * 5%)
+        let stones = game.garden.filter(x => x !== null).length;
+        m.global *= (1 + stones * 0.05);
+
+        // 4. カルマ
+        m.global *= (1 + game.karma * 0.1); // 1Karma = +10%
+
+        // 5. スキル
+        if(game.skills.includes("k5")) m.global *= 5;
+
+        multipliers = m;
+    }
+
+    function getTpS() {
+        let tps = 0;
+        game.facilities.forEach((count, i) => {
+            tps += facilityData[i].baseProd * count * multipliers.facilities[i];
+        });
+        return tps * multipliers.global;
+    }
+
+    function addToku(n) {
+        game.toku += n;
+        game.totalToku += n;
+        game.allTimeToku += n;
+    }
+
+    // ==========================================
+    //  アクション
+    // ==========================================
+    function clickMokugyo(e) {
+        initAudio();
+        
+        let power = (1 + getTpS() * 0.02) * multipliers.click;
+        addToku(power);
+        game.clickCount++;
+
+        spawnFloatText(e.clientX, e.clientY, "+" + formatNumber(power));
+        playSound('mokugyo');
+
+        // 秘宝ドロップ判定
+        checkArtifactDrop(false);
+    }
+
+    function buyFacility(idx) {
+        let cost = getCost(idx);
+        if(game.toku >= cost) {
+            game.toku -= cost;
+            game.facilities[idx]++;
+            playSound('buy');
+            renderFacilities();
+        }
+    }
+
+    function getCost(idx) {
+        return Math.floor(facilityData[idx].baseCost * Math.pow(1.15, game.facilities[idx]));
+    }
+
+    function buyUpgrade(uid) {
+        let u = upgradeData.find(d => d.id === uid);
+        if(game.toku >= u.cost && !game.upgrades.includes(uid)) {
+            game.toku -= u.cost;
+            game.upgrades.push(uid);
             
-            applyRankTheme(game.rank);
-            updateDisplay();
-            gameLoop();
-            setInterval(saveGame, 60000);
-        }
-
-        // --- UI生成 ---
-        function createShopUI() {
-            // 通常アイテム
-            const cShop = document.getElementById('click-shop');
-            clickData.forEach((c, i) => cShop.innerHTML += createCardHTML(c.name, `クリック徳 +${c.power}`, `c-cnt-${i}`, `c-btn-${i}`, `c-cost-${i}`, `buyClickItem(${i})`));
-            
-            const uShop = document.getElementById('unit-shop');
-            unitData.forEach((u, i) => uShop.innerHTML += createCardHTML(u.name, `+${formatVirtue(u.rate)} /sec`, `u-cnt-${i}`, `u-btn-${i}`, `u-cost-${i}`, `buyUnit(${i})`));
-            
-            const upShop = document.getElementById('upgrade-shop');
-            upgradeData.forEach((u, i) => upShop.innerHTML += createCardHTML(u.name, `生産量 ${Math.round((u.mult-1)*100)}% UP`, `up-cnt-${i}`, `up-btn-${i}`, `up-cost-${i}`, `buyUpgrade(${i})`));
-
-            // カルマショップ
-            const kShop = document.getElementById('karma-shop');
-            karmaShopData.forEach((k, i) => {
-                kShop.innerHTML += `
-                <div class="item-card karma-item">
-                    <div class="item-info">
-                        <span class="item-name" style="color:#ff8888;">${k.name}</span>
-                        <span class="item-effect">${k.desc}</span>
-                        <span class="item-count" id="k-cnt-${i}">Lv: 0 / ${k.max}</span>
-                    </div>
-                    <button class="buy-btn karma-buy" id="k-btn-${i}" onclick="buyKarmaItem(${i})">
-                        <small>カルマ消費</small>
-                        <span id="k-cost-${i}">${k.cost}</span>
-                    </button>
-                </div>`;
-            });
-        }
-
-        function createCardHTML(name, effect, countId, btnId, costId, func) {
-            return `<div class="item-card"><div class="item-info"><span class="item-name">${name}</span><span class="item-effect">${effect}</span><span class="item-count" id="${countId}">所持: 0</span></div><button class="buy-btn" id="${btnId}" onclick="${func}"><small>徳を捧げる</small><span id="${costId}">-</span></button></div>`;
-        }
-
-        // --- ロジック: 計算 ---
-        function getKarmaBonusMultiplier() {
-            // 基本10% + カルマアップグレード効果
-            let baseRate = 0.1;
-            const upgradeLevel = game.karmaUpgrades[1] || 0; // 阿頼耶識
-            baseRate += baseRate * (upgradeLevel * karmaShopData[1].val);
-            return 1 + (game.karma * baseRate);
-        }
-
-        function getGlobalMultiplier() {
-            let mult = 1;
-            // 経典
-            upgradeData.forEach((u, i) => mult *= Math.pow(u.mult, game.upgrades[i]));
-            // カルマ永続強化: 時間の超越
-            const timeLevel = game.karmaUpgrades[2] || 0;
-            const timeMult = 1 + (timeLevel * karmaShopData[2].val);
-            
-            return mult * getKarmaBonusMultiplier() * timeMult;
-        }
-
-        function calculateIPS() {
-            let base = 0;
-            unitData.forEach((u, i) => base += u.rate * game.units[i]);
-            return base * getGlobalMultiplier();
-        }
-
-        function calculateClickPower() {
-            let baseClick = 1;
-            // カルマ永続強化: 指先の宇宙
-            const clickLevel = game.karmaUpgrades[3] || 0;
-            baseClick *= 1 + (clickLevel * karmaShopData[3].val);
-
-            clickData.forEach((c, i) => baseClick += c.power * game.clicks[i]);
-            return (baseClick * getGlobalMultiplier()) + (calculateIPS() * 0.05);
-        }
-
-        function getPendingKarma() {
-            // 獲得カルマ = sqrt(総徳 / 1兆)
-            return Math.floor(Math.sqrt(game.totalVirtue / 1000000000000));
-        }
-
-        // --- ロジック: アクション ---
-
-        function clickMandala(e) {
-            const power = calculateClickPower();
-            addVirtue(power);
-            
-            const rect = document.getElementById('mandala-stage').getBoundingClientRect();
-            const pop = document.createElement('div');
-            pop.className = 'virtue-pop';
-            pop.innerText = `+${formatVirtue(power)}`;
-            pop.style.left = `${e.clientX - rect.left}px`;
-            pop.style.top = `${e.clientY - rect.top}px`;
-            document.getElementById('mandala-stage').appendChild(pop);
-            setTimeout(() => pop.remove(), 600);
-
-            const core = document.getElementById('core');
-            core.style.transform = 'scale(1.1)';
-            setTimeout(() => core.style.transform = 'scale(1)', 100);
-        }
-
-        function addVirtue(amount) {
-            // 無限モードじゃない場合、ランク9でカンスト
-            if (game.transmigrations === 0 && game.rank >= 9) return;
-            
-            game.virtue += amount;
-            game.totalVirtue += amount;
-
-            // ランクアップ閾値
-            let threshold = Math.pow(100, game.rank + 1);
-            if (game.rank === 8) threshold = 1000 * Math.pow(100, 9); // 8->9の壁
-            if (game.rank >= 9) {
-                 // 9以降は指数関数的にきつくするが、JSの限界まで遊べるように調整
-                 threshold = 1e20 * Math.pow(10, (game.rank - 9) * 2); 
+            // 特殊効果
+            if(u.type === 'event' && uid === 'mappo') {
+                game.mappoLevel = 1;
+                logMessage("禁断の経典が開かれた……世界が歪み始める！");
+                playSound('mappo_start');
+            }
+            if(u.type === 'unlock_garden') {
+                logMessage("枯山水が解放されました。");
             }
 
-            if (game.virtue >= threshold) {
-                // 初回プレイでランク9到達時 -> エンディングへ
-                if (game.transmigrations === 0 && game.rank === 8) {
-                    game.rank++;
-                    triggerLiberation(false);
-                    return;
+            playSound('powerup');
+            renderUpgrades();
+        }
+    }
+
+    // ==========================================
+    //  コンテンツ (枯山水・秘宝)
+    // ==========================================
+    function buyGardenStone(idx) {
+        if(game.garden[idx] !== null) return;
+        let cost = 10000 * Math.pow(2, game.garden.filter(x=>x).length);
+        if(game.skills.includes("k2")) cost /= 2; // 秘宝じゃなくてスキル効果にする等の調整可
+
+        if(game.toku >= cost) {
+            game.toku -= cost;
+            game.garden[idx] = gardenStones[Math.floor(Math.random() * gardenStones.length)];
+            playSound('stone');
+            renderGarden();
+        } else {
+            alert("徳が足りません: " + formatNumber(cost));
+        }
+    }
+
+    function checkArtifactDrop(isMappoEvent) {
+        // ドロップ率はスキルで変動
+        let rateMod = game.skills.includes("k2") ? 2 : 1;
+        
+        artifacts.forEach(art => {
+            if(!game.artifacts.includes(art.id)) {
+                // 末法限定アイテムの判定
+                if(art.id === 3 && game.mappoLevel === 0) return;
+
+                if(Math.random() < art.chance * rateMod) {
+                    game.artifacts.push(art.id);
+                    logMessage(`【秘宝発見】${art.name} を手に入れた！`);
+                    playSound('chime');
+                    if(currentTab === 'artifacts') renderArtifacts();
                 }
-                
-                // それ以外は普通にランクアップ
-                game.rank++;
-                applyRankTheme(game.rank);
             }
-        }
+        });
+    }
 
-        // --- 購入処理 ---
-        function buyClickItem(i) {
-            const cost = Math.floor(clickData[i].cost * Math.pow(1.5, game.clicks[i]));
-            if (game.virtue >= cost) { game.virtue -= cost; game.clicks[i]++; updateDisplay(); }
-        }
-        function buyUnit(i) {
-            const cost = Math.floor(unitData[i].cost * Math.pow(1.15, game.units[i]));
-            if (game.virtue >= cost) { game.virtue -= cost; game.units[i]++; updateDisplay(); }
-        }
-        function buyUpgrade(i) {
-            const cost = Math.floor(upgradeData[i].cost * Math.pow(1.8, game.upgrades[i]));
-            if (game.virtue >= cost) { game.virtue -= cost; game.upgrades[i]++; updateDisplay(); }
-        }
-        function buyKarmaItem(i) {
-            const k = karmaShopData[i];
-            const currentLv = game.karmaUpgrades[i];
-            if (currentLv >= k.max) return;
-            
-            // コスト計算 (線形増加か指数増加か。ここでは単純に固定+Lv増分とする)
-            let cost = k.cost + (currentLv * Math.ceil(k.cost * 0.5));
-            
-            if (game.karma >= cost) {
-                game.karma -= cost;
-                game.karmaUpgrades[i]++;
-                updateDisplay();
-                saveGame();
-            }
-        }
+    // ==========================================
+    //  イベント (蜘蛛の糸 / 邪鬼)
+    // ==========================================
+    function scheduleFallingItem() {
+        if(fallingItemActive) return;
+        let time = Math.random() * 120000 + 60000; // 1~3分
+        if(game.mappoLevel > 0) time /= 2; // 末法時は出現頻度2倍
 
-        // --- 表示更新 ---
-        function updateDisplay() {
-            document.getElementById('virtue-display').innerText = formatVirtue(game.virtue);
-            document.getElementById('ips-display').innerText = formatVirtue(calculateIPS());
-            document.getElementById('click-display').innerText = formatVirtue(calculateClickPower());
-            document.getElementById('karma-display').innerText = formatVirtue(game.karma);
-            document.getElementById('transmigration-count').innerText = game.transmigrations;
+        setTimeout(() => {
+            spawnFallingItem();
+            scheduleFallingItem();
+        }, time);
+    }
 
-            // 任意転生ボタンの制御
-            const pending = getPendingKarma();
-            document.getElementById('pending-karma-ui').innerText = formatVirtue(pending);
-            const manBtn = document.getElementById('manual-prestige-btn');
-            manBtn.disabled = pending <= 0;
-            // 2周目以降のみ表示
-            document.getElementById('manual-reincarnate-area').style.display = (game.transmigrations > 0) ? 'block' : 'none';
+    function spawnFallingItem() {
+        fallingItemActive = true;
+        let el = document.getElementById('falling-item');
+        el.style.top = '-100px';
+        el.style.display = 'block';
 
-            // 通常ショップボタン更新
-            const updateBtn = (id, baseCost, count, power, type) => {
-                const cost = Math.floor(baseCost * Math.pow(power, count));
-                const btn = document.getElementById(type + '-btn-' + id);
-                document.getElementById(type + '-cost-' + id).innerText = formatVirtue(cost);
-                document.getElementById(type + '-cnt-' + id).innerText = `所持: ${count}`;
-                btn.disabled = game.virtue < cost;
-            };
-            clickData.forEach((c, i) => updateBtn(i, c.cost, game.clicks[i], 1.5, 'c'));
-            unitData.forEach((u, i) => updateBtn(i, u.cost, game.units[i], 1.15, 'u'));
-            upgradeData.forEach((u, i) => updateBtn(i, u.cost, game.upgrades[i], 1.8, 'up'));
+        // 種類決定
+        let isOni = game.mappoLevel > 0 && Math.random() > 0.3;
+        el.innerText = isOni ? "👹" : "🕸️";
+        el.className = isOni ? "falling-item oni" : "falling-item";
+        el.onclick = () => clickFallingItem(isOni);
 
-            // カルマショップ更新
-            karmaShopData.forEach((k, i) => {
-                const currentLv = game.karmaUpgrades[i];
-                const btn = document.getElementById(`k-btn-${i}`);
-                const cost = k.cost + (currentLv * Math.ceil(k.cost * 0.5));
-                
-                document.getElementById(`k-cnt-${i}`).innerText = `Lv: ${currentLv} / ${k.max}`;
-                
-                if (currentLv >= k.max) {
-                    btn.disabled = true;
-                    document.getElementById(`k-cost-${i}`).innerText = "MAX";
-                } else {
-                    btn.disabled = game.karma < cost;
-                    document.getElementById(`k-cost-${i}`).innerText = formatVirtue(cost);
-                }
-            });
-        }
+        // アニメーション
+        setTimeout(() => { el.style.top = '200px'; }, 100);
+        setTimeout(() => { 
+            el.style.top = '120vh'; 
+            setTimeout(() => { fallingItemActive = false; }, 1000);
+        }, 8000);
+    }
 
-        function applyRankTheme(r) {
-            let name, color;
+    function clickFallingItem(isOni) {
+        if(!fallingItemActive) return;
+        fallingItemActive = false;
+        document.getElementById('falling-item').style.display = 'none';
 
-            if (r < 10) {
-                // 通常ランク
-                name = rankNames[r].name;
-                color = rankNames[r].color;
+        if(isOni) {
+            // 邪鬼: 50%で損、50%で得
+            if(Math.random() > 0.5 || game.skills.includes("k3")) {
+                let bonus = getTpS() * 600; // 10分分
+                addToku(bonus);
+                logMessage(`邪鬼を調伏した！ +${formatNumber(bonus)} 徳`);
+                playSound('punch');
             } else {
-                // 無限ランク (プロシージャル生成)
-                const layer = r - 9;
-                const hue = (r * 45) % 360; // 色相を回転
-                color = `hsl(${hue}, 100%, 50%)`;
-                name = `第${r}曼荼羅：無限界・第${layer}層`;
+                let lost = game.toku * 0.1;
+                game.toku -= lost;
+                logMessage(`邪鬼に徳を奪われた... -${formatNumber(lost)} 徳`);
+                playSound('damage');
             }
+            checkArtifactDrop(true); // 邪鬼からはドロップ判定あり
+        } else {
+            // 蜘蛛の糸
+            let bonus = getTpS() * 300;
+            if(bonus < game.toku * 0.1) bonus = game.toku * 0.1;
+            addToku(bonus);
+            logMessage(`蜘蛛の糸をつかんだ！ +${formatNumber(bonus)} 徳`);
+            playSound('chime');
+        }
+    }
 
-            document.getElementById('rank-name').innerText = name;
-            document.getElementById('rank-name').style.color = (r >= 10) ? color : 'var(--text-gold)';
-            
-            const root = document.documentElement;
-            root.style.setProperty('--theme-color', color);
-            root.style.setProperty('--theme-glow', color + "80");
-            
-            // 回転速度はランクが高いほど速く、あるいは神々しくゆっくりに？ ここでは速くする
-            const speed = Math.max(2, 60 / (r * 0.5 + 1));
-            document.getElementById('layer1').style.animationDuration = speed + "s";
-            document.getElementById('layer2').style.animationDuration = (speed * 0.7) + "s";
+    // ==========================================
+    //  UI レンダリング
+    // ==========================================
+    function switchTab(name) {
+        currentTab = name;
+        document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+        document.querySelector(`.tab[onclick="switchTab('${name}')"]`).classList.add('active');
+        
+        let container = document.getElementById('store-container');
+        container.innerHTML = "";
+        
+        if(name === 'facilities') renderFacilities();
+        if(name === 'upgrades') renderUpgrades();
+        if(name === 'garden') renderGarden();
+        if(name === 'artifacts') renderArtifacts();
+    }
+
+    function renderFacilities(full = true) {
+        let container = document.getElementById('store-container');
+        if(full) container.innerHTML = "";
+        
+        // 簡易更新用: 既存要素があれば数値だけ更新
+        if(!full && container.children.length === facilityData.length) {
+            facilityData.forEach((f, i) => {
+                let div = container.children[i];
+                let cost = getCost(i);
+                if(game.toku >= cost) div.classList.remove('locked');
+                else div.classList.add('locked');
+                div.querySelector('.item-count').innerText = game.facilities[i];
+                div.querySelector('.item-cost').innerText = "徳: " + formatNumber(cost);
+            });
+            return;
         }
 
-        // --- 転生システム ---
-        function triggerLiberation(isManual) {
-            const overlay = document.getElementById('liberation-overlay');
-            const pending = getPendingKarma();
-            
-            document.getElementById('total-virtue-end').innerText = formatVirtue(game.totalVirtue);
-            document.getElementById('pending-karma').innerText = formatVirtue(pending);
-            document.getElementById('liberation-title').innerText = isManual ? "輪廻" : "解脱";
-            
-            overlay.style.display = 'flex';
-        }
+        facilityData.forEach((f, i) => {
+            let cost = getCost(i);
+            let div = document.createElement('div');
+            div.className = `item ${game.toku >= cost ? '' : 'locked'}`;
+            div.onclick = () => buyFacility(i);
+            div.innerHTML = `
+                <div style="font-size:24px; text-align:center">${f.icon}</div>
+                <div><h4>${f.name}</h4><p>${f.desc}</p><span class="item-cost">徳: ${formatNumber(cost)}</span></div>
+                <div class="item-count" style="font-size:18px; font-weight:bold; color:#666">${game.facilities[i]}</div>
+            `;
+            container.appendChild(div);
+        });
+    }
 
-        function doPrestige() {
-            const earned = getPendingKarma();
-            game.karma += earned;
-            game.transmigrations++;
-
-            // リセット対象
-            game.virtue = 0;
-            game.totalVirtue = 0;
-            game.rank = 0;
-            
-            // 初期ボーナス（徳の残滓）
-            const startBonus = (game.karmaUpgrades[0] || 0) * karmaShopData[0].val;
-            game.virtue += startBonus;
-            
-            game.clicks.fill(0);
-            game.units.fill(0);
-            game.upgrades.fill(0);
-
-            document.getElementById('liberation-overlay').style.display = 'none';
-            document.getElementById('karma-shop-section').style.display = 'block'; // ショップ解禁
-            
-            applyRankTheme(0);
-            saveGame();
-            updateDisplay();
-        }
-
-        // --- セーブ/ロード ---
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 2000);
-        }
-        function saveGame() {
-            game.lastSave = Date.now();
-            localStorage.setItem('mandalaSave_v7', JSON.stringify(game));
-            showToast("記録しました");
-        }
-        function loadGame() {
-            const saved = localStorage.getItem('mandalaSave_v7');
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    game = { ...game, ...parsed };
-                    
-                    // 配列拡張時の補正
-                    if (game.karmaUpgrades === undefined) game.karmaUpgrades = new Array(karmaShopData.length).fill(0);
-                    if (game.karmaUpgrades.length < karmaShopData.length) game.karmaUpgrades = game.karmaUpgrades.concat(new Array(karmaShopData.length - game.karmaUpgrades.length).fill(0));
-                    
-                    // その他配列補正
-                    if (game.clicks.length < clickData.length) game.clicks = game.clicks.concat(new Array(clickData.length - game.clicks.length).fill(0));
-                    if (game.units.length < unitData.length) game.units = game.units.concat(new Array(unitData.length - game.units.length).fill(0));
-                    
-                    showToast("記録を読み込みました");
-                } catch(e) { console.error(e); }
+    function renderUpgrades() {
+        let container = document.getElementById('store-container');
+        container.innerHTML = "";
+        
+        upgradeData.forEach(u => {
+            if(!game.upgrades.includes(u.id) && u.req(game)) {
+                let div = document.createElement('div');
+                div.className = `item ${game.toku >= u.cost ? '' : 'locked'}`;
+                div.onclick = () => buyUpgrade(u.id);
+                div.innerHTML = `
+                    <div style="font-size:24px;">📜</div>
+                    <div><h4>${u.name}</h4><p>${u.desc}</p><span class="item-cost">徳: ${formatNumber(u.cost)}</span></div>
+                `;
+                container.appendChild(div);
             }
-        }
-        function exportSave() { saveGame(); prompt("呪文をコピー:", btoa(JSON.stringify(game))); }
-        function importSave() {
-            const s = prompt("呪文を入力:");
-            if(s){ try{ game={...game,...JSON.parse(atob(s))}; applyRankTheme(game.rank); updateDisplay(); saveGame(); showToast("復活"); }catch(e){alert("無効");} }
-        }
-        function resetGame() { if(confirm("完全リセットしますか？")) { localStorage.removeItem('mandalaSave_v7'); location.reload(); } }
+        });
+        if(container.innerHTML === "") container.innerHTML = "<div style='padding:20px; text-align:center; color:#666'>現在研究できる経典はありません</div>";
+    }
 
-        // --- ループ ---
-        let lastTime = Date.now();
-        function gameLoop() {
-            const now = Date.now();
-            const dt = (now - lastTime) / 1000;
-            lastTime = now;
+    function renderGarden() {
+        let container = document.getElementById('store-container');
+        if(!game.upgrades.includes("zen")) {
+            container.innerHTML = "<div style='padding:20px; text-align:center; color:#666'>「庭師の心得」を購入すると解禁されます。</div>";
+            return;
+        }
+        
+        container.innerHTML = "<div style='text-align:center; margin-bottom:10px'>石を配置して生産力UP (1つ配置ごとにコスト増)</div>";
+        let grid = document.createElement('div');
+        grid.id = "garden-grid";
+        
+        game.garden.forEach((cell, i) => {
+            let div = document.createElement('div');
+            div.className = "garden-cell";
+            div.innerText = cell || "";
+            div.onclick = () => buyGardenStone(i);
+            grid.appendChild(div);
+        });
+        container.appendChild(grid);
+    }
+
+    function renderArtifacts() {
+        let container = document.getElementById('store-container');
+        let grid = document.createElement('div');
+        grid.id = "artifact-grid";
+        
+        artifacts.forEach(art => {
+            let found = game.artifacts.includes(art.id);
+            let div = document.createElement('div');
+            div.className = `artifact-slot ${found ? 'found' : ''}`;
+            div.innerText = found ? art.icon : "?";
+            div.title = found ? `${art.name}: ${art.desc}` : "未発見";
+            grid.appendChild(div);
+        });
+        container.appendChild(grid);
+    }
+
+    function updateVisuals() {
+        // 背景進化
+        let body = document.body;
+        body.className = "";
+        if(game.mappoLevel > 0) body.classList.add("mappo-mode");
+        else {
+            if(game.totalToku > 1e16) body.classList.add("bg-lv5");
+            else if(game.totalToku > 1e12) body.classList.add("bg-lv4");
+            else if(game.totalToku > 1e8) body.classList.add("bg-lv3");
+            else if(game.totalToku > 10000) body.classList.add("bg-lv2");
+            else body.classList.add("bg-lv1");
+        }
+
+        // 木魚進化
+        let mk = document.getElementById('mokugyo-img');
+        mk.className = "";
+        if(game.mappoLevel > 0) mk.classList.add("mokugyo-mappo");
+        else {
+            if(game.totalToku > 1e14) mk.classList.add("mokugyo-lv4");
+            else if(game.totalToku > 1e10) mk.classList.add("mokugyo-lv3");
+            else if(game.totalToku > 1e6) mk.classList.add("mokugyo-lv2");
+        }
+        mk.innerText = game.mappoLevel > 0 ? "👹" : (game.totalToku > 1e14 ? "☸️" : "木魚");
+    }
+
+    function logMessage(msg) {
+        let div = document.createElement('div');
+        div.innerText = msg;
+        document.getElementById('message-log').prepend(div);
+    }
+
+    function updateNews() {
+        const headlines = [
+            "地獄の釜、燃料費高騰でぬるま湯に。",
+            "三途の川、電子マネー対応を開始。",
+            "カンダタ、蜘蛛の糸を切ったのは「事故」と主張。",
+            "「色即是空」の解釈を巡りAIがフリーズ。",
+            "あなたの煩悩レベル：計測不能",
+            "大仏がストレッチを始めました。",
+        ];
+        const mappoNews = [
+            "【悲報】閻魔大王、過労でダウン。",
+            "地獄の鬼たちがストライキ決行。",
+            "空から血の雨が降る予報です。",
+            "世界の終わりが近づいています。",
+        ];
+        
+        let list = game.mappoLevel > 0 ? mappoNews : headlines;
+        document.getElementById('news-text').innerText = "NEWS: " + list[Math.floor(Math.random() * list.length)];
+    }
+
+    // ==========================================
+    //  転生 & スキルツリー
+    // ==========================================
+    function openModal(id) {
+        document.getElementById(id).classList.add('show');
+        if(id === 'prestige-modal') updatePrestigeView();
+    }
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    function updatePrestigeView() {
+        // 転生計算: 累積の3乗根
+        let pot = Math.floor(Math.cbrt(game.allTimeToku / 1000000));
+        let gain = Math.max(0, pot - game.karma);
+        document.getElementById('prestige-gain').innerText = formatNumber(gain);
+
+        // スキルツリー描画
+        let container = document.getElementById('mandala-container');
+        container.innerHTML = "";
+        mandalaSkills.forEach(skill => {
+            let owned = game.skills.includes(skill.id);
+            let div = document.createElement('div');
+            div.className = `mandala-node ${owned ? 'unlocked' : ''}`;
+            if(!owned && game.karma >= skill.cost) div.classList.add('can-buy');
             
-            // 初回ランク9未満、または2周目以降なら常に加算
-            if (game.transmigrations > 0 || game.rank < 9) {
-                const ips = calculateIPS();
-                if (ips > 0) addVirtue(ips * dt);
-                updateDisplay();
-            }
-            requestAnimationFrame(gameLoop);
-        }
+            div.innerText = skill.icon;
+            div.onclick = () => buySkill(skill);
+            div.onmouseenter = () => document.getElementById('skill-desc').innerText = `${skill.name}: ${skill.desc} (コスト: ${skill.cost}業)`;
+            container.appendChild(div);
+        });
+    }
 
-        init();
-    </script>
+    function buySkill(skill) {
+        if(game.skills.includes(skill.id)) return;
+        if(game.karma >= skill.cost) {
+            if(confirm(`${skill.name} を習得しますか？ (業 ${skill.cost} 消費)`)) {
+                game.karma -= skill.cost;
+                game.skills.push(skill.id);
+                playSound('powerup');
+                updatePrestigeView();
+            }
+        } else {
+            alert("業が足りません");
+        }
+    }
+
+    function doPrestige() {
+        let pot = Math.floor(Math.cbrt(game.allTimeToku / 1000000));
+        let gain = Math.max(0, pot - game.karma);
+        if(gain <= 0 && !confirm("業が増えませんが転生しますか？")) return;
+
+        game.karma += gain;
+        
+        // リセット処理
+        game.toku = 0;
+        game.totalToku = 0;
+        game.clickCount = 0;
+        game.upgrades = [];
+        game.garden = Array(9).fill(null);
+        game.mappoLevel = 0;
+        // 小坊主維持スキル
+        let keepBozu = game.skills.includes("k1") ? game.facilities[0] : 0;
+        game.facilities = Array(facilityData.length).fill(0);
+        game.facilities[0] = keepBozu;
+        
+        saveGame();
+        location.reload();
+    }
+
+    // ==========================================
+    //  セーブ・ロード・インポート
+    // ==========================================
+    function saveGame(manual) {
+        game.lastSaveTime = Date.now();
+        localStorage.setItem('nirvanaV2', JSON.stringify(game));
+        if(manual) {
+            let btn = document.querySelector('#left-panel .btn');
+            let orig = btn.innerText;
+            btn.innerText = "記録完了!";
+            setTimeout(()=> btn.innerText = orig, 1000);
+        }
+    }
+
+    function loadGame() {
+        let str = localStorage.getItem('nirvanaV2');
+        if(str) {
+            try {
+                let d = JSON.parse(str);
+                game = { ...game, ...d };
+                // 配列長補正
+                if(game.facilities.length < facilityData.length) {
+                    for(let i=0; i<facilityData.length - game.facilities.length; i++) game.facilities.push(0);
+                }
+                
+                // オフライン計算
+                let sec = (Date.now() - game.lastSaveTime) / 1000;
+                if(sec > 60) {
+                    calcMultipliers();
+                    let eff = game.skills.includes("k4") ? 1.0 : 0.5;
+                    let gain = getTpS() * sec * eff;
+                    if(gain > 0) {
+                        addToku(gain);
+                        document.getElementById('offline-gain-text').innerText = formatNumber(gain) + " 徳";
+                        openModal('offline-modal');
+                    }
+                }
+            } catch(e) { console.error("Save broken", e); }
+        }
+        if(game.karma > 0) document.getElementById('karma-display').innerText = "業: " + formatNumber(game.karma);
+        document.getElementById('karma-display').style.display = game.karma > 0 ? "block" : "none";
+    }
+
+    function exportSave() {
+        let str = btoa(JSON.stringify(game));
+        document.getElementById('save-string').value = str;
+        alert("呪文をクリップボードにコピーしました（手動でコピーしてください）");
+        document.getElementById('save-string').select();
+    }
+
+    function importSave() {
+        let str = document.getElementById('save-string').value;
+        try {
+            let json = atob(str);
+            let d = JSON.parse(json);
+            if(d.startTime) {
+                game = d;
+                saveGame();
+                location.reload();
+            } else throw "Invalid Data";
+        } catch(e) {
+            alert("呪文が間違っています");
+        }
+    }
+    
+    function hardReset() {
+        if(confirm("本当に全てのデータを消去しますか？")) {
+            localStorage.removeItem('nirvanaV2');
+            location.reload();
+        }
+    }
+
+    // ==========================================
+    //  ユーティリティ
+    // ==========================================
+    function formatNumber(num) {
+        if(num < 10000) return Math.floor(num).toLocaleString();
+        let i = 0;
+        while(num >= 10000 && i < units.length - 1) { num /= 10000; i++; }
+        return num.toFixed(2) + units[i];
+    }
+
+    function spawnFloatText(x, y, text) {
+        let el = document.createElement('div');
+        el.className = 'float-text';
+        el.innerText = text;
+        el.style.left = x + 'px';
+        el.style.top = (y - 50) + 'px';
+        el.style.color = '#fff';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
+    // 音声 (Web Audio API)
+    function initAudio() { if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }
+    function toggleMute() { game.settings.muted = !game.settings.muted; alert(game.settings.muted ? "音声を消しました" : "音声を出します"); }
+    function playSound(type) {
+        if(game.settings.muted || !audioCtx) return;
+        let t = audioCtx.currentTime;
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        
+        if(type === 'mokugyo') {
+            osc.frequency.value = 300 + Math.random()*50;
+            gain.gain.setValueAtTime(0, t); gain.gain.linearRampToValueAtTime(0.5, t+0.02); gain.gain.exponentialRampToValueAtTime(0.01, t+0.15);
+            osc.start(t); osc.stop(t+0.15);
+        } else if(type === 'buy') {
+            osc.frequency.value = 600; 
+            gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t+0.1);
+            osc.start(t); osc.stop(t+0.1);
+        } else if(type === 'chime') {
+            osc.type='sine'; osc.frequency.setValueAtTime(1000,t); osc.frequency.linearRampToValueAtTime(1500,t+0.5);
+            gain.gain.setValueAtTime(0,t); gain.gain.linearRampToValueAtTime(0.2,t+0.1); gain.gain.linearRampToValueAtTime(0,t+1);
+            osc.start(t); osc.stop(t+1);
+        } else if(type === 'mappo_start') {
+             osc.type='sawtooth'; osc.frequency.setValueAtTime(100,t); osc.frequency.linearRampToValueAtTime(50,t+2);
+             gain.gain.setValueAtTime(0.3,t); gain.gain.linearRampToValueAtTime(0,t+2);
+             osc.start(t); osc.stop(t+2);
+        } else if(type === 'punch') {
+            osc.type='square'; osc.frequency.setValueAtTime(150,t); osc.frequency.exponentialRampToValueAtTime(50,t+0.1);
+            gain.gain.setValueAtTime(0.5,t); gain.gain.linearRampToValueAtTime(0,t+0.1);
+            osc.start(t); osc.stop(t+0.1);
+        }
+    }
+
+</script>
 </body>
 </html>
