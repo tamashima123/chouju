@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Roguelike: Command Battle</title>
+    <title>Roguelike: Regeneration</title>
     <style>
         body {
             background-color: #050505;
@@ -60,7 +60,7 @@
 
     <div class="controls">
         [矢印]:移動 [Enter]:メニュー [Esc]:キャンセル<br>
-        <span style="color:#f00">攻撃はメニューから「Attack」を選択</span>
+        <span style="color:#4f4">[ . ]: 足踏み(待機・回復)</span> <span style="color:#f00">攻撃はメニューから</span>
     </div>
 
 <script>
@@ -69,6 +69,7 @@
     const ROWS = 20;
     const COLS = 26;
     const FONT = "16px 'Courier New', monospace";
+    const HEAL_RATE = 5; // 何ターンで1HP回復するか
 
     const DUNG_TYPES = {
         EASY:   { id: 1, name: "EASY",   color: "#4f4", maxFloors: 10, boss: false },
@@ -88,7 +89,7 @@
         TITLE: 0, LOBBY: 1, PLAY: 2, 
         MENU: 3, INVENTORY: 4, ITEM_SUBMENU: 5, ITEM_MOVE: 6,
         STATUS: 7, STORAGE: 8, GAMEOVER: 9, VICTORY: 10,
-        ATTACK_DIR: 11 // 攻撃方向選択モード
+        ATTACK_DIR: 11
     };
 
     const TILE = { FLOOR: 0, WALL: 1, STAIRS: 2, DOOR_E: 3, DOOR_N: 4, DOOR_H: 5, STORAGE: 6, PORTAL: 7 };
@@ -101,6 +102,7 @@
     
     let player = { 
         x: 1, y: 1, hp: 30, maxHp: 30, level: 1, xp: 0, 
+        healTurn: 0, // 自動回復用カウンタ
         inventory: [], equipment: { weapon: null, armor: null } 
     };
     
@@ -126,7 +128,6 @@
         
         document.addEventListener('keydown', handleInput);
         
-        // テスト用初期アイテム
         warehouseItems.push(createItem("potion", 0));
         warehouseItems.push(createItem("weapon", 0)); 
         warehouseItems.push(createItem("armor", 0));
@@ -150,7 +151,7 @@
     function initLobby() {
         gameState = STATE.LOBBY;
         currentDungeon = null; enemies = []; items = []; messages = [];
-        log("ロビー: [Enter]メニュー > Attackで攻撃");
+        log("ロビー: [Enter]メニュー [.]足踏み");
         map = [];
         for (let y=0; y<ROWS; y++) {
             let row=[]; for(let x=0; x<COLS; x++) {
@@ -160,13 +161,13 @@
         map[3][6]=TILE.DOOR_E; map[3][13]=TILE.DOOR_N; map[3][20]=TILE.DOOR_H; map[10][13]=TILE.STORAGE;
         for(let x=1; x<COLS-1; x++) map[2][x]=TILE.WALL;
         map[2][6]=TILE.FLOOR; map[2][13]=TILE.FLOOR; map[2][20]=TILE.FLOOR;
-        player.x=13; player.y=15; player.hp=player.maxHp;
+        player.x=13; player.y=15; player.hp=player.maxHp; player.healTurn=0;
         updateUI(); draw();
     }
 
     function initDungeon(type) {
         currentDungeon=type; floorLevel=1;
-        player.level=1; player.xp=0; player.hp=player.maxHp=30;
+        player.level=1; player.xp=0; player.hp=player.maxHp=30; player.healTurn=0;
         log(`${currentDungeon.name}へ挑戦！`);
         generateFloor(); gameState=STATE.PLAY; updateUI();
     }
@@ -225,13 +226,28 @@
         if (gameState===STATE.GAMEOVER || gameState===STATE.VICTORY) { if(e.key==='Enter'){ if(gameState===STATE.GAMEOVER){player.inventory=[]; player.equipment={weapon:null,armor:null};} initLobby();} return; }
 
         if (gameState === STATE.ATTACK_DIR) { handleAttackDirInput(e); return; }
-
         if (gameState === STATE.ITEM_SUBMENU) { handleItemSubMenu(e); return; }
         if (gameState === STATE.ITEM_MOVE) { handleItemMove(e); return; }
         if (gameState === STATE.MENU) { handleMenuInput(e); return; }
         if (gameState === STATE.INVENTORY) { handleInventoryInput(e); return; }
         if (gameState === STATE.STORAGE) { handleStorageInput(e); return; }
         if (gameState === STATE.STATUS) { if(e.key==='Escape'||e.key==='Enter'){gameState=STATE.MENU; draw();} return; }
+
+        // 待機（足踏み）処理
+        if (e.key === '.') {
+            if (gameState===STATE.PLAY || gameState===STATE.LOBBY) {
+                // 移動せずにターン経過
+                // log("待機中..."); // ログが流れすぎるので非表示推奨
+                if(currentDungeon) enemyTurn();
+                else {
+                    // ロビーでも回復するように擬似ターン経過
+                    regeneratePlayer();
+                    updateUI();
+                }
+                draw();
+                return;
+            }
+        }
 
         let dx=0, dy=0;
         if (e.key==='ArrowUp'||e.key==='w') dy=-1; if (e.key==='ArrowDown'||e.key==='s') dy=1;
@@ -244,19 +260,13 @@
         }
     }
 
-    // --- メニュー関連 ---
+    // --- メニュー ---
     function openMainMenu() {
         gameState = STATE.MENU; menuCursor = 0;
         menuOptions = [];
-
-        // 1. Attack (最上部)
         menuOptions.push({ label: "Attack", action: () => { gameState = STATE.ATTACK_DIR; log("方向キーで攻撃！"); draw(); } });
-        
-        // 2. Items/Status
         menuOptions.push({ label: "Items/Equip", action: () => { gameState=STATE.INVENTORY; menuCursor=0; draw(); } });
         menuOptions.push({ label: "Status", action: () => { gameState=STATE.STATUS; draw(); } });
-
-        // 3. Interactions
         const t = map[player.y][player.x];
         if (t===TILE.STAIRS) {
             menuOptions.push({ label: "Descend Stairs", action: () => { floorLevel++; generateFloor(); gameState=STATE.PLAY; } });
@@ -266,12 +276,9 @@
             }
         } else if (t===TILE.PORTAL) menuOptions.push({ label: "Return Home", action: ()=>victory("帰還！") });
         else if (t===TILE.STORAGE) menuOptions.push({ label: "Open Storage", action: ()=>{gameState=STATE.STORAGE; menuCursor=0; draw();} });
-        
-        // 4. Close
         menuOptions.push({ label: "Close Menu", action: () => { gameState=(currentDungeon?STATE.PLAY:STATE.LOBBY); draw(); } });
         draw();
     }
-
     function handleMenuInput(e) {
         if(e.key==='ArrowUp') menuCursor=Math.max(0,menuCursor-1);
         if(e.key==='ArrowDown') menuCursor=Math.min(menuOptions.length-1,menuCursor+1);
@@ -280,49 +287,30 @@
         draw();
     }
 
-    // --- 攻撃方向入力 ---
     function handleAttackDirInput(e) {
         let dx=0, dy=0;
-        if(e.key==='ArrowUp'||e.key==='w') dy=-1;
-        if(e.key==='ArrowDown'||e.key==='s') dy=1;
-        if(e.key==='ArrowLeft'||e.key==='a') dx=-1;
-        if(e.key==='ArrowRight'||e.key==='d') dx=1;
-        
+        if(e.key==='ArrowUp'||e.key==='w') dy=-1; if(e.key==='ArrowDown'||e.key==='s') dy=1;
+        if(e.key==='ArrowLeft'||e.key==='a') dx=-1; if(e.key==='ArrowRight'||e.key==='d') dx=1;
         if (dx!==0 || dy!==0) {
-            // 攻撃実行
-            const tx = player.x + dx;
-            const ty = player.y + dy;
+            const tx = player.x + dx, ty = player.y + dy;
             const target = getEnemyAt(tx, ty);
-            
-            if (target) {
-                attack(player, target);
-            } else {
-                log("空振り！何もいない。");
-            }
-            // 攻撃が終わったらプレイ画面へ戻り、敵のターン
+            if (target) attack(player, target);
+            else log("空振り！");
             gameState = (currentDungeon ? STATE.PLAY : STATE.LOBBY);
             if (currentDungeon) enemyTurn();
             draw();
         } else if (e.key === 'Escape') {
-            // キャンセル
             gameState = (currentDungeon ? STATE.PLAY : STATE.LOBBY);
             draw();
         }
     }
 
-    // --- 移動処理 (体当たり廃止) ---
+    // --- ロジック ---
     function playerTurn(dx, dy) {
         const tx=player.x+dx, ty=player.y+dy;
         if(map[ty][tx]===TILE.WALL) return;
-        
         let e=getEnemyAt(tx,ty);
-        if(e) {
-            // 体当たり攻撃は廃止
-            log("敵がいる！メニューから攻撃せよ。");
-            return;
-        }
-        
-        // 移動
+        if(e) { log("敵がいる！メニューから攻撃せよ。"); return; }
         player.x=tx; player.y=ty;
         let iIdx=items.findIndex(i=>i.x===tx&&i.y===ty);
         if(iIdx!==-1) {
@@ -332,7 +320,33 @@
         enemyTurn(); updateUI(); draw();
     }
 
-    // --- その他UI操作など (前回と同様) ---
+    function regeneratePlayer() {
+        if(player.hp < player.maxHp) {
+            player.healTurn++;
+            if(player.healTurn >= HEAL_RATE) {
+                player.hp++;
+                player.healTurn = 0;
+            }
+        }
+    }
+
+    function enemyTurn() {
+        // ターン経過でHP回復
+        regeneratePlayer();
+
+        enemies.forEach(e=>{
+            const dist=Math.abs(player.x-e.x)+Math.abs(player.y-e.y);
+            if(dist<8){
+                let dx=0,dy=0; if(player.x>e.x)dx=1;else if(player.x<e.x)dx=-1;else if(player.y>e.y)dy=1;else if(player.y<e.y)dy=-1;
+                const tx=e.x+dx,ty=e.y+dy;
+                if(tx===player.x&&ty===player.y)attack(e,player);
+                else if(map[ty][tx]!==TILE.WALL&&!getEnemyAt(tx,ty)){e.x=tx;e.y=ty;}
+            }
+        }); enemies=enemies.filter(e=>e.hp>0);
+        updateUI();
+    }
+
+    // --- インベントリ系 (省略なし) ---
     function handleInventoryInput(e) {
         const len = player.inventory.length;
         if(e.key==='ArrowUp') menuCursor = Math.max(0, menuCursor-1);
@@ -419,20 +433,11 @@
             if(map[ty][tx]===TILE.DOOR_E) initDungeon(DUNG_TYPES.EASY);
             else if(map[ty][tx]===TILE.DOOR_N) initDungeon(DUNG_TYPES.NORMAL);
             else if(map[ty][tx]===TILE.DOOR_H) initDungeon(DUNG_TYPES.HARD);
-            else draw();
+            else { regeneratePlayer(); updateUI(); draw(); } // ロビー内移動でも回復
         }
     }
-    function enemyTurn() {
-        enemies.forEach(e=>{
-            const dist=Math.abs(player.x-e.x)+Math.abs(player.y-e.y);
-            if(dist<8){
-                let dx=0,dy=0; if(player.x>e.x)dx=1;else if(player.x<e.x)dx=-1;else if(player.y>e.y)dy=1;else if(player.y<e.y)dy=-1;
-                const tx=e.x+dx,ty=e.y+dy;
-                if(tx===player.x&&ty===player.y)attack(e,player);
-                else if(map[ty][tx]!==TILE.WALL&&!getEnemyAt(tx,ty)){e.x=tx;e.y=ty;}
-            }
-        }); enemies=enemies.filter(e=>e.hp>0);
-    }
+
+    // --- 攻撃・勝利 ---
     function attack(atk,def) {
         let p=(atk===player)?(Math.floor(player.level/2)+2+(player.equipment.weapon?player.equipment.weapon.atk:0)):(atk.atk||2);
         let d=(def===player)?(player.equipment.armor?player.equipment.armor.def:0):0;
@@ -456,7 +461,7 @@
     // --- 描画 ---
     function draw() {
         ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        if(gameState===STATE.TITLE){ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='40px monospace';ctx.fillText("ROGUE BATTLE+",canvas.width/2,200);ctx.font='20px monospace';ctx.fillText("[Enter] Start",canvas.width/2,250);return;}
+        if(gameState===STATE.TITLE){ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='40px monospace';ctx.fillText("ROGUE REGEN+",canvas.width/2,200);ctx.font='20px monospace';ctx.fillText("[Enter] Start",canvas.width/2,250);return;}
         drawMap();
         if(gameState===STATE.ATTACK_DIR) drawCenterText("Select Direction", "lime", true);
         if(gameState===STATE.MENU) drawMenuOverlay();
