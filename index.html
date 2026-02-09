@@ -56,7 +56,7 @@
 
         /* --- お知らせ機能のスタイル --- */
         .news-container {
-            background-color: rgba(0, 0, 0, 0.5); /* 半透明の黒背景 */
+            background-color: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(5px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
@@ -76,8 +76,8 @@
         }
         .news-list {
             list-style: none; padding: 0; margin: 0;
-            max-height: 80px; /* 高さを制限 */
-            overflow-y: auto; /* はみ出たらスクロール */
+            max-height: 80px;
+            overflow-y: auto;
         }
         .news-item {
             font-size: 0.9em; margin-bottom: 8px;
@@ -230,7 +230,8 @@
         <div class="news-container">
             <div class="news-title">お知らせ</div>
             <ul class="news-list" id="news-list">
-                </ul>
+                <li style="color:#ccc; list-style:none; font-size:0.8em;">読み込み中...</li>
+            </ul>
         </div>
 
         <div class="bookmark-area" id="bookmark-list">
@@ -270,24 +271,36 @@
         }
         setInterval(updateClock, 1000); updateClock();
 
-        // --- お知らせ処理 (ここを編集してお知らせを追加します) ---
-        const newsData = [
-            { date: '2023.10.28', content: '道具に「関数電卓」を追加しました。' },
-            { date: '2023.10.27', content: 'ゲームに「スイカゲーム」「テトリス」等を追加。' },
-            { date: '2023.10.27', content: '左下に「おみくじ処」を設置しました。' },
-            { date: '2023.10.26', content: 'サイトをリニューアルしました。' }
-        ];
-
-        function renderNews() {
+        // --- お知らせ処理 (テキストファイル読み込み版) ---
+        async function loadNews() {
             const list = document.getElementById('news-list');
-            newsData.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'news-item';
-                li.innerHTML = `<span class="news-date">${item.date}</span><span class="news-content">${item.content}</span>`;
-                list.appendChild(li);
-            });
+            try {
+                // 同じ階層にある「お知らせ.txt」を読みに行く
+                const response = await fetch('お知らせ.txt');
+                if (!response.ok) throw new Error("File not found");
+                const text = await response.text();
+                
+                const lines = text.trim().split('\n');
+                list.innerHTML = ''; // クリア
+
+                lines.forEach(line => {
+                    if (!line.trim()) return;
+                    const parts = line.split(/\s+(.*)/); // 最初の空白で分割
+                    const date = parts[0] || '';
+                    const content = parts[1] || '';
+                    if (date && content) {
+                        const li = document.createElement('li');
+                        li.className = 'news-item';
+                        li.innerHTML = `<span class="news-date">${date}</span><span class="news-content">${content}</span>`;
+                        list.appendChild(li);
+                    }
+                });
+            } catch (error) {
+                console.error(error);
+                list.innerHTML = '<li class="news-item" style="color:#ffcccc;">お知らせを読み込めませんでした。<br><small>※ローカルサーバー経由で開いてください</small></li>';
+            }
         }
-        renderNews();
+        loadNews();
 
         // --- おみくじ処理 ---
         const omikujiData = [
