@@ -54,6 +54,45 @@
             box-shadow: 0 6px 15px rgba(0,0,0,0.3);
         }
 
+        /* --- お知らせ機能のスタイル --- */
+        .news-container {
+            background-color: rgba(0, 0, 0, 0.5); /* 半透明の黒背景 */
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            width: 90%; max-width: 500px;
+            padding: 15px;
+            margin-top: 10px;
+            text-align: left;
+            color: #fff;
+            animation: fadeInSlow 2.8s ease-out;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .news-title {
+            font-size: 1.0em;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            padding-bottom: 5px; margin-bottom: 10px;
+            font-weight: bold; letter-spacing: 0.1em;
+        }
+        .news-list {
+            list-style: none; padding: 0; margin: 0;
+            max-height: 80px; /* 高さを制限 */
+            overflow-y: auto; /* はみ出たらスクロール */
+        }
+        .news-item {
+            font-size: 0.9em; margin-bottom: 8px;
+            display: flex; gap: 15px; align-items: baseline;
+        }
+        .news-date {
+            color: #ddd; font-size: 0.85em; font-family: monospace; white-space: nowrap;
+        }
+        .news-content {
+            color: #fff; line-height: 1.4;
+        }
+        /* スクロールバーのデザイン */
+        .news-list::-webkit-scrollbar { width: 6px; }
+        .news-list::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.3); border-radius: 3px; }
+
         /* ブックマークエリア */
         .bookmark-area {
             display: flex; flex-wrap: wrap; justify-content: center;
@@ -142,78 +181,34 @@
 
         /* --- おみくじ機能 (左下固定) --- */
         .omikuji-container {
-            position: fixed;
-            bottom: 30px;
-            left: 30px;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column-reverse;
-            align-items: center;
+            position: fixed; bottom: 30px; left: 30px; z-index: 2000;
+            display: flex; flex-direction: column-reverse; align-items: center;
         }
-
         .omikuji-btn {
-            font-size: 2em;
-            cursor: pointer;
-            padding: 10px;
-            background-color: rgba(0,0,0,0.4);
-            border-radius: 50%;
-            border: 1px solid rgba(255,255,255,0.3);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: transform 0.2s, background-color 0.2s;
-            backdrop-filter: blur(5px);
+            font-size: 2em; cursor: pointer; padding: 10px;
+            background-color: rgba(0,0,0,0.4); border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: transform 0.2s, background-color 0.2s; backdrop-filter: blur(5px);
         }
-        .omikuji-btn:hover {
-            transform: scale(1.1) rotate(-10deg);
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-        .omikuji-btn:active {
-            transform: scale(0.95);
-        }
+        .omikuji-btn:hover { transform: scale(1.1) rotate(-10deg); background-color: rgba(255, 255, 255, 0.2); }
+        .omikuji-btn:active { transform: scale(0.95); }
 
         .omikuji-result {
-            background-color: rgba(255, 250, 240, 0.95);
-            color: #333;
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            text-align: center;
-            position: relative;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(10px);
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-            border: 1px solid #d4c4b4;
-            min-width: 150px;
+            background-color: rgba(255, 250, 240, 0.95); color: #333;
+            padding: 15px 20px; border-radius: 8px; margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2); text-align: center;
+            position: relative; opacity: 0; visibility: hidden;
+            transform: translateY(10px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            border: 1px solid #d4c4b4; min-width: 150px;
         }
         .omikuji-result::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            border-width: 10px 10px 0 10px;
-            border-style: solid;
+            content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+            border-width: 10px 10px 0 10px; border-style: solid;
             border-color: rgba(255, 250, 240, 0.95) transparent transparent transparent;
         }
-
-        .omikuji-result.show {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-
-        .result-unsei {
-            font-size: 1.8em;
-            font-weight: bold;
-            color: #d35400;
-            display: block;
-            margin-bottom: 5px;
-        }
-        .result-kotoba {
-            font-size: 0.9em;
-            color: #555;
-        }
+        .omikuji-result.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        .result-unsei { font-size: 1.8em; font-weight: bold; color: #d35400; display: block; margin-bottom: 5px; }
+        .result-kotoba { font-size: 0.9em; color: #555; }
 
         @media (max-width: 768px) {
             .main-title { font-size: 2.2em; }
@@ -232,47 +227,25 @@
             <input type="text" name="q" class="search-input" placeholder="Google 検索" autocomplete="off">
         </form>
 
+        <div class="news-container">
+            <div class="news-title">お知らせ</div>
+            <ul class="news-list" id="news-list">
+                </ul>
+        </div>
+
         <div class="bookmark-area" id="bookmark-list">
             <div class="add-btn" onclick="openAddModal()">＋ 追加</div>
         </div>
     </div>
 
     <nav class="top-nav">
-        <div class="nav-item">
-            <div class="category-name">学習</div>
-            <div class="dropdown">
-                <a href="cobun_card.html">古典単語帳</a>
-                <a href="kanji_quiz.html">漢字クイズ</a>
-                <a href="daigaku_quiz.html">大学クイズ</a>
-            </div>
-        </div>
-        <div class="nav-item">
-            <div class="category-name">道具</div>
-            <div class="dropdown">
-                <a href="timer.html">集中タイマー</a>
-                <a href="sc_cal.html">関数電卓</a> <a href="kansu.html">関数表示アプリ</a>
-            </div>
-        </div>
-        <div class="nav-item">
-            <div class="category-name">ゲーム</div>
-            <div class="dropdown">
-                <a href="shogi.html">将棋</a>
-                <a href="othello.html">オセロ</a>
-                <a href="rogue.html">ローグライク</a>
-                <a href="mine.html">マインスイーパー</a>
-                <a href="ball.html">スイカゲーム</a>
-                <a href="tetris.html">テトリス</a>
-                <a href="stg.html">シューティング</a>
-                <a href="click.html">クリッカー</a>
-            </div>
-        </div>
+        <div class="nav-item"><div class="category-name">学習</div><div class="dropdown"><a href="cobun_card.html">古典単語帳</a><a href="kanji_quiz.html">漢字クイズ</a><a href="daigaku_quiz.html">大学クイズ</a></div></div>
+        <div class="nav-item"><div class="category-name">道具</div><div class="dropdown"><a href="timer.html">集中タイマー</a><a href="sc_cal.html">関数電卓</a><a href="kansu.html">関数表示アプリ</a></div></div>
+        <div class="nav-item"><div class="category-name">ゲーム</div><div class="dropdown"><a href="shogi.html">将棋</a><a href="othello.html">オセロ</a><a href="rogue.html">ローグライク</a><a href="mine.html">マインスイーパー</a><a href="ball.html">スイカゲーム</a><a href="tetris.html">テトリス</a><a href="stg.html">シューティング</a><a href="click.html">クリッカー</a></div></div>
     </nav>
 
     <div class="omikuji-container">
-        <div id="omikuji-result" class="omikuji-result">
-            <span id="result-unsei" class="result-unsei"></span>
-            <span id="result-kotoba" class="result-kotoba"></span>
-        </div>
+        <div id="omikuji-result" class="omikuji-result"><span id="result-unsei" class="result-unsei"></span><span id="result-kotoba" class="result-kotoba"></span></div>
         <div class="omikuji-btn" onclick="drawOmikuji()">⛩️</div>
     </div>
 
@@ -281,7 +254,6 @@
             <h3 id="modal-title">ショートカットを追加</h3>
             <input type="text" id="bm-name" placeholder="サイト名（例：Youtube）">
             <input type="text" id="bm-url" placeholder="URL（例：https://youtube.com）">
-            
             <div class="modal-buttons">
                 <button class="btn btn-cancel" onclick="closeModal()">中止</button>
                 <button class="btn btn-delete" id="btn-delete" onclick="deleteCurrentBookmark()" style="display:none;">削除</button>
@@ -296,8 +268,26 @@
             const now = new Date();
             document.getElementById('clock').textContent = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         }
-        setInterval(updateClock, 1000);
-        updateClock();
+        setInterval(updateClock, 1000); updateClock();
+
+        // --- お知らせ処理 (ここを編集してお知らせを追加します) ---
+        const newsData = [
+            { date: '2023.10.28', content: '道具に「関数電卓」を追加しました。' },
+            { date: '2023.10.27', content: 'ゲームに「スイカゲーム」「テトリス」等を追加。' },
+            { date: '2023.10.27', content: '左下に「おみくじ処」を設置しました。' },
+            { date: '2023.10.26', content: 'サイトをリニューアルしました。' }
+        ];
+
+        function renderNews() {
+            const list = document.getElementById('news-list');
+            newsData.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'news-item';
+                li.innerHTML = `<span class="news-date">${item.date}</span><span class="news-content">${item.content}</span>`;
+                list.appendChild(li);
+            });
+        }
+        renderNews();
 
         // --- おみくじ処理 ---
         const omikujiData = [
@@ -309,29 +299,16 @@
             { unsei: "凶", kotoba: "今日は静かに過ごすが吉。無理は禁物。" },
             { unsei: "大吉", kotoba: "思いがけない幸運が舞い込む予感。素直な心で。" }
         ];
-
         function drawOmikuji() {
             const resultBox = document.getElementById('omikuji-result');
             const resultUnsei = document.getElementById('result-unsei');
             const resultKotoba = document.getElementById('result-kotoba');
             const btn = document.querySelector('.omikuji-btn');
-
-            if (resultBox.classList.contains('show')) {
-                resultBox.classList.remove('show');
-                return;
-            }
-
-            btn.animate([
-                { transform: 'rotate(0deg)' }, { transform: 'rotate(-15deg)' },
-                { transform: 'rotate(15deg)' }, { transform: 'rotate(0deg)' }
-            ], { duration: 300 });
-
+            if (resultBox.classList.contains('show')) { resultBox.classList.remove('show'); return; }
+            btn.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(-15deg)' }, { transform: 'rotate(15deg)' }, { transform: 'rotate(0deg)' }], { duration: 300 });
             const randomIndex = Math.floor(Math.random() * omikujiData.length);
             const result = omikujiData[randomIndex];
-
-            resultUnsei.textContent = result.unsei;
-            resultKotoba.textContent = result.kotoba;
-            
+            resultUnsei.textContent = result.unsei; resultKotoba.textContent = result.kotoba;
             setTimeout(() => { resultBox.classList.add('show'); }, 100);
             setTimeout(() => { resultBox.classList.remove('show'); }, 5000);
         }
@@ -343,7 +320,6 @@
         const nameInput = document.getElementById('bm-name');
         const urlInput = document.getElementById('bm-url');
         const deleteBtn = document.getElementById('btn-delete');
-
         let editingIndex = -1;
         let bookmarks = JSON.parse(localStorage.getItem('myBookmarks')) || [];
 
@@ -358,7 +334,6 @@
                 bookmarkList.insertBefore(a, addBtn);
             });
         }
-
         function openAddModal() {
             editingIndex = -1; modalTitle.textContent = "ショートカットを追加";
             nameInput.value = ''; urlInput.value = ''; deleteBtn.style.display = 'none';
@@ -383,7 +358,6 @@
         }
         function saveToStorage() { localStorage.setItem('myBookmarks', JSON.stringify(bookmarks)); }
         function closeModal() { modal.style.display = 'none'; }
-
         renderBookmarks();
     </script>
 </body>
