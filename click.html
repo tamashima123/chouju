@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ニルヴァーナ・クリッカー Ver2.2</title>
+    <title>ニルヴァーナ・クリッカー Ver2.3</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -43,7 +43,7 @@
 
         /* --- 左パネル (マトリックス背景) --- */
         #left-panel {
-            background-color: rgba(10, 10, 10, 0.85); /* 少し透明に */
+            background-color: rgba(10, 10, 10, 0.85);
             border-right: 2px solid var(--accent-color);
             text-align: center; overflow: hidden;
         }
@@ -76,13 +76,11 @@
             pointer-events: none; z-index: 0; overflow: hidden;
             opacity: 0.6;
         }
-        /* 浮遊アイコン */
         .hyakki-icon {
             position: absolute; font-size: 30px;
             animation: floatDrift linear infinite;
-            will-change: transform; /* パフォーマンス最適化 */
+            will-change: transform;
         }
-        /* CSSアニメーション：ふわふわ横移動 */
         @keyframes floatDrift {
             0% { transform: translate(-50px, 0) rotate(-5deg); opacity: 0; }
             10% { opacity: 1; }
@@ -111,7 +109,7 @@
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .modal.show { opacity: 1; pointer-events: auto; }
         .modal-content { background: #1a1a1a; border: 2px solid var(--accent-color); padding: 20px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; text-align: center; border-radius: 8px; box-shadow: 0 0 50px rgba(212, 175, 55, 0.2); }
-        textarea { width: 100%; height: 80px; background: #333; color: #fff; border: 1px solid #555; margin-bottom: 10px; font-family: monospace;}
+        textarea { width: 100%; height: 80px; background: #333; color: #fff; border: 1px solid #555; margin-bottom: 10px; font-family: monospace; font-size: 0.8em; word-break: break-all;}
 
         /* その他 */
         .float-text { position: absolute; font-weight: bold; pointer-events: none; animation: floatUp 1s forwards; text-shadow: 0 0 3px black; z-index: 200; }
@@ -121,7 +119,9 @@
 <body>
 
 <div id="left-panel" class="panel">
-    <canvas id="matrix-canvas"></canvas> <div style="margin-bottom: 20px; z-index: 20;">
+    <canvas id="matrix-canvas"></canvas>
+    
+    <div style="margin-bottom: 20px; z-index: 20;">
         <div id="toku-display">0 徳</div>
         <div id="tps-display" style="font-size: 0.9em; color: #888;">毎秒: 0 徳</div>
         <div id="karma-display">業: 0</div>
@@ -141,9 +141,7 @@
 
 <div id="center-panel">
     <div id="news-ticker" onclick="clickNews()">News: ローディング中...</div>
-    
     <div id="hyakki-container"></div>
-
     <div id="message-log"></div>
     <div id="falling-item" class="falling-item" onclick="clickFallingItem()"></div>
 </div>
@@ -160,7 +158,7 @@
     <div class="modal-content">
         <h2>復活の呪文</h2>
         <p>セーブデータの書き出し・読み込みを行います。</p>
-        <textarea id="save-string" placeholder="ここに呪文が表示されます / ここに呪文を貼り付けます"></textarea>
+        <textarea id="save-string" placeholder="ここに呪文を貼り付けて [呪文を聞く] を押してください" onfocus="this.select()"></textarea>
         <div>
             <button class="btn" onclick="exportSave()">呪文を唱える (Copy)</button>
             <button class="btn btn-danger" onclick="importSave()">呪文を聞く (Load)</button>
@@ -181,7 +179,7 @@
 
 <script>
     // ==========================================
-    //  ゲームデータ定義 (Ver2.2 簡易版)
+    //  ゲームデータ定義
     // ==========================================
     const units = ["", "万", "億", "兆", "京", "垓", "𥝱", "穣", "溝", "澗", "正", "載", "極", "恒河沙", "阿僧祇", "那由他", "不可思議", "無量大数", "涅槃"];
     const facilityData = [
@@ -203,7 +201,8 @@
     let game = {
         toku: 0, totalToku: 0, allTimeToku: 0, karma: 0,
         facilities: Array(facilityData.length).fill(0),
-        upgrades: [], clickCount: 0, mappo: false
+        upgrades: [], clickCount: 0, mappo: false,
+        startTime: Date.now() // ★修正: 開始時間を追加
     };
     let audioCtx = null;
     let multipliers = { click: 1, global: 1, facilities: [] };
@@ -216,8 +215,8 @@
     window.onload = () => {
         loadGame(); calcMultipliers(); initMatrix();
         setInterval(gameLoop, 100);
-        setInterval(saveGame, 30000);
-        setInterval(updateHyakkiYagyo, 3000); // 3秒ごとに百鬼夜行を更新
+        setInterval(() => saveGame(false), 30000);
+        setInterval(updateHyakkiYagyo, 3000);
         setTimeout(scheduleFallingItem, 60000);
     };
 
@@ -235,7 +234,7 @@
     }
 
     // ==========================================
-    //  アクション & 計算
+    //  アクション
     // ==========================================
     function clickMokugyo(e) {
         initAudio();
@@ -272,9 +271,9 @@
     }
 
     // ==========================================
-    //  ビジュアル演出 (マトリックス & 百鬼夜行)
+    //  ビジュアル演出
     // ==========================================
-    // --- 般若心経マトリックス ---
+    // Matrix
     let matrixCtx, matrixW, matrixH, matrixCols, matrixDrops;
     const matrixChars = "色即是空空即是色般若心経徳喝羯諦僧伽耶菩提薩婆訶".split("");
     function initMatrix() {
@@ -290,7 +289,7 @@
     function drawMatrix() {
         matrixCtx.fillStyle = game.mappo ? 'rgba(40, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0.1)';
         matrixCtx.fillRect(0, 0, matrixW, matrixH);
-        matrixCtx.fillStyle = game.mappo ? '#ff3333' : '#00ff00'; // 末法は赤
+        matrixCtx.fillStyle = game.mappo ? '#ff3333' : '#00ff00';
         matrixCtx.font = '15px monospace';
         for(let i=0; i<matrixDrops.length; i++) {
             const text = matrixChars[Math.floor(Math.random()*matrixChars.length)];
@@ -299,16 +298,11 @@
             matrixDrops[i]++;
         }
     }
-
-    // --- 百鬼夜行 ---
+    // Hyakki Yagyo
     function updateHyakkiYagyo() {
         const container = document.getElementById('hyakki-container');
         const totalFacilities = game.facilities.reduce((a,b)=>a+b, 0);
-        const maxIcons = 150; // 表示キャップ
-        
-        // 現在のアイコン数がキャップより少ない場合のみ追加
-        if(container.children.length < maxIcons && totalFacilities > 0) {
-            // どの施設を出すかランダム決定（所持数で重み付け）
+        if(container.children.length < 150 && totalFacilities > 0) {
             let rand = Math.random() * totalFacilities;
             let current = 0;
             let selectedFacility = facilityData[0];
@@ -316,29 +310,24 @@
                 current += game.facilities[i];
                 if(rand < current) { selectedFacility = facilityData[i]; break; }
             }
-
             let el = document.createElement('div');
             el.className = 'hyakki-icon';
             el.innerText = selectedFacility.icon;
-            // ランダムな開始位置とアニメーション速度
             el.style.top = Math.random() * 90 + '%';
             el.style.left = '-50px';
-            el.style.animationDuration = (Math.random() * 20 + 15) + 's'; // 15~35秒
-            el.style.fontSize = (Math.random() * 20 + 20) + 'px'; // サイズばらつき
-            
+            el.style.animationDuration = (Math.random() * 20 + 15) + 's';
+            el.style.fontSize = (Math.random() * 20 + 20) + 'px';
             container.appendChild(el);
-            // アニメーション終了後に削除
             setTimeout(() => el.remove(), 35000);
         }
     }
-
     function updateVisuals() {
         document.body.className = game.mappo ? "mappo-mode" : (game.totalToku > 1e12 ? "bg-lv5" : game.totalToku > 1e8 ? "bg-lv3" : "bg-lv1");
         document.getElementById('mokugyo-img').classList.toggle('mokugyo-mappo', game.mappo);
     }
 
     // ==========================================
-    //  イベント & UI操作
+    //  UI操作など
     // ==========================================
     function switchTab(n) { currentTab=n; document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active')); document.querySelector(`.tab[onclick="switchTab('${n}')"]`).classList.add('active'); if(n==='facilities')renderFacilities(); else renderUpgrades(); }
     function renderFacilities(full=true) {
@@ -353,16 +342,75 @@
     function scheduleFallingItem() { if(fallingItemActive)return; setTimeout(()=>{ spawnFallingItem(); scheduleFallingItem(); }, Math.random()*120000+60000); }
     function spawnFallingItem() { fallingItemActive=true; let el=document.getElementById('falling-item'); el.style.top='-100px'; el.style.display='block'; el.innerText=game.mappo?"👹":"🕸️"; el.classList.toggle('oni',game.mappo); setTimeout(()=>{el.style.top='110vh'; setTimeout(()=>{fallingItemActive=false;},1000)}, 8000); }
     function clickFallingItem() { if(!fallingItemActive)return; fallingItemActive=false; document.getElementById('falling-item').style.display='none'; let bonus=Math.max(game.toku*0.1, getTpS()*300); addToku(bonus); playSound('chime'); logMessage("ボーナス獲得: +"+formatNumber(bonus)+"徳"); }
+    function clickNews() { window.open("https://github.com/google/gemini-nirvana-clicker", "_blank"); } // ダミーリンク
     function logMessage(m) { let d=document.createElement('div'); d.innerText=m; document.getElementById('message-log').prepend(d); if(document.getElementById('message-log').children.length>5)document.getElementById('message-log').lastChild.remove(); }
 
     // ==========================================
-    //  セーブ・ロード・呪文・転生
+    //  セーブ・ロード・呪文 (修正版)
     // ==========================================
-    function saveGame(m){ localStorage.setItem('nirvanaV22', JSON.stringify(game)); if(m)alert("記録しました"); }
-    function loadGame(){ let s=localStorage.getItem('nirvanaV22'); if(s){ try{ game={...game,...JSON.parse(s)}; if(game.facilities.length<facilityData.length)game.facilities.push(0); }catch(e){console.error(e);} } if(game.karma>0){document.getElementById('karma-display').style.display="block"; document.getElementById('karma-display').innerText="業: "+formatNumber(game.karma);} }
-    function exportSave(){ document.getElementById('save-string').value = btoa(JSON.stringify(game)); document.getElementById('save-string').select(); alert("呪文をコピーしました"); }
-    function importSave(){ try{ let d=JSON.parse(atob(document.getElementById('save-string').value)); if(d.startTime){ game=d; saveGame(); location.reload(); }else throw"e"; }catch(e){alert("呪文が違います");} }
-    function doPrestige(){ let g=Math.max(0, Math.floor(Math.cbrt(game.allTimeToku/1e6))-game.karma); if(g>0 && confirm("転生しますか？")){ game.karma+=g; game.toku=0; game.facilities.fill(0); game.upgrades=[]; game.mappo=false; saveGame(); location.reload(); } }
+    function saveGame(showMsg){ 
+        localStorage.setItem('nirvanaV23', JSON.stringify(game)); 
+        if(showMsg) alert("記録しました"); 
+    }
+    function loadGame(){ 
+        let s=localStorage.getItem('nirvanaV23'); 
+        if(s){ 
+            try{ 
+                game={...game, ...JSON.parse(s)}; 
+                if(game.facilities.length < facilityData.length) game.facilities.push(0);
+            }catch(e){console.error(e);} 
+        } 
+        if(game.karma>0){
+            document.getElementById('karma-display').style.display="block"; 
+            document.getElementById('karma-display').innerText="業: "+formatNumber(game.karma);
+        } 
+    }
+
+    // ★修正: 日本語(Unicode)に対応した呪文生成
+    function exportSave(){ 
+        // 日本語を含む文字列をBase64化するための処理
+        let json = JSON.stringify(game);
+        let encoded = btoa(unescape(encodeURIComponent(json)));
+        
+        let area = document.getElementById('save-string');
+        area.value = encoded;
+        area.select();
+        document.execCommand('copy');
+        alert("呪文をクリップボードにコピーしました！"); 
+    }
+
+    // ★修正: バリデーション修正とUnicodeデコード
+    function importSave(){ 
+        try{ 
+            let str = document.getElementById('save-string').value.trim();
+            if(!str) return;
+
+            // Base64デコード処理
+            let decoded = decodeURIComponent(escape(atob(str)));
+            let d = JSON.parse(decoded); 
+
+            // バリデーション: "toku"というプロパティを持っているか確認
+            if(d.toku !== undefined){ 
+                game = d; 
+                saveGame(false); 
+                location.reload(); 
+            } else {
+                throw "Invalid data structure"; 
+            }
+        } catch(e){
+            alert("呪文が違います（解読不能）");
+            console.error(e);
+        } 
+    }
+
+    function doPrestige(){ 
+        let g=Math.max(0, Math.floor(Math.cbrt(game.allTimeToku/1e6))-game.karma); 
+        if(g>0 && confirm("転生しますか？")){ 
+            game.karma+=g; game.toku=0; game.facilities.fill(0); game.upgrades=[]; game.mappo=false; 
+            game.startTime = Date.now(); // 転生時も時間をリセット
+            saveGame(); location.reload(); 
+        } 
+    }
 
     // ==========================================
     //  ユーティリティ
