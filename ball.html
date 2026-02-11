@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cosmic Merge</title>
+    <title>Cosmic Merge - Key Control</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         :root {
@@ -44,7 +44,7 @@
             border-radius: 12px;
             border: 2px solid #334;
             background: #0f111a;
-            overflow: hidden; /* はみ出し防止 */
+            overflow: hidden;
         }
 
         canvas { display: block; }
@@ -52,7 +52,7 @@
         /* ゲームオーバーライン */
         #limit-line {
             position: absolute;
-            top: 100px; /* ゲームオーバーラインの高さ */
+            top: 120px; /* 少し余裕を持たせました */
             left: 0;
             width: 100%;
             height: 2px;
@@ -81,7 +81,7 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             background: rgba(0,0,0,0.85);
-            display: none; /* 初期は非表示 */
+            display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
@@ -125,7 +125,15 @@
         .score-val { font-size: 32px; font-weight: bold; color: var(--highlight); text-shadow: 0 0 10px rgba(0, 210, 255, 0.5); }
         
         #next-display { width: 100%; height: 80px; display: flex; align-items: center; justify-content: center; }
-        .planet-preview { border-radius: 50%; transition: all 0.3s ease; }
+        
+        /* 操作説明 */
+        .controls-info {
+            font-size: 0.8em; color: #889; margin-top: 10px;
+            display: flex; gap: 10px; justify-content: center;
+        }
+        kbd {
+            background: #334; border: 1px solid #556; border-radius: 4px; padding: 2px 6px; font-family: monospace; color: #fff;
+        }
 
         .evolution-container {
             position: relative;
@@ -179,6 +187,13 @@
             <div class="label">NEXT ORBIT</div>
             <div id="next-display"></div>
         </div>
+        <div class="info-card">
+            <div class="label">CONTROLS</div>
+            <div class="controls-info">
+                <div><kbd>←</kbd> <kbd>→</kbd> MOVE</div>
+                <div><kbd>Space</kbd> DROP</div>
+            </div>
+        </div>
         <div class="info-card" style="flex-grow: 1;">
             <div class="label" style="margin-bottom: 20px;">EVOLUTION CIRCLE</div>
             <div class="evolution-container" id="evo-circle">
@@ -195,10 +210,11 @@ const { Engine, Render, Runner, Bodies, Composite, Events, Body } = Matter;
 // --- 定数設定 ---
 const WIDTH = 400;
 const HEIGHT = 600;
-const WALL_THICKNESS = 100; // 壁を厚くして外に出ないように
-const GAME_OVER_Y = 100;    // ゲームオーバーラインのY座標
-const SPAWN_Y = 30;         // 出現位置
-const TIME_TO_LOSE = 3000;  // ゲームオーバーまでの猶予（ミリ秒）
+const WALL_THICKNESS = 100; 
+const GAME_OVER_Y = 120;    
+const SPAWN_Y = 50;         
+const TIME_TO_LOSE = 3000; 
+const MOVE_SPEED = 7; // キー移動の速度
 
 const PLANETS = [
     { r: 15, color: "#CFD8DC", glow: "#fff", score: 1 },
@@ -210,7 +226,7 @@ const PLANETS = [
     { r: 72, color: "#FFA726", glow: "#FFE0B2", score: 64 },
     { r: 85, color: "#26C6DA", glow: "#80DEEA", score: 128 },
     { r: 100, color: "#FFEE58", glow: "#FFF9C4", score: 256 },
-    { r: 120, color: "#FFFFFF", glow: "#FFFFFF", score: 512 } // Max (Level 9)
+    { r: 120, color: "#FFFFFF", glow: "#FFFFFF", score: 512 } 
 ];
 
 // --- 状態変数 ---
@@ -221,6 +237,15 @@ let currentLevel = 0;
 let nextLevel = 0;
 let gameOverTimer = 0;
 let isGameOver = false;
+
+// 位置を記憶するための変数 (初期値は中央)
+let currentX = WIDTH / 2;
+
+// キー状態管理
+const keys = {
+    ArrowLeft: false,
+    ArrowRight: false
+};
 
 // --- Matter.js セットアップ ---
 const engine = Engine.create();
@@ -233,14 +258,12 @@ const render = Render.create({
         width: WIDTH,
         height: HEIGHT,
         wireframes: false,
-        background: 'transparent' // CSSで背景色指定済み
+        background: 'transparent'
     }
 });
 
-// 壁の生成（上部には壁を作らず、左右の壁を上に伸ばす）
 const wallOpts = { isStatic: true, render: { fillStyle: '#1f2233' } };
 const ground = Bodies.rectangle(WIDTH/2, HEIGHT + WALL_THICKNESS/2, WIDTH, WALL_THICKNESS, wallOpts);
-// 左右の壁を画面上部外まで伸ばす（高さ2倍）
 const leftWall = Bodies.rectangle(0 - WALL_THICKNESS/2, HEIGHT/2 - 200, WALL_THICKNESS, HEIGHT + 400, wallOpts);
 const rightWall = Bodies.rectangle(WIDTH + WALL_THICKNESS/2, HEIGHT/2 - 200, WALL_THICKNESS, HEIGHT + 400, wallOpts);
 
@@ -269,11 +292,10 @@ function updateNextDisplay() {
     container.innerHTML = '';
     const planet = PLANETS[nextLevel];
     const preview = document.createElement('div');
-    preview.className = 'planet-preview';
-    const previewSize = planet.r * 1.5;
     preview.style.cssText = `
-        width: ${previewSize}px; height: ${previewSize}px;
+        width: ${planet.r * 1.5}px; height: ${planet.r * 1.5}px;
         background-color: ${planet.color}; box-shadow: 0 0 15px ${planet.glow};
+        border-radius: 50%;
     `;
     container.appendChild(preview);
 }
@@ -301,8 +323,8 @@ function initGame() {
 
 function spawnCurrentBall() {
     if (isGameOver) return;
-    currentBallBody = createBody(WIDTH / 2, SPAWN_Y, currentLevel, true);
-    // 衝突判定無効化（操作中は他のボールとぶつからない）
+    // 記憶している currentX の位置に出現させる
+    currentBallBody = createBody(currentX, SPAWN_Y, currentLevel, true);
     currentBallBody.collisionFilter = { group: -1, category: 2, mask: 0 }; 
     Composite.add(world, currentBallBody);
     isClickable = true;
@@ -320,22 +342,46 @@ function setGameOver() {
     isGameOver = true;
     document.getElementById('final-score').innerText = score;
     document.getElementById('game-over-screen').style.display = 'flex';
-    Runner.stop(runner); // 物理演算停止
+    Runner.stop(runner);
+}
+
+function dropBall() {
+    if (!isClickable || !currentBallBody) return;
+    isClickable = false;
+    Body.setStatic(currentBallBody, false);
+    currentBallBody.collisionFilter = { group: 0, category: 1, mask: 4294967295 };
+    currentBallBody = null;
+    setTimeout(nextTurn, 800);
 }
 
 // --- イベントループ ---
 
-// ゲームオーバー判定ループ (beforeUpdate)
 Events.on(engine, 'beforeUpdate', (event) => {
     if (isGameOver) return;
 
+    // --- キー操作による移動処理 ---
+    if (isClickable && currentBallBody) {
+        if (keys.ArrowLeft) currentX -= MOVE_SPEED;
+        if (keys.ArrowRight) currentX += MOVE_SPEED;
+
+        // 壁からはみ出さないように制限
+        const r = PLANETS[currentLevel].r;
+        const minX = r + 5; 
+        const maxX = WIDTH - r - 5;
+
+        if (currentX < minX) currentX = minX;
+        if (currentX > maxX) currentX = maxX;
+
+        // 物理ボディの位置を更新
+        Body.setPosition(currentBallBody, { x: currentX, y: SPAWN_Y });
+    }
+
+    // --- ゲームオーバー判定 ---
     const bodies = Composite.allBodies(world);
     let danger = false;
-
-    // 現在操作中のボール(isStatic)や壁以外の物体をチェック
     for (const body of bodies) {
         if (!body.isStatic && body.label.startsWith('planet_')) {
-            // Y座標がラインより上、かつ落下速度がほぼ0（積み上がっている）
+            // 静止していて、かつラインを超えている場合
             if (body.position.y < GAME_OVER_Y && Math.abs(body.velocity.y) < 0.2) {
                 danger = true;
                 break;
@@ -356,36 +402,24 @@ Events.on(engine, 'beforeUpdate', (event) => {
     }
 });
 
-// マウス移動
-const gameContainer = document.getElementById('game-container');
-gameContainer.addEventListener('mousemove', (e) => {
-    if (!isClickable || !currentBallBody) return;
-    const rect = gameContainer.getBoundingClientRect();
-    let x = e.clientX - rect.left;
+// --- キーボードイベント ---
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'ArrowLeft') keys.ArrowLeft = true;
+    if (e.code === 'ArrowRight') keys.ArrowRight = true;
     
-    // 壁制限
-    const r = PLANETS[currentLevel].r;
-    if (x < r + 5) x = r + 5;
-    if (x > WIDTH - r - 5) x = WIDTH - r - 5;
-    
-    Body.setPosition(currentBallBody, { x: x, y: SPAWN_Y });
+    // Space または ArrowDown でドロップ
+    if (e.code === 'Space' || e.code === 'ArrowDown') {
+        e.preventDefault(); // スクロール防止
+        dropBall();
+    }
 });
 
-// クリック（落下）
-gameContainer.addEventListener('mousedown', (e) => {
-    if (!isClickable || !currentBallBody) return;
-    isClickable = false;
-    
-    // 物理演算有効化
-    Body.setStatic(currentBallBody, false);
-    // 衝突判定を戻す（壁や他のボールと当たるように）
-    currentBallBody.collisionFilter = { group: 0, category: 1, mask: 4294967295 };
-    
-    currentBallBody = null;
-    setTimeout(nextTurn, 800);
+window.addEventListener('keyup', (e) => {
+    if (e.code === 'ArrowLeft') keys.ArrowLeft = false;
+    if (e.code === 'ArrowRight') keys.ArrowRight = false;
 });
 
-// 衝突・合体ロジック
+// 衝突処理
 Events.on(engine, 'collisionStart', (event) => {
     const pairs = event.pairs;
     const processed = new Set();
@@ -403,19 +437,15 @@ Events.on(engine, 'collisionStart', (event) => {
             const midX = (bodyA.position.x + bodyB.position.x) / 2;
             const midY = (bodyA.position.y + bodyB.position.y) / 2;
 
-            // 両方削除
             Composite.remove(world, [bodyA, bodyB]);
 
             if (newLevel < PLANETS.length) {
-                // 通常進化
                 const newBall = createBody(midX, midY, newLevel, false);
                 Composite.add(world, newBall);
                 score += PLANETS[newLevel].score;
             } else {
-                // ★最大レベル同士の衝突 -> 消滅（Annihilation）
-                // 新しいボールを作らず、高得点だけ加算
-                score += 1000; 
-                // エフェクト代わりのパーティクルなどを出すならここ
+                // 最大合体ボーナス（消滅）
+                score += 1000;
             }
             document.getElementById('score').innerText = score;
         }
