@@ -2,64 +2,178 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Tetris Advance</title>
+    <title>Ultimate Web Tetris</title>
     <style>
-        body { background: #1a1a2e; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .game-layout { display: flex; gap: 20px; align-items: flex-start; border: 4px solid #333; padding: 20px; background: #0f3460; border-radius: 10px; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
-        canvas { border: 2px solid #fff; background-color: #000; }
-        .side-panel { width: 120px; display: flex; flex-direction: column; gap: 20px; }
-        .info-box { background: #16213e; padding: 10px; border-radius: 5px; text-align: center; border: 1px solid #444; }
-        .label { font-size: 0.8em; color: #aaa; margin-bottom: 5px; }
-        .value { font-size: 1.2em; font-weight: bold; color: #00d2ff; }
-        #next-canvas { background: #000; border: 1px solid #444; margin-top: 5px; }
-        .controls { font-size: 0.7em; color: #888; margin-top: 10px; line-height: 1.5; }
+        body {
+            background: #1a1a2e;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100px;
+        }
+
+        .box {
+            background: #16213e;
+            border: 2px solid #444;
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .box-title { font-size: 0.8em; color: #888; margin-bottom: 5px; font-weight: bold; }
+        .value { font-size: 1.2em; color: #fff; font-weight: bold;}
+
+        /* メインキャンバス */
+        #tetris {
+            border: 4px solid #fff;
+            background-color: #000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* サブキャンバス */
+        canvas.sub-canvas {
+            width: 80px;
+            height: 80px;
+        }
+        
+        /* 操作説明 */
+        .controls-info {
+            margin-top: 20px;
+            color: #aaa;
+            font-size: 0.8em;
+            text-align: center;
+            line-height: 1.6;
+            background: #16213e;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+        kbd {
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 3px;
+            padding: 2px 5px;
+            font-family: monospace;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
 
-    <div class="game-layout">
-        <canvas id="tetris" width="240" height="400"></canvas>
-
-        <div class="side-panel">
-            <div class="info-box">
-                <div class="label">NEXT</div>
-                <canvas id="next-canvas" width="80" height="80"></canvas>
+    <div class="game-container">
+        <div class="panel">
+            <div class="box">
+                <div class="box-title">HOLD</div>
+                <canvas id="hold" class="sub-canvas" width="80" height="80"></canvas>
             </div>
-            <div class="info-box">
-                <div class="label">SCORE</div>
+            <div class="box">
+                <div class="box-title">SCORE</div>
                 <div id="score" class="value">0</div>
             </div>
-            <div class="info-box">
-                <div class="label">LEVEL</div>
+            <div class="box">
+                <div class="box-title">LEVEL</div>
                 <div id="level" class="value">1</div>
             </div>
-            <div class="controls">
-                [←][→] 移動<br>
-                [↓] 加速<br>
-                [Q][W] 回転
+        </div>
+
+        <canvas id="tetris" width="240" height="400"></canvas>
+
+        <div class="panel">
+            <div class="box">
+                <div class="box-title">NEXT</div>
+                <canvas id="next" class="sub-canvas" width="80" height="240"></canvas>
             </div>
         </div>
+    </div>
+
+    <div class="controls-info">
+        <kbd>←</kbd> <kbd>→</kbd> 移動 &nbsp; <kbd>↑</kbd> 右回転 &nbsp; <kbd>Z</kbd> 左回転<br>
+        <kbd>↓</kbd> ソフトドロップ &nbsp; <kbd>Space</kbd> ハードドロップ<br>
+        <kbd>Shift</kbd> or <kbd>C</kbd> ホールド
     </div>
 
 <script>
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
-const nextCanvas = document.getElementById('next-canvas');
+const nextCanvas = document.getElementById('next');
 const nextContext = nextCanvas.getContext('2d');
+const holdCanvas = document.getElementById('hold');
+const holdContext = holdCanvas.getContext('2d');
 
 context.scale(20, 20);
 nextContext.scale(20, 20);
+holdContext.scale(20, 20);
 
-const colors = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
+// 色定義 (標準的なテトリスカラー)
+const colors = [
+    null,
+    '#FF0D72', // T (1) - Magenta
+    '#0DC2FF', // I (2) - Cyan
+    '#0DFF72', // S (3) - Green
+    '#F538FF', // Z (4) - Purple (Actual: Red usually, swapped for style) -> Fixed below
+    '#FF8E0D', // L (5) - Orange
+    '#FFE138', // O (6) - Yellow
+    '#3877FF', // J (7) - Blue
+];
+// 色調整
+const palette = {
+    'T': '#A000F0', // Purple
+    'I': '#00F0F0', // Cyan
+    'S': '#00F000', // Green
+    'Z': '#F00000', // Red
+    'L': '#F0A000', // Orange
+    'O': '#F0F000', // Yellow
+    'J': '#0000F0', // Blue
+};
+
+// 7種バッグシステム用
+let pieceBag = [];
 
 function createPiece(type) {
-    if (type === 'I') return [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]];
-    if (type === 'L') return [[0, 2, 0], [0, 2, 0], [0, 2, 2]];
-    if (type === 'J') return [[0, 3, 0], [0, 3, 0], [3, 3, 0]];
-    if (type === 'O') return [[4, 4], [4, 4]];
-    if (type === 'Z') return [[5, 5, 0], [0, 5, 5], [0, 0, 0]];
-    if (type === 'S') return [[0, 6, 6], [6, 6, 0], [0, 0, 0]];
-    if (type === 'T') return [[0, 7, 0], [7, 7, 7], [0, 0, 0]];
+    if (type === 'I') return { shape: [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]], color: palette.I, type: 'I' };
+    if (type === 'L') return { shape: [[0, 2, 0], [0, 2, 0], [0, 2, 2]], color: palette.L, type: 'L' };
+    if (type === 'J') return { shape: [[0, 3, 0], [0, 3, 0], [3, 3, 0]], color: palette.J, type: 'J' };
+    if (type === 'O') return { shape: [[4, 4], [4, 4]], color: palette.O, type: 'O' };
+    if (type === 'Z') return { shape: [[5, 5, 0], [0, 5, 5], [0, 0, 0]], color: palette.Z, type: 'Z' };
+    if (type === 'S') return { shape: [[0, 6, 6], [6, 6, 0], [0, 0, 0]], color: palette.S, type: 'S' };
+    if (type === 'T') return { shape: [[0, 7, 0], [7, 7, 7], [0, 0, 0]], color: palette.T, type: 'T' };
+}
+
+// 7種バッグの生成と補充
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+function getNextPiece() {
+    if (pieceBag.length === 0) {
+        pieceBag = shuffle(['I', 'L', 'J', 'O', 'Z', 'S', 'T']);
+    }
+    return createPiece(pieceBag.pop());
 }
 
 function createMatrix(w, h) {
@@ -68,48 +182,104 @@ function createMatrix(w, h) {
     return matrix;
 }
 
-function drawMatrix(matrix, offset, ctx) {
+function drawMatrix(matrix, offset, ctx, colorOverride = null, isGhost = false) {
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
-                ctx.fillStyle = colors[value];
-                ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
-                // 立体感を出すための枠線
-                ctx.lineWidth = 0.05;
-                ctx.strokeStyle = 'white';
-                ctx.strokeRect(x + offset.x, y + offset.y, 1, 1);
+                if (isGhost) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // ゴーストは薄白
+                    ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 0.05;
+                    ctx.strokeRect(x + offset.x, y + offset.y, 1, 1);
+                } else {
+                    // 通常ブロック
+                    ctx.fillStyle = colorOverride || (typeof value === 'object' ? value.color : value); // number in arena vs object in player
+                    // Arena(固定済み)は数値、Player(操作中)は色文字列を直接扱う簡易実装へ修正
+                     // 固定済みブロックの色判定
+                    if (typeof value === 'number') {
+                        // 簡易的に色を割り当て（本来は保存時に色情報を保持すべきだが、今回はランダム色回避のため配列インデックス等は使わない簡易版）
+                         ctx.fillStyle = colorOverride || '#888'; // Arenaの色は一旦グレーか、保存時にメタデータを持たせる必要がある。
+                         // ★今回はシンプル化のため、Arenaには「色文字列」を直接保存するようにMerge関数を変更します。
+                    } else {
+                        ctx.fillStyle = value;
+                    }
+                    
+                    ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
+                    
+                    // 立体枠線
+                    ctx.lineWidth = 0.05;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.strokeRect(x + offset.x, y + offset.y, 1, 1);
+                }
             }
         });
     });
 }
 
-function draw() {
-    context.fillStyle = '#000';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    
-    drawMatrix(arena, {x: 0, y: 0}, context);
-    drawMatrix(player.matrix, player.pos, context);
-
-    // ネクスト画面の描画
-    nextContext.fillStyle = '#000';
-    nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
-    // ネクストを中央寄せで表示
-    drawMatrix(player.next, {x: 1, y: 1}, nextContext);
+// アリーナ描画の修正版
+function drawArena() {
+    arena.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value !== 0) {
+                context.fillStyle = value; // merge時に色コードを保存する
+                context.fillRect(x, y, 1, 1);
+                context.lineWidth = 0.05;
+                context.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                context.strokeRect(x, y, 1, 1);
+            }
+        });
+    });
 }
 
-function arenaSweep() {
-    let rowCount = 1;
-    outer: for (let y = arena.length - 1; y > 0; --y) {
-        for (let x = 0; x < arena[y].length; ++x) {
-            if (arena[y][x] === 0) continue outer;
-        }
-        const row = arena.splice(y, 1)[0].fill(0);
-        arena.unshift(row);
-        ++y;
-        player.score += rowCount * 10;
-        rowCount *= 2;
+
+function draw() {
+    // メイン画面クリア
+    context.fillStyle = '#000';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    drawArena();
+
+    // ゴースト（落下地点）の描画
+    const ghostPos = { ...player.pos };
+    while (!collide(arena, { matrix: player.matrix, pos: ghostPos })) {
+        ghostPos.y++;
     }
-    updateScore();
+    ghostPos.y--; // 衝突の1つ上
+    drawMatrix(player.matrix, ghostPos, context, null, true);
+
+    // 操作中ブロックの描画
+    drawMatrix(player.matrix, player.pos, context, player.color);
+}
+
+function drawNext() {
+    nextContext.fillStyle = '#000';
+    nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+    
+    // 次の3つを表示
+    for(let i=0; i<3; i++) {
+        if (player.nextQueue[i]) {
+            // 中央寄せ計算
+            const p = player.nextQueue[i];
+            const offsetX = (4 - p.shape[0].length) / 2;
+            const offsetY = 1 + (i * 4);
+            drawMatrix(p.shape, {x: offsetX, y: offsetY}, nextContext, p.color);
+        }
+    }
+}
+
+function drawHold() {
+    holdContext.fillStyle = '#000';
+    holdContext.fillRect(0, 0, holdCanvas.width, holdCanvas.height);
+    
+    if (player.holdPiece) {
+        const p = player.holdPiece;
+        const offsetX = (4 - p.shape[0].length) / 2;
+        const offsetY = 1;
+        // ホールド使用済みの場合は暗くする
+        const color = player.canHold ? p.color : '#555';
+        drawMatrix(p.shape, {x: offsetX, y: offsetY}, holdContext, color);
+    }
 }
 
 function collide(arena, player) {
@@ -128,7 +298,8 @@ function merge(arena, player) {
     player.matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
-                arena[y + player.pos.y][x + player.pos.x] = value;
+                // ここで色情報をアリーナに焼き付ける
+                arena[y + player.pos.y][x + player.pos.x] = player.color;
             }
         });
     });
@@ -155,6 +326,18 @@ function playerDrop() {
     dropCounter = 0;
 }
 
+// ハードドロップ（一瞬で落下）
+function playerHardDrop() {
+    while (!collide(arena, player)) {
+        player.pos.y++;
+    }
+    player.pos.y--; // 衝突位置の1つ上に戻す
+    merge(arena, player);
+    playerReset();
+    arenaSweep();
+    dropCounter = 0;
+}
+
 function playerMove(offset) {
     player.pos.x += offset;
     if (collide(arena, player)) {
@@ -162,31 +345,71 @@ function playerMove(offset) {
     }
 }
 
+// ネクストキューの管理とリセット
 function playerReset() {
-    const pieces = 'TJLOSZI';
-    if (player.next === null) {
-        player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
-    } else {
-        player.matrix = player.next;
+    // 初回起動時などQueueが足りない場合は補充
+    while (player.nextQueue.length < 4) {
+        player.nextQueue.push(getNextPiece());
     }
-    player.next = createPiece(pieces[pieces.length * Math.random() | 0]);
+
+    const next = player.nextQueue.shift(); // 先頭を取り出す
+    player.matrix = next.shape;
+    player.color = next.color;
+    player.type = next.type;
     
+    // 位置リセット
     player.pos.y = 0;
     player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
     
+    player.canHold = true; // ホールド機能復活
+
     if (collide(arena, player)) {
         arena.forEach(row => row.fill(0));
         player.score = 0;
         player.level = 1;
-        dropInterval = 1000;
         updateScore();
+        pieceBag = []; // バッグリセット
+        player.holdPiece = null;
+        player.nextQueue = [];
+        playerReset();
     }
+    
+    drawNext();
+    drawHold();
+}
+
+// ホールド機能
+function playerHold() {
+    if (!player.canHold) return;
+
+    if (!player.holdPiece) {
+        // ホールドが空の場合：現在のピースをホールドし、Nextから持ってくる
+        player.holdPiece = { shape: player.matrix, color: player.color, type: player.type };
+        playerReset();
+    } else {
+        // ホールドがある場合：現在と入れ替え
+        const temp = { shape: player.matrix, color: player.color, type: player.type };
+        
+        player.matrix = player.holdPiece.shape;
+        player.color = player.holdPiece.color;
+        player.type = player.holdPiece.type;
+        
+        player.holdPiece = temp;
+        
+        // 位置をリセット
+        player.pos.y = 0;
+        player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
+    }
+    
+    player.canHold = false; // そのターンはもうホールドできない
+    drawHold();
 }
 
 function playerRotate(dir) {
     const pos = player.pos.x;
     let offset = 1;
     rotate(player.matrix, dir);
+    // 壁蹴り（簡易版）
     while (collide(arena, player)) {
         player.pos.x += offset;
         offset = -(offset + (offset > 0 ? 1 : -1));
@@ -196,6 +419,23 @@ function playerRotate(dir) {
             return;
         }
     }
+}
+
+function arenaSweep() {
+    let rowCount = 1;
+    let cleared = 0;
+    outer: for (let y = arena.length - 1; y > 0; --y) {
+        for (let x = 0; x < arena[y].length; ++x) {
+            if (arena[y][x] === 0) continue outer;
+        }
+        const row = arena.splice(y, 1)[0].fill(0);
+        arena.unshift(row);
+        ++y;
+        player.score += rowCount * 10;
+        rowCount *= 2;
+        cleared++;
+    }
+    if (cleared > 0) updateScore();
 }
 
 let dropCounter = 0;
@@ -215,31 +455,43 @@ function update(time = 0) {
 
 function updateScore() {
     document.getElementById('score').innerText = player.score;
-    // 難易度上昇ロジック: 100点ごとにレベルアップ
-    let newLevel = Math.floor(player.score / 100) + 1;
-    if (newLevel > player.level) {
-        player.level = newLevel;
-        // 落下速度を速くする（最小100ms）
-        dropInterval = Math.max(100, 1000 - (player.level - 1) * 100);
-        document.getElementById('level').innerText = player.level;
-    }
+    let newLevel = Math.floor(player.score / 500) + 1; // 500点ごとにレベルアップ
+    player.level = newLevel;
+    document.getElementById('level').innerText = player.level;
+    // 速度調整 (最大レベル20相当まで)
+    dropInterval = Math.max(50, 1000 - (player.level - 1) * 50);
 }
 
 const arena = createMatrix(12, 20);
+
 const player = {
     pos: {x: 0, y: 0},
     matrix: null,
-    next: null,
+    color: null,
     score: 0,
     level: 1,
+    nextQueue: [],
+    holdPiece: null,
+    canHold: true,
 };
 
 document.addEventListener('keydown', event => {
-    if (event.keyCode === 37) playerMove(-1);
-    else if (event.keyCode === 39) playerMove(1);
-    else if (event.keyCode === 40) playerDrop();
-    else if (event.keyCode === 81) playerRotate(-1);
-    else if (event.keyCode === 87) playerRotate(1);
+    if (event.keyCode === 37) { // Left
+        playerMove(-1);
+    } else if (event.keyCode === 39) { // Right
+        playerMove(1);
+    } else if (event.keyCode === 40) { // Down
+        playerDrop();
+    } else if (event.keyCode === 38) { // Up (Rotate Right)
+        playerRotate(1);
+    } else if (event.keyCode === 90) { // Z (Rotate Left)
+        playerRotate(-1);
+    } else if (event.keyCode === 32) { // Space (Hard Drop)
+        event.preventDefault(); // スクロール防止
+        playerHardDrop();
+    } else if (event.keyCode === 16 || event.keyCode === 67) { // Shift or C (Hold)
+        playerHold();
+    }
 });
 
 playerReset();
