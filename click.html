@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ニルヴァーナ・クリッカー</title>
+    <title>ニルヴァーナ・クリッカー Ver2.20 (Mystery Next)</title>
     <style>
         :root {
             --bg-dark: #121212;
@@ -13,8 +13,6 @@
             --price-red: #ff6666;
             --btn-grad: linear-gradient(to bottom, #555, #333);
             --btn-grad-hover: linear-gradient(to bottom, #666, #444);
-            --mappo-color: #00ff00;
-            --mappo-bg: rgba(0, 20, 0, 0.9);
         }
 
         * { box-sizing: border-box; }
@@ -25,160 +23,117 @@
             color: var(--text-main);
             margin: 0; padding: 0; height: 100vh; overflow: hidden;
             display: grid; 
-            grid-template-columns: 30% 1fr 318px;
+            grid-template-columns: 30% minmax(0, 1fr) 318px;
             user-select: none;
         }
 
-        /* =========================================
-           Background Canvas (Visual Effects)
-           ========================================= */
-        #bg-canvas {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 0; pointer-events: none;
-        }
+        /* Canvas */
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
 
-        /* =========================================
-           Left Column (Faith)
-           ========================================= */
+        /* Left Column */
         #left-col {
-            background: rgba(17, 17, 17, 0.85); /* 透過させる */
-            display: flex; flex-direction: column; align-items: center;
-            border-right: 1px solid #333;
-            box-shadow: inset -10px 0 20px rgba(0,0,0,0.5);
-            position: relative; z-index: 10;
+            background: rgba(17, 17, 17, 0.85); display: flex; flex-direction: column; align-items: center;
+            border-right: 1px solid #333; box-shadow: inset -10px 0 20px rgba(0,0,0,0.5); position: relative; z-index: 10;
             backdrop-filter: blur(2px);
         }
-
-        #bakery-name-container {
-            margin-top: 20px; background: rgba(0,0,0,0.4); padding: 5px 15px; border-radius: 15px; cursor: pointer; border: 1px solid #444;
-        }
+        #bakery-name-container { margin-top: 20px; background: rgba(0,0,0,0.4); padding: 5px 15px; border-radius: 15px; cursor: pointer; border: 1px solid #444; }
         #bakery-name-container:hover { background: rgba(255,255,255,0.1); border-color: var(--accent-gold); }
         #bakery-name { font-size: 16px; font-weight: bold; color: #ddd; }
-
         #toku-container { margin-top: 40px; text-align: center; width: 100%; background: rgba(0,0,0,0.2); padding: 10px 0; }
         #toku-amount { font-size: 32px; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
         #tps-display { font-size: 14px; color: #888; margin-top: 5px; }
-        
-        /* バフ表示 */
-        #buff-display { 
-            margin-top: 5px; font-size: 12px; color: var(--accent-gold); height: 20px; 
-            text-shadow: 0 0 5px var(--accent-gold);
-        }
-
-        #mokugyo-wrapper {
-            margin-top: 40px; width: 250px; height: 250px; cursor: pointer; position: relative; transition: transform 0.1s;
-        }
+        #buff-display { margin-top: 5px; font-size: 12px; color: var(--accent-gold); height: 20px; text-shadow: 0 0 5px var(--accent-gold); }
+        #mokugyo-wrapper { margin-top: 40px; width: 250px; height: 250px; cursor: pointer; position: relative; transition: transform 0.1s; }
         #mokugyo-wrapper:active { transform: scale(0.95); }
         #mokugyo-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 15px rgba(0,0,0,0.8)); transition: filter 0.5s; }
         
-        /* 末法モード時のスタイル */
-        body.mappo-mode #mokugyo-img { 
-            filter: sepia(100%) saturate(500%) hue-rotate(-50deg) drop-shadow(0 0 20px red); 
-        }
+        body.mappo-mode #mokugyo-img { filter: sepia(100%) saturate(500%) hue-rotate(-50deg) drop-shadow(0 0 20px red); }
         body.mappo-mode #left-col { background: rgba(0, 10, 0, 0.8); border-right: 1px solid #0f0; }
         body.mappo-mode #toku-amount { color: #0f0; text-shadow: 0 0 10px #0f0; }
 
-        /* =========================================
-           Middle Column (Main)
-           ========================================= */
+        /* Middle Column */
         #mid-col {
-            background: rgba(34, 34, 34, 0.7); /* 透過 */
-            position: relative; z-index: 5;
-            display: flex; flex-direction: column;
+            background: rgba(34, 34, 34, 0.7); position: relative; z-index: 5;
+            display: flex; flex-direction: column; 
             border-left: 2px solid #000; border-right: 2px solid #000;
             transition: background 0.5s;
+            min-width: 0; 
+            overflow: hidden; 
         }
         body.mappo-mode #mid-col { background: rgba(0, 0, 0, 0.6); border-color: #0f0; }
-
-        #mid-menu {
-            height: 40px; background: rgba(0,0,0,0.9);
-            display: flex; justify-content: center; align-items: center; gap: 10px;
-            border-bottom: 2px solid #444; z-index: 100; flex-shrink: 0;
-        }
-        .menu-link {
-            color: #888; font-weight: bold; cursor: pointer; font-size: 14px; padding: 5px 10px;
-        }
+        #mid-menu { height: 40px; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; gap: 10px; border-bottom: 2px solid #444; z-index: 100; flex-shrink: 0; }
+        .menu-link { color: #888; font-weight: bold; cursor: pointer; font-size: 14px; padding: 5px 10px; }
         .menu-link:hover { color: #fff; text-shadow: 0 0 5px var(--accent-gold); }
         .menu-link.active { color: var(--accent-gold); border-bottom: 2px solid var(--accent-gold); }
-
-        #mid-content {
-            flex-grow: 1; position: relative; overflow-y: auto; overflow-x: hidden;
-            scrollbar-width: thin; scrollbar-color: #555 #222;
-        }
-
-        /* Visuals */
-        #news-ticker {
-            background: rgba(0,0,0,0.8); color: #ccc; padding: 4px 8px; font-size: 12px;
-            border-bottom: 1px solid #444; white-space: nowrap; overflow: hidden;
-            position: sticky; top: 0; z-index: 20;
-        }
-        .visual-row {
-            height: 64px; border-bottom: 1px solid rgba(255,255,255,0.1);
-            display: none; position: relative;
-        }
-        /* 各背景はJSでクラス付与せず、CSS変数等で制御も可能だが今回は既存踏襲 */
-        .row-bg-0 { background: linear-gradient(to right, rgba(74, 59, 42, 0.8), rgba(42, 31, 21, 0.8)); }
-        .row-bg-1 { background: linear-gradient(to right, rgba(44, 62, 80, 0.8), rgba(26, 37, 47, 0.8)); }
-        .row-bg-2 { background: linear-gradient(to right, rgba(142, 68, 173, 0.8), rgba(91, 44, 111, 0.8)); }
-        /* 以下略、透明度を追加 */
         
-        .visual-icon {
-            font-size: 32px; width: 40px; text-align: center; display: inline-block;
-            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.5));
-            animation: bounceIn 0.5s; cursor: pointer; transition: transform 0.1s;
+        #mid-content { 
+            flex-grow: 1; position: relative; 
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            scrollbar-width: thin; scrollbar-color: #555 #222; 
+        }
+
+        #news-ticker { background: rgba(0,0,0,0.8); color: #ccc; padding: 4px 8px; font-size: 12px; border-bottom: 1px solid #444; white-space: nowrap; overflow: hidden; position: sticky; top: 0; z-index: 20; }
+        
+        /* Visual Rows */
+        .visual-row { 
+            height: 64px; width: 100%; border-bottom: 1px solid rgba(255,255,255,0.1); 
+            display: none; position: relative; overflow: hidden; 
+        }
+        .row-bg-0 { background: linear-gradient(to right, #2a1f15, #111); }
+        .row-bg-1 { background: linear-gradient(to right, #1a252f, #111); }
+        .row-bg-2 { background: linear-gradient(to right, #3e1b4b, #111); }
+        .row-bg-3 { background: linear-gradient(to right, #4b2c1b, #111); }
+        .row-bg-4 { background: linear-gradient(to right, #1b4b2c, #111); }
+        
+        .row-icons { 
+            height: 100%; display: flex; flex-wrap: nowrap; align-items: center; 
+            padding: 0 10px; width: 100%; overflow: hidden; 
+        }
+        
+        .visual-icon { 
+            font-size: 32px; width: 40px; text-align: center; 
+            display: flex; justify-content: center; align-items: center;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.5)); 
+            animation: bounceIn 0.5s; cursor: pointer; transition: transform 0.1s; 
+            flex-shrink: 0; 
         }
         .visual-icon:hover { transform: scale(1.2); }
-        .row-icons { height: 100%; display: flex; align-items: center; padding: 0 10px; }
+        .pixel-icon { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
 
-        /* Stats & Settings Panels */
+        /* Panels */
         .text-panel { padding: 20px 40px; color: #ccc; background: rgba(0,0,0,0.8); min-height: 100%; }
         .panel-header { color: var(--accent-gold); font-size: 24px; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; margin-bottom: 20px; }
         .sub-header { color: #d4af37; font-size: 16px; border-bottom: 1px solid #444; margin-bottom: 10px; }
-        .btn-style {
-            background: var(--btn-grad); border: 1px solid #111; color: #ddd; padding: 6px 12px;
-            cursor: pointer; margin: 4px; font-size: 12px; border-radius: 2px; transition: 0.2s;
-        }
+        .btn-style { background: var(--btn-grad); border: 1px solid #111; color: #ddd; padding: 6px 12px; cursor: pointer; margin: 4px; font-size: 12px; border-radius: 2px; transition: 0.2s; }
         .btn-style:hover { background: var(--btn-grad-hover); color: #fff; }
         .btn-danger { background: linear-gradient(to bottom, #a00, #600); }
         .stat-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dotted #333; font-size: 13px; }
         .stat-val { font-weight: bold; color: #fff; }
         .hidden { display: none !important; }
 
-        /* =========================================
-           Right Column (Store)
-           ========================================= */
-        #right-col {
-            background: #1a1a1a; display: flex; flex-direction: column; border-left: 4px solid #000; z-index: 10;
-        }
+        /* Right Column */
+        #right-col { background: #1a1a1a; display: flex; flex-direction: column; border-left: 4px solid #000; z-index: 10; }
         #store-header { background: #000; color: var(--accent-gold); text-align: center; padding: 5px; font-weight: bold; border-bottom: 2px solid #444; font-size: 14px; }
         
-        /* 奥義エリア (Mappo Toggle) */
-        #store-special {
-            background: #110000; border-bottom: 1px solid #444; display: none; /* 初期非表示 */
-            padding: 10px; text-align: center;
-        }
-        #mappo-toggle-btn {
-            width: 100%; padding: 8px; background: #000; border: 1px solid #555; color: #888;
-            font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
-            box-shadow: inset 0 0 5px #f00;
-        }
-        #mappo-toggle-btn.active {
-            background: #002200; color: #0f0; border-color: #0f0; box-shadow: 0 0 10px #0f0;
-        }
+        /* Mappo Toggle */
+        #store-special { background: #110000; border-bottom: 1px solid #444; display: none; padding: 10px; text-align: center; }
+        #mappo-toggle-btn { width: 100%; padding: 8px; background: #000; border: 1px solid #555; color: #888; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: inset 0 0 5px #f00; }
+        #mappo-toggle-btn.active { background: #002200; color: #0f0; border-color: #0f0; box-shadow: 0 0 10px #0f0; }
 
+        /* Upgrade Area */
         #upgrades-container { padding: 10px; background: rgba(0,0,0,0.3); border-bottom: 1px solid #444; min-height: 60px; display: flex; flex-wrap: wrap; gap: 4px; }
-        .upgrade-btn {
-            width: 50px; height: 50px; background: #222; border: 1px solid #555; cursor: pointer;
-            display: flex; justify-content: center; align-items: center; font-size: 24px;
-        }
-        .upgrade-btn:hover { border-color: #fff; box-shadow: 0 0 10px var(--accent-gold); }
+        .upgrade-btn { width: 50px; height: 50px; background: #222; border: 1px solid #555; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 24px; position: relative; }
+        .upgrade-btn:hover { border-color: #fff; box-shadow: 0 0 10px var(--accent-gold); z-index: 10; }
+        .upgrade-btn.cannot-afford { opacity: 0.4; filter: grayscale(100%); }
+        .upgrade-btn.cannot-afford:hover { box-shadow: none; border-color: #555; }
+
         #products-list { flex-grow: 1; overflow-y: auto; }
-        .product-btn {
-            height: 64px; width: 100%; background: linear-gradient(to bottom, #444, #222);
-            border-bottom: 1px solid #111; cursor: pointer; display: grid; grid-template-columns: 64px 1fr 60px;
-        }
+        .product-btn { height: 64px; width: 100%; background: linear-gradient(to bottom, #444, #222); border-bottom: 1px solid #111; cursor: pointer; display: grid; grid-template-columns: 64px 1fr 60px; }
         .product-btn:hover { background: linear-gradient(to bottom, #555, #333); }
         .product-btn.locked { display: none; }
+        .product-btn.teaser .product-name { color: #888; letter-spacing: 2px; }
+        .product-btn.teaser .product-icon { opacity: 0.5; }
         .product-btn.disabled { opacity: 0.6; }
         .product-icon { font-size: 36px; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.2); }
         .product-info { display: flex; flex-direction: column; justify-content: center; padding-left: 10px; }
@@ -230,7 +185,6 @@
             <div id="news-ticker">News: ...</div>
             <div id="visual-rows-container"></div>
         </div>
-
         <div id="section-stats" class="text-panel hidden">
             <div class="panel-header">統計情報</div>
             <div class="sub-header">一般</div>
@@ -245,14 +199,12 @@
             <div class="sub-header">施設</div>
             <div id="stat-buildings-list"></div>
         </div>
-
         <div id="section-settings" class="text-panel hidden">
             <div class="panel-header">設定</div>
             <div class="sub-header">システム</div>
             <button class="btn-style" onclick="toggleSound()" id="btn-sound">音量: ON</button>
             <button class="btn-style" onclick="renameBakery()">寺院名変更</button>
             <button class="btn-style" onclick="openModal('debug-modal')" style="border-color:#66ffff; color:#66ffff;">阿頼耶識 (Debug)</button>
-            
             <div class="sub-header" style="margin-top:20px;">セーブデータ</div>
             <button class="btn-style" onclick="saveGame(true)">手動セーブ</button>
             <button class="btn-style" onclick="exportSave()">呪文を唱える (Export)</button>
@@ -273,7 +225,6 @@
             <span id="mappo-status-text">末法モード: OFF</span>
         </button>
     </div>
-
     <div id="upgrades-container"></div>
     <div id="products-list"></div>
 </div>
@@ -296,6 +247,7 @@
         <p>開発者用デバッグツール</p>
         <div style="display:flex; flex-wrap:wrap; justify-content:center;">
             <button class="btn-style" onclick="game.toku+=1e15; updateUI()">徳 +1000兆</button>
+            <button class="btn-style" onclick="game.toku+=1e25; updateUI()">徳 +10𥝱</button>
             <button class="btn-style" onclick="game.mappoUnlocked=true; toggleMappo(true); updateUI()">末法強制解放</button>
             <button class="btn-style" onclick="buildings.forEach((b,i)=>game.blds[i]+=10); updateUI()">全施設 +10</button>
         </div>
@@ -306,34 +258,70 @@
 <script>
     // ================= DATA =================
     const units = ["", "万", "億", "兆", "京", "垓", "𥝱", "穣", "溝", "澗", "正", "載", "極", "恒河沙", "阿僧祇", "那由他", "不可思議", "無量大数"];
+    
+    // Buildings (Total 20)
     const buildings = [
-        { name: "小坊主",   cost: 15,          base: 0.1,    icon: "👶", desc: "お寺の雑用係。" },
-        { name: "写経ロボ", cost: 100,         base: 1,      icon: "🤖", desc: "自動写経マシーン。" },
-        { name: "高僧",     cost: 1100,        base: 8,      icon: "🙏", desc: "徳の達人。" },
-        { name: "千手観音", cost: 12000,       base: 47,     icon: "🖐️", desc: "圧倒的な手数。" },
-        { name: "五重塔",   cost: 130000,      base: 260,    icon: "🗼", desc: "徳を放射する塔。" },
-        { name: "阿修羅",   cost: 1400000,     base: 1400,   icon: "👹", desc: "戦いの神。" },
-        { name: "曼荼羅",   cost: 20000000,    base: 7800,   icon: "🌐", desc: "宇宙の真理。" },
-        { name: "大仏",     cost: 330000000,   base: 44000,  icon: "🧘", desc: "超巨大建造物。" },
-        { name: "電子如来", cost: 5100000000,  base: 260000, icon: "💾", desc: "デジタルの救済。" },
-        { name: "涅槃機関", cost: 75000000000, base: 1600000, icon: "⚛️", desc: "悟り量産装置。" }
+        { name: "小坊主",   cost: 15, base: 0.1, icon: '<img src="cobouzu.png" class="pixel-icon" alt="小坊主">', desc: "お寺の雑用係。" },
+        { name: "写経ロボ", cost: 100, base: 1, icon: "🤖", desc: "自動写経マシーン。" },
+        { name: "高僧",     cost: 1100, base: 8, icon: "🙏", desc: "徳の達人。" },
+        { name: "千手観音", cost: 12000, base: 47, icon: "🖐️", desc: "圧倒的な手数。" },
+        { name: "五重塔",   cost: 130000, base: 260, icon: "🗼", desc: "徳を放射する塔。" },
+        { name: "阿修羅",   cost: 1400000, base: 1400, icon: "👹", desc: "戦いの神。" },
+        { name: "曼荼羅",   cost: 20000000, base: 7800, icon: "🌐", desc: "宇宙の真理。" },
+        { name: "大仏",     cost: 330000000, base: 44000, icon: "🧘", desc: "超巨大建造物。" },
+        { name: "電子如来", cost: 5100000000, base: 260000, icon: "💾", desc: "デジタルの救済。" },
+        { name: "涅槃機関", cost: 75000000000, base: 1600000, icon: "⚛️", desc: "悟り量産装置。" },
+        { name: "量子経典",   cost: 1000000000000, base: 10000000, icon: "📖", desc: "重ね合わせの状態にある経典。" },
+        { name: "BH寺院",     cost: 14000000000000, base: 65000000, icon: "🕳️", desc: "事象の地平線にある寺。" },
+        { name: "多元蓮華",   cost: 170000000000000, base: 430000000, icon: "🌺", desc: "マルチバースに咲く花。" },
+        { name: "アカシック", cost: 2100000000000000, base: 2900000000, icon: "📚", desc: "全宇宙の記憶サーバー。" },
+        { name: "開闢の鐘",   cost: 26000000000000000, base: 19000000000, icon: "🔔", desc: "ビッグバンの音色。" },
+        { name: "シミュ仮説", cost: 310000000000000000, base: 130000000000, icon: "🕶️", desc: "この世は仮想現実。" },
+        { name: "虚空蔵",     cost: 7100000000000000000, base: 900000000000, icon: "🌌", desc: "無限の知恵と慈悲。" },
+        { name: "次元EV",     cost: 500000000000000000000, base: 6000000000000, icon: "🆙", desc: "高次元への直通運転。" },
+        { name: "概念消去機", cost: 90000000000000000000000, base: 45000000000000, icon: "🚫", desc: "苦しみの概念を消す。" },
+        { name: "浄土OS",     cost: 999999999999999999999999, base: 999999999999999, icon: "📀", desc: "全人類インストール。" }
     ];
+
+    // Upgrades
     const upgrades = [
+        // Click
         { id: "c1", name: "硬いバチ", desc: "クリック効率 2倍", cost: 500, type: "click", val: 2, icon:"🥢", req: g => g.clickCount >= 100 },
         { id: "c2", name: "電動木魚", desc: "クリック効率 2倍", cost: 5000, type: "click", val: 2, icon:"⚡", req: g => g.clickCount >= 500 },
+        
+        // Global
         { id: "g1", name: "黄金茶室", desc: "全体生産 1.2倍", cost: 50000, type: "global", val: 1.2, icon:"🍵", req: g => g.totalToku >= 10000 },
-        // 末法は購入すると toggle 機能が解放される特別なアップグレード
         { id: "mappo_unlock", name: "末法思想", desc: "奥義解放: 生産3倍 / クリック0.1倍", cost: 666666, type: "unlock", icon:"📕", req: g => g.totalToku >= 600000 },
-        { id: "g2", name: "クラウド", desc: "全体生産 1.5倍", cost: 1000000, type: "global", val: 1.5, icon:"☁️", req: g => g.totalToku >= 500000 }
+        { id: "g2", name: "クラウド", desc: "全体生産 1.5倍", cost: 1000000, type: "global", val: 1.5, icon:"☁️", req: g => g.totalToku >= 500000 },
+
+        // Tiers
+        { id: "b0_1", name: "竹ぼうき", desc: "小坊主の生産 2倍", cost: 500, type: "bld", target: 0, val: 2, icon:"🧹", req: g => g.blds[0] >= 10 },
+        { id: "b0_2", name: "ルンバ", desc: "小坊主の生産 2倍", cost: 5000, type: "bld", target: 0, val: 2, icon:"💿", req: g => g.blds[0] >= 50 },
+        { id: "b0_3", name: "念力清掃", desc: "小坊主の生産 2倍", cost: 50000, type: "bld", target: 0, val: 2, icon:"✨", req: g => g.blds[0] >= 100 },
+
+        { id: "b1_1", name: "墨汁", desc: "写経ロボの生産 2倍", cost: 1000, type: "bld", target: 1, val: 2, icon:"💧", req: g => g.blds[1] >= 10 },
+        { id: "b1_2", name: "高速CPU", desc: "写経ロボの生産 2倍", cost: 10000, type: "bld", target: 1, val: 2, icon:"💻", req: g => g.blds[1] >= 50 },
+
+        { id: "b2_1", name: "紫の衣", desc: "高僧の生産 2倍", cost: 11000, type: "bld", target: 2, val: 2, icon:"👘", req: g => g.blds[2] >= 10 },
+        { id: "b2_2", name: "悟り体験", desc: "高僧の生産 2倍", cost: 110000, type: "bld", target: 2, val: 2, icon:"💡", req: g => g.blds[2] >= 50 },
+
+        { id: "b3_1", name: "ハンドクリーム", desc: "千手観音の生産 2倍", cost: 120000, type: "bld", target: 3, val: 2, icon:"🧴", req: g => g.blds[3] >= 10 },
+        
+        { id: "b4_1", name: "Wi-Fi設置", desc: "五重塔の生産 2倍", cost: 1300000, type: "bld", target: 4, val: 2, icon:"📶", req: g => g.blds[4] >= 10 },
+
+        { id: "b5_1", name: "筋トレ", desc: "阿修羅の生産 2倍", cost: 14000000, type: "bld", target: 5, val: 2, icon:"💪", req: g => g.blds[5] >= 10 },
+
+        { id: "tech_sing", name: "シンギュラリティ", desc: "全施設生産 2倍", cost: 1e20, type: "global", val: 2, icon:"👁️", req: g => g.totalToku >= 1e18 },
     ];
-    const newsData = ["小坊主、賽銭箱で昼寝。", "写経ロボ、OSアップデート。", "電子如来、サーバーダウン。", "地獄の釜、本日特売日。", "蜘蛛の糸、強度不足でリコール。"];
+
+    const newsData = ["小坊主、賽銭箱で昼寝。", "写経ロボ、OSアップデート。", "電子如来、サーバーダウン。", "地獄の釜、本日特売日。", "ブラックホール寺院、吸い込みすぎで苦情。", "浄土OS、インストール率50%突破。"];
 
     // ================= STATE =================
     let game = {
         toku: 0, totalToku: 0, allTimeToku: 0, karma: 0, name: "名もなき寺院",
         blds: Array(buildings.length).fill(0),
         upgs: [], clickCount: 0, 
-        mappo: false, mappoUnlocked: false, // 末法状態フラグ、解放済みフラグ
+        mappo: false, mappoUnlocked: false,
         start: Date.now()
     };
     let mults = { click: 1, global: 1, blds: Array(buildings.length).fill(1) };
@@ -344,15 +332,11 @@
     // ================= VISUALS (CANVAS) =================
     const canvas = document.getElementById('bg-canvas');
     const ctx = canvas.getContext('2d');
-    
-    // Matrix Rain Props
     const matrixChars = "観自在菩薩行深般若波羅蜜多時照見五蘊皆空度一切苦厄舎利子色不異空空不異色色即是空空即是色受想行識亦復如是";
     const charArray = matrixChars.split('');
     let fontSize = 14;
     let columns = 0;
     let drops = [];
-
-    // Peaceful Particles Props
     let particles = [];
     const maxParticles = 50;
 
@@ -362,28 +346,16 @@
         columns = canvas.width / fontSize;
         drops = [];
         for (let i = 0; i < columns; i++) drops[i] = 1;
-        // Init particles
         particles = [];
         for(let i=0; i<maxParticles; i++) particles.push(createParticle());
     }
-
     function createParticle() {
-        return {
-            x: Math.random() * canvas.width,
-            y: canvas.height + Math.random() * 100,
-            r: Math.random() * 3 + 1,
-            speed: Math.random() * 1 + 0.5,
-            wobble: Math.random() * Math.PI * 2
-        };
+        return { x: Math.random() * canvas.width, y: canvas.height + Math.random() * 100, r: Math.random() * 3 + 1, speed: Math.random() * 1 + 0.5, wobble: Math.random() * Math.PI * 2 };
     }
-
     function drawLoop() {
         if(game.mappo) {
-            // --- Matrix Mode ---
-            ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#0F0";
-            ctx.font = fontSize + "px monospace";
+            ctx.fillStyle = "rgba(0, 0, 0, 0.05)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#0F0"; ctx.font = fontSize + "px monospace";
             for (let i = 0; i < drops.length; i++) {
                 const text = charArray[Math.floor(Math.random() * charArray.length)];
                 ctx.fillText(text, i * fontSize, drops[i] * fontSize);
@@ -391,26 +363,13 @@
                 drops[i]++;
             }
         } else {
-            // --- Peaceful Mode (Golden Particles) ---
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear completely for clean transparency
-            
-            // Draw particles
-            ctx.fillStyle = "rgba(255, 204, 0, 0.6)"; // Gold
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = "#ffcc00";
-            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "rgba(255, 204, 0, 0.6)"; ctx.shadowBlur = 10; ctx.shadowColor = "#ffcc00";
             for(let p of particles) {
-                ctx.beginPath();
-                ctx.arc(p.x + Math.sin(p.wobble)*20, p.y, p.r, 0, Math.PI*2);
-                ctx.fill();
-                
-                p.y -= p.speed;
-                p.wobble += 0.02;
-                if(p.y < -10) { // Reset if goes off screen
-                    Object.assign(p, createParticle());
-                }
+                ctx.beginPath(); ctx.arc(p.x + Math.sin(p.wobble)*20, p.y, p.r, 0, Math.PI*2); ctx.fill();
+                p.y -= p.speed; p.wobble += 0.02; if(p.y < -10) Object.assign(p, createParticle());
             }
-            ctx.shadowBlur = 0; // Reset
+            ctx.shadowBlur = 0;
         }
     }
 
@@ -420,33 +379,28 @@
         window.addEventListener('resize', resizeCanvas);
         loadGame();
         initUI();
-        
-        // Loops
         setInterval(loop, 100);
         setInterval(autoSave, 30000);
         setInterval(updateNews, 10000);
         setInterval(drawLoop, 50);
-
-        updateNews();
-        updateUI();
+        updateNews(); updateUI();
     };
 
     function initUI() {
-        // Visual Rows
         const rowsContainer = document.getElementById('visual-rows-container');
         buildings.forEach((b, i) => {
             let row = document.createElement('div');
-            row.className = `visual-row row-bg-${i % 9}`;
+            row.className = `visual-row row-bg-${i % 5}`;
             row.id = `row-${i}`;
             row.innerHTML = `<div class="row-icons" id="row-icons-${i}"></div>`;
             rowsContainer.appendChild(row);
         });
-        // Store
         const list = document.getElementById('products-list');
         buildings.forEach((b, i) => {
             let btn = document.createElement('div');
             btn.className = 'product-btn locked';
             btn.id = `product-${i}`;
+            btn.setAttribute('data-mode', 'locked'); // 状態管理用
             btn.onclick = () => buyBuilding(i);
             btn.onmouseenter = (e) => showTooltip('bld', i, e);
             btn.onmousemove = moveTooltip;
@@ -463,22 +417,15 @@
         if(currentTab === 'stats') updateStats();
         updateUI();
     }
-
     function addToku(n) { game.toku += n; game.totalToku += n; game.allTimeToku += n; }
-    
     function getTpS() {
         let sum = 0; game.blds.forEach((c, i) => sum += buildings[i].base * c * mults.blds[i]);
         sum = sum * mults.global * (1 + game.karma * 0.1);
-        
-        // 【追加】末法モード時の効果: 自動生産3倍
         if(game.mappo) sum *= 3;
-        
         return sum;
     }
-
     function getClickPower() {
-        let base = (1 + getTpS() * 0.05) * mults.click; // Base click is 5% of TpS
-        // 【追加】末法モード時の効果: クリック効率0.1倍
+        let base = (1 + getTpS() * 0.05) * mults.click;
         if(game.mappo) base *= 0.1;
         return base;
     }
@@ -488,41 +435,24 @@
         document.getElementById('bakery-name').innerText = game.name;
         document.getElementById('toku-amount').innerText = formatNum(game.toku) + " 徳";
         document.getElementById('tps-display').innerText = "per second: " + formatNum(getTpS());
-        
-        // バフ表示
-        let buffText = "";
-        if(game.mappo) buffText = "【末法】自動生産x3 / クリック激減";
-        else buffText = "【正法】通常状態";
-        document.getElementById('buff-display').innerText = buffText;
-
+        document.getElementById('buff-display').innerText = game.mappo ? "【末法】自動生産x3 / クリック激減" : "【正法】通常状態";
         document.title = formatNum(game.toku) + " 徳";
 
-        // Store: Special Area (Toggle)
+        // Mappo Toggle
         let spec = document.getElementById('store-special');
         if(game.mappoUnlocked) {
             spec.style.display = 'block';
             let btn = document.getElementById('mappo-toggle-btn');
-            if(game.mappo) {
-                btn.className = 'active';
-                document.getElementById('mappo-status-icon').innerText = '🔴';
-                document.getElementById('mappo-status-text').innerText = '末法モード: ON';
-            } else {
-                btn.className = '';
-                document.getElementById('mappo-status-icon').innerText = '⚪';
-                document.getElementById('mappo-status-text').innerText = '末法モード: OFF';
-            }
-        } else {
-            spec.style.display = 'none';
-        }
+            if(game.mappo) { btn.className='active'; document.getElementById('mappo-status-icon').innerText='🔴'; document.getElementById('mappo-status-text').innerText='末法モード: ON'; }
+            else { btn.className=''; document.getElementById('mappo-status-icon').innerText='⚪'; document.getElementById('mappo-status-text').innerText='末法モード: OFF'; }
+        } else { spec.style.display = 'none'; }
 
         // Upgrades
         let upgCont = document.getElementById('upgrades-container');
         upgrades.forEach(u => {
             let el = document.getElementById(`upg-${u.id}`);
-            // 購入済み or 解放済みならリストから消す
-            if (game.upgs.includes(u.id) || (u.id === 'mappo_unlock' && game.mappoUnlocked)) { 
-                if(el) el.remove(); return; 
-            }
+            let purchased = game.upgs.includes(u.id) || (u.id === 'mappo_unlock' && game.mappoUnlocked);
+            if (purchased) { if(el) el.remove(); return; }
             
             if (u.req(game)) {
                 if (!el) {
@@ -531,18 +461,66 @@
                     btn.onmouseenter = (e) => showTooltip('upg', u.id, e); btn.onmousemove = moveTooltip; btn.onmouseleave = hideTooltip;
                     upgCont.appendChild(btn);
                 }
+                let btn = document.getElementById(`upg-${u.id}`);
+                if(btn) {
+                    if(game.toku < u.cost) btn.classList.add('cannot-afford');
+                    else btn.classList.remove('cannot-afford');
+                }
             }
         });
 
-        // Products
+        // Buildings Logic with Teaser
+        let teaserFound = false;
         buildings.forEach((b, i) => {
-            let cost = getCost(i);
             let btn = document.getElementById(`product-${i}`);
-            if (btn.classList.contains('locked') && game.totalToku >= b.cost * 0.5) btn.classList.remove('locked');
-            if (!btn.classList.contains('locked')) {
+            let cost = getCost(i);
+            
+            // 解放条件: 最初の1つ(index 0)は無条件、それ以外は累計徳が半額以上、または既に持っている場合
+            let isUnlocked = (i === 0) || (game.totalToku >= b.cost * 0.5) || (game.blds[i] > 0);
+            
+            let mode = 'locked';
+            if (isUnlocked) {
+                mode = 'normal';
+            } else if (!teaserFound) {
+                // まだロックされている一番最初の施設を「Teaser」にする
+                mode = 'teaser';
+                teaserFound = true; // これ以降は全部locked
+            }
+
+            // モードごとの表示切り替え
+            if (mode === 'locked') {
+                btn.classList.add('locked');
+                btn.classList.remove('teaser');
+            } else {
+                btn.classList.remove('locked');
+
+                // 状態が変わった時だけDOMを書き換える（チラつき防止）
+                let currentMode = btn.getAttribute('data-mode');
+                if (currentMode !== mode) {
+                    if (mode === 'normal') {
+                        btn.querySelector('.product-icon').innerHTML = b.icon;
+                        btn.querySelector('.product-name').innerText = b.name;
+                        btn.classList.remove('teaser');
+                    } else { // teaser
+                        btn.querySelector('.product-icon').innerHTML = '❓';
+                        btn.querySelector('.product-name').innerText = '???';
+                        btn.classList.add('teaser');
+                    }
+                    btn.setAttribute('data-mode', mode);
+                }
+
+                // 常に更新する箇所
                 document.getElementById(`price-${i}`).innerText = formatNum(cost);
                 document.getElementById(`count-${i}`).innerText = game.blds[i] > 0 ? game.blds[i] : "";
-                btn.className = 'product-btn ' + (game.toku >= cost ? 'enabled' : 'disabled cannot-afford');
+
+                // クラス付与
+                let canAfford = game.toku >= cost;
+                // Teaserモードの場合は買えないように見せる(実際買おうとしてもお金が足りないはず)
+                if (mode === 'teaser') {
+                    btn.className = 'product-btn teaser disabled cannot-afford';
+                } else {
+                    btn.className = 'product-btn ' + (canAfford ? 'enabled' : 'disabled cannot-afford');
+                }
             }
         });
 
@@ -550,28 +528,23 @@
     }
 
     function updateVisuals() {
-        // Rows
         buildings.forEach((b, i) => {
             let row = document.getElementById(`row-${i}`);
             if (game.blds[i] > 0) {
                 row.style.display = 'block';
-                // row.style.background... CSSでグラデーション指定済みだが、末法時は暗くするなどしてもよい
                 let iconCont = document.getElementById(`row-icons-${i}`);
-                let diff = Math.min(game.blds[i], 20) - iconCont.childElementCount;
+                // 描画上限50
+                let diff = Math.min(game.blds[i], 50) - iconCont.childElementCount;
                 for(let k=0; k<diff; k++){
-                    let ic = document.createElement('div'); ic.className = 'visual-icon'; ic.innerText = b.icon;
+                    let ic = document.createElement('div'); ic.className = 'visual-icon'; 
+                    ic.innerHTML = b.icon;
                     ic.onclick = () => { playSound('pop'); ic.style.transform="scale(1.5)"; setTimeout(()=>ic.style.transform="scale(1)",100); };
                     iconCont.appendChild(ic);
                 }
             } else row.style.display = 'none';
         });
-
-        // Mode Switching
-        if(game.mappo) {
-            document.body.classList.add('mappo-mode');
-        } else {
-            document.body.classList.remove('mappo-mode');
-        }
+        if(game.mappo) document.body.classList.add('mappo-mode');
+        else document.body.classList.remove('mappo-mode');
     }
 
     function updateStats() {
@@ -604,12 +577,16 @@
         playSound(game.mappo?'punch':'mokugyo');
         let el = document.createElement('div'); el.className='float-text'; el.innerText="+"+formatNum(amount);
         el.style.left=(e.clientX-20)+"px"; el.style.top=(e.clientY-40)+"px";
-        if(game.mappo) el.style.color = "#f00"; // 末法時は赤文字
+        if(game.mappo) el.style.color = "#f00";
         document.body.appendChild(el); setTimeout(()=>el.remove(),1500);
         let img=document.getElementById('mokugyo-img'); img.style.transform="scale(0.95)"; setTimeout(()=>img.style.transform="scale(1)",50);
     }
     
     function buyBuilding(i) {
+        let btn = document.getElementById(`product-${i}`);
+        // Teaser状態やLocked状態では買えないようにガード
+        if (btn.classList.contains('teaser') || btn.classList.contains('locked')) return;
+
         let c = getCost(i);
         if(game.toku>=c){ game.toku-=c; game.blds[i]++; calcMults(); playSound('buy'); updateUI(); }
     }
@@ -618,10 +595,7 @@
         if(game.toku>=u.cost){ 
             game.toku-=u.cost; 
             if(u.type === 'unlock' && u.id === 'mappo_unlock') {
-                game.mappoUnlocked = true;
-                game.mappo = true; // 買った瞬間ONにする
-                playSound('upgrade'); 
-                alert("【末法思想】を獲得しました。\n伽藍上部のスイッチで世界を切り替えられます。");
+                game.mappoUnlocked = true; game.mappo = true; playSound('upgrade'); alert("【末法思想】を獲得しました。\n伽藍上部のスイッチで世界を切り替えられます。");
             } else {
                 game.upgs.push(u.id);
             }
@@ -632,14 +606,19 @@
     function toggleMappo(forceVal) {
         if(!game.mappoUnlocked && !forceVal) return;
         game.mappo = (forceVal !== undefined) ? forceVal : !game.mappo;
-        playSound('upgrade');
-        updateUI();
+        playSound('upgrade'); updateUI();
     }
 
     function getCost(i) { return Math.floor(buildings[i].cost * Math.pow(1.15, game.blds[i])); }
     function calcMults() {
         mults.click=1; mults.global=1; mults.blds.fill(1);
-        upgrades.forEach(u=>{ if(game.upgs.includes(u.id)){ if(u.type==='click')mults.click*=u.val; if(u.type==='global')mults.global*=u.val; } });
+        upgrades.forEach(u=>{ 
+            if(game.upgs.includes(u.id)){ 
+                if(u.type==='click') mults.click*=u.val; 
+                if(u.type==='global') mults.global*=u.val; 
+                if(u.type==='bld') mults.blds[u.target]*=u.val;
+            } 
+        });
     }
 
     // ================= SYSTEM =================
@@ -653,16 +632,16 @@
         if(t==='stats') updateStats();
     }
 
-    function saveGame(m){ localStorage.setItem('nirvanaV215', JSON.stringify(game)); if(m) alert("保存しました"); }
+    function saveGame(m){ localStorage.setItem('nirvanaV220', JSON.stringify(game)); if(m) alert("保存しました"); }
     function autoSave(){ saveGame(); }
     function loadGame(){ 
-        let s=localStorage.getItem('nirvanaV215') || localStorage.getItem('nirvanaV214');
+        let s=localStorage.getItem('nirvanaV220') || localStorage.getItem('nirvanaV219') || localStorage.getItem('nirvanaV218');
         if(s){ try{ let d=JSON.parse(s); game={...game,...d}; if(game.blds.length<buildings.length){ for(let i=game.blds.length;i<buildings.length;i++)game.blds.push(0); } }catch(e){} }
         calcMults();
     }
     function exportSave(){ document.getElementById('export-area').value = btoa(unescape(encodeURIComponent(JSON.stringify(game)))); }
     function importSave(){ let s=prompt("呪文を入力:"); if(s){ try{ game=JSON.parse(decodeURIComponent(escape(atob(s)))); saveGame(); location.reload(); }catch(e){alert("無効な呪文です");} } }
-    function wipeSave(){ if(confirm("全データを消去しますか？")) { localStorage.removeItem('nirvanaV215'); location.reload(); } }
+    function wipeSave(){ if(confirm("全データを消去しますか？")) { localStorage.removeItem('nirvanaV220'); location.reload(); } }
     
     function doPrestige(){ 
         let g=Math.max(0,Math.floor(Math.cbrt(game.allTimeToku/1000000))-game.karma);
@@ -677,10 +656,17 @@
     function showTooltip(t,id,e){ 
         let title,desc,stats; 
         if(t==='bld'){ 
-            let b=buildings[id];
-            let p=b.base*mults.blds[id]*mults.global*(1+game.karma*0.1); 
-            if(game.mappo) p*=3;
-            title=b.name; desc=b.desc; stats=`生産: <b>${formatNum(p)}</b> 徳/s`; 
+            let btn = document.getElementById(`product-${id}`);
+            if (btn.classList.contains('teaser')) {
+                title = "???";
+                desc = "まだ徳が足りず、正体がわからない。";
+                stats = "価格: " + formatNum(getCost(id));
+            } else {
+                let b=buildings[id];
+                let p=b.base*mults.blds[id]*mults.global*(1+game.karma*0.1); 
+                if(game.mappo) p*=3;
+                title=b.name; desc=b.desc; stats=`生産: <b>${formatNum(p)}</b> 徳/s`; 
+            }
         }
         else{ let u=upgrades.find(x=>x.id===id); title=u.name; desc=u.desc; stats="価格: "+formatNum(u.cost); }
         let tt=document.getElementById('tooltip'); tt.innerHTML=`<h3>${title}</h3><div class="stats">${stats}</div><div class="desc">${desc}</div>`;
@@ -691,7 +677,6 @@
     function formatNum(n){ if(n<10000) return Math.floor(n).toLocaleString(); let u=0; while(n>=10000&&u<units.length-1){n/=10000;u++;} return n.toFixed(3)+units[u]; }
     function updateNews(){ document.getElementById('news-ticker').innerText="News: "+newsData[Math.floor(Math.random()*newsData.length)]; }
 
-    // Audio
     function initAudio(){ if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended')audioCtx.resume(); }
     function playSound(t){ if(!audioCtx||!soundEnabled)return; let o=audioCtx.createOscillator(),g=audioCtx.createGain(),n=audioCtx.currentTime; o.connect(g);g.connect(audioCtx.destination);
         if(t==='mokugyo'){o.frequency.value=300+Math.random()*50;g.gain.setValueAtTime(0,n);g.gain.linearRampToValueAtTime(0.5,n+0.01);g.gain.exponentialRampToValueAtTime(0.01,n+0.1);o.start(n);o.stop(n+0.1);}
