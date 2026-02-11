@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cosmic Merge</title>
+    <title>Cosmic Merge - Fixed</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         :root {
@@ -22,9 +22,9 @@
             height: 100vh;
             margin: 0;
             overflow: hidden;
+            user-select: none; /* テキスト選択防止 */
         }
 
-        /* レイアウトコンテナ */
         .game-wrapper {
             display: flex;
             gap: 20px;
@@ -35,17 +35,16 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* ゲームキャンバスエリア */
         #game-area {
             position: relative;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
             border: 2px solid #334;
+            cursor: pointer;
         }
         canvas { display: block; }
 
-        /* サイドパネル */
         .side-panel {
             width: 300px;
             display: flex;
@@ -53,36 +52,38 @@
             gap: 20px;
         }
 
-        /* スコア & NEXT */
         .info-card {
             background: var(--panel-bg);
             padding: 15px;
             border-radius: 12px;
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.05);
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
-        .label { font-size: 12px; letter-spacing: 2px; color: #556; margin-bottom: 5px; }
+        .label { font-size: 12px; letter-spacing: 2px; color: #556; margin-bottom: 5px; width: 100%; }
         .score-val { font-size: 32px; font-weight: bold; color: var(--highlight); text-shadow: 0 0 10px rgba(0, 210, 255, 0.5); }
         
         #next-display {
-            height: 60px;
+            width: 100%;
+            height: 80px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-top: 5px;
         }
         .planet-preview {
             border-radius: 50%;
-            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
         }
 
-        /* 進化の輪 (Evolution Circle) */
         .evolution-container {
             position: relative;
             width: 260px;
             height: 260px;
             margin: 0 auto;
-            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0) 70%);
             border-radius: 50%;
         }
         .evo-label {
@@ -91,7 +92,6 @@
             transform: translate(-50%, -50%);
             font-size: 10px;
             color: #445;
-            text-transform: uppercase;
             letter-spacing: 1px;
         }
         .planet-node {
@@ -105,18 +105,15 @@
             color: rgba(0,0,0,0.5);
             font-weight: bold;
             box-shadow: 0 0 5px rgba(0,0,0,0.5);
-            transition: transform 0.2s;
         }
-        /* 矢印装飾（CSSで円を描く） */
         .evo-ring {
             position: absolute;
-            top: 10%; left: 10%;
-            width: 80%; height: 80%;
+            top: 15%; left: 15%;
+            width: 70%; height: 70%;
             border: 1px dashed rgba(255,255,255,0.1);
             border-radius: 50%;
             pointer-events: none;
         }
-
     </style>
 </head>
 <body>
@@ -135,45 +132,45 @@
             <div id="next-display"></div>
         </div>
 
-        <div class="info-card" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center;">
+        <div class="info-card" style="flex-grow: 1;">
             <div class="label" style="margin-bottom: 20px;">EVOLUTION CIRCLE</div>
             <div class="evolution-container" id="evo-circle">
                 <div class="evo-ring"></div>
                 <div class="evo-label">COSMOS</div>
-                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-const { Engine, Render, Runner, Bodies, Composite, Events, Mouse, Body } = Matter;
+const { Engine, Render, Runner, Bodies, Composite, Events, Body } = Matter;
 
 // --- 設定 ---
 const WIDTH = 400;
 const HEIGHT = 600;
 const WALL_THICKNESS = 40;
 
-// 惑星データ (半径, 色, 名前, スコア)
-// テーマ：小惑星から恒星への進化
 const PLANETS = [
-    { r: 15, color: "#CFD8DC", glow: "#fff", name: "Moon", score: 1 },         // 0: 月
-    { r: 22, color: "#FFCC80", glow: "#FFA726", name: "Mars", score: 2 },      // 1: 火星
-    { r: 30, color: "#81D4FA", glow: "#29B6F6", name: "Ice", score: 4 },       // 2: 氷の惑星
-    { r: 38, color: "#66BB6A", glow: "#4CAF50", name: "Terra", score: 8 },     // 3: 地球型
-    { r: 48, color: "#AB47BC", glow: "#E1BEE7", name: "Gas", score: 16 },      // 4: ガス惑星
-    { r: 60, color: "#EF5350", glow: "#FFCDD2", name: "Giant", score: 32 },    // 5: 赤色巨星
-    { r: 72, color: "#FFA726", glow: "#FFE0B2", name: "Ring", score: 64 },     // 6: 土星型
-    { r: 85, color: "#26C6DA", glow: "#80DEEA", name: "Aqua", score: 128 },    // 7: 海洋惑星
-    { r: 100, color: "#FFEE58", glow: "#FFF9C4", name: "Star", score: 256 },   // 8: 恒星
-    { r: 120, color: "#FFFFFF", glow: "#FFFFFF", name: "Nova", score: 512 }    // 9: 超新星
+    { r: 15, color: "#CFD8DC", glow: "#fff", score: 1 },         // 0
+    { r: 22, color: "#FFCC80", glow: "#FFA726", score: 2 },      // 1
+    { r: 30, color: "#81D4FA", glow: "#29B6F6", score: 4 },      // 2
+    { r: 38, color: "#66BB6A", glow: "#4CAF50", score: 8 },      // 3
+    { r: 48, color: "#AB47BC", glow: "#E1BEE7", score: 16 },     // 4
+    { r: 60, color: "#EF5350", glow: "#FFCDD2", score: 32 },     // 5
+    { r: 72, color: "#FFA726", glow: "#FFE0B2", score: 64 },     // 6
+    { r: 85, color: "#26C6DA", glow: "#80DEEA", score: 128 },    // 7
+    { r: 100, color: "#FFEE58", glow: "#FFF9C4", score: 256 },   // 8
+    { r: 120, color: "#FFFFFF", glow: "#FFFFFF", score: 512 }    // 9
 ];
 
+// --- グローバル変数 ---
 let score = 0;
-let isReady = true;
-let currentBall = null;
-let nextBallLevel = 0;
+let isClickable = true; // 連打防止フラグ
+let currentBallBody = null; // 現在操作中のMatter Body
+let currentLevel = 0;   // 現在のボールのレベル
+let nextLevel = 0;      // 次のボールのレベル
 
-// --- 初期化 ---
+// --- Matter.js 初期化 ---
 const engine = Engine.create();
 const world = engine.world;
 
@@ -184,131 +181,161 @@ const render = Render.create({
         width: WIDTH,
         height: HEIGHT,
         wireframes: false,
-        background: '#0f111a' // 宇宙空間の色
+        background: '#0f111a'
     }
 });
 
-// 壁生成
+// 壁
 const wallOpts = { isStatic: true, render: { fillStyle: '#1f2233' } };
 const ground = Bodies.rectangle(WIDTH/2, HEIGHT + WALL_THICKNESS/2, WIDTH, WALL_THICKNESS, wallOpts);
 const leftWall = Bodies.rectangle(0 - WALL_THICKNESS/2, HEIGHT/2, WALL_THICKNESS, HEIGHT, wallOpts);
 const rightWall = Bodies.rectangle(WIDTH + WALL_THICKNESS/2, HEIGHT/2, WALL_THICKNESS, HEIGHT, wallOpts);
 Composite.add(world, [ground, leftWall, rightWall]);
 
-// --- 進化の輪 (Evolution Circle) 生成 ---
+// --- UI初期化 ---
 function initEvolutionCircle() {
     const container = document.getElementById('evo-circle');
-    const radius = 100; // 円の半径
-    const centerX = 130; // コンテナの中心X
-    const centerY = 130; // コンテナの中心Y
+    const radius = 100;
+    const centerX = 130;
+    const centerY = 130;
     
     PLANETS.forEach((planet, index) => {
-        // 円周上に配置 (時計回り)
-        const angle = (index / PLANETS.length) * (2 * Math.PI) - (Math.PI / 2); // -90度から開始
+        const angle = (index / PLANETS.length) * (2 * Math.PI) - (Math.PI / 2);
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
-
         const node = document.createElement('div');
         node.className = 'planet-node';
-        // 表示サイズは実際の半径の0.6倍くらいに調整（UI用）
-        const displaySize = Math.max(20, planet.r * 0.5); 
+        const displaySize = Math.max(15, planet.r * 0.4); 
         
         node.style.width = `${displaySize * 2}px`;
         node.style.height = `${displaySize * 2}px`;
         node.style.backgroundColor = planet.color;
-        node.style.boxShadow = `0 0 10px ${planet.glow}`;
+        node.style.boxShadow = `0 0 8px ${planet.glow}`;
         node.style.left = `${x}px`;
         node.style.top = `${y}px`;
-        // 数字を表示
-        // node.innerText = index; 
-
         container.appendChild(node);
     });
 }
 
-// --- ネクスト表示 ---
 function updateNextDisplay() {
     const container = document.getElementById('next-display');
     container.innerHTML = '';
-    const planet = PLANETS[nextBallLevel];
+    const planet = PLANETS[nextLevel];
     
     const preview = document.createElement('div');
     preview.className = 'planet-preview';
-    preview.style.width = `${planet.r * 2}px`;
-    preview.style.height = `${planet.r * 2}px`;
+    // プレビュー用に少し小さめに表示
+    const previewSize = planet.r * 1.5;
+    preview.style.width = `${previewSize}px`;
+    preview.style.height = `${previewSize}px`;
     preview.style.backgroundColor = planet.color;
-    preview.style.boxShadow = `0 0 20px ${planet.glow}`;
+    preview.style.boxShadow = `0 0 15px ${planet.glow}`;
     
     container.appendChild(preview);
 }
 
 // --- ゲームロジック ---
 
-// ボール生成
-function createBall(x, y, level, isStatic = false) {
+function createBody(x, y, level, isStatic = false) {
     const p = PLANETS[level];
     return Bodies.circle(x, y, p.r, {
         label: `planet_${level}`,
         level: level,
         isStatic: isStatic,
-        restitution: 0.3, // 弾性
+        restitution: 0.3,
+        friction: 0.1,
         render: {
             fillStyle: p.color,
             strokeStyle: '#fff',
-            lineWidth: level === 9 ? 4 : 0 // 最終段階は輝く枠
+            lineWidth: level === 9 ? 4 : 0
         }
     });
 }
 
-// 次のボールを準備
-function prepareNext() {
-    // 0〜3のレベルが出現
-    nextBallLevel = Math.floor(Math.random() * 4);
-    updateNextDisplay();
+// 最初の開始処理
+function initGame() {
+    // 初回のCurrentとNextを決める
+    currentLevel = Math.floor(Math.random() * 4); // 0-3
+    nextLevel = Math.floor(Math.random() * 4);    // 0-3
     
-    // 現在のボールを生成（マウス追従用）
-    currentBall = createBall(WIDTH / 2, 50, nextBallLevel, true);
-    Composite.add(world, currentBall);
-    isReady = true;
+    updateNextDisplay();
+    spawnCurrentBall();
 }
 
-// 入力イベント
-const gameArea = document.getElementById('game-area');
+// 現在のボールを画面上部に生成
+function spawnCurrentBall() {
+    currentBallBody = createBody(WIDTH / 2, 50, currentLevel, true);
+    Composite.add(world, currentBallBody);
+    isClickable = true;
+}
 
-gameArea.addEventListener('mousemove', (e) => {
-    if (!isReady || !currentBall) return;
-    const rect = gameArea.getBoundingClientRect();
+// ターン交代処理
+function nextTurn() {
+    // NextをCurrentに昇格
+    currentLevel = nextLevel;
+    // 新しいNextを生成
+    nextLevel = Math.floor(Math.random() * 4);
+    
+    updateNextDisplay();
+    spawnCurrentBall();
+}
+
+// --- イベントリスナー ---
+
+// マウス移動
+window.addEventListener('mousemove', (e) => {
+    if (!isClickable || !currentBallBody) return;
+    
+    const rect = render.canvas.getBoundingClientRect();
     let x = e.clientX - rect.left;
     
-    // 壁制限
-    const r = PLANETS[nextBallLevel].r;
+    // 画面外チェック
+    if (x < 0 || x > WIDTH) return;
+
+    // 壁の制限
+    const r = PLANETS[currentLevel].r;
+    const limit = WIDTH - r - 5;
     if (x < r + 5) x = r + 5;
-    if (x > WIDTH - r - 5) x = WIDTH - r - 5;
+    if (x > limit) x = limit;
     
-    Body.setPosition(currentBall, { x: x, y: 50 });
+    Body.setPosition(currentBallBody, { x: x, y: 50 });
 });
 
-gameArea.addEventListener('click', () => {
-    if (!isReady || !currentBall) return;
-    isReady = false;
-    Body.setStatic(currentBall, false);
-    currentBall = null;
-    setTimeout(prepareNext, 800);
+// クリック（投下）
+window.addEventListener('mousedown', (e) => {
+    // キャンバス内でのクリックかチェック
+    const rect = render.canvas.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    // キャンバス外のクリックは無視
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return;
+
+    if (!isClickable || !currentBallBody) return;
+    
+    isClickable = false;
+    
+    // 物理演算を有効化して落とす
+    Body.setStatic(currentBallBody, false);
+    currentBallBody = null;
+    
+    // 少し待ってから次のボールを生成
+    setTimeout(nextTurn, 800);
 });
 
-// 衝突・進化ロジック
+// 衝突判定（合体）
 Events.on(engine, 'collisionStart', (event) => {
     const pairs = event.pairs;
-    const processed = new Set(); // 多重処理防止
+    const processed = new Set(); 
 
     for (let i = 0; i < pairs.length; i++) {
         const { bodyA, bodyB } = pairs[i];
         
-        // 静的オブジェクト（壁や待機中のボール）は除外
         if (bodyA.isStatic || bodyB.isStatic) continue;
 
         if (bodyA.level !== undefined && bodyA.level === bodyB.level) {
-            if (bodyA.level >= PLANETS.length - 1) continue; // 最大レベル同士は合体しない
+            // 最大レベル同士は合体しない
+            if (bodyA.level >= PLANETS.length - 1) continue; 
 
             if (processed.has(bodyA.id) || processed.has(bodyB.id)) continue;
             processed.add(bodyA.id);
@@ -320,23 +347,18 @@ Events.on(engine, 'collisionStart', (event) => {
 
             Composite.remove(world, [bodyA, bodyB]);
             
-            const newBall = createBall(midX, midY, newLevel, false);
+            const newBall = createBody(midX, midY, newLevel, false);
             Composite.add(world, newBall);
 
-            // スコア加算
             score += PLANETS[newLevel].score;
             document.getElementById('score').innerText = score;
-
-            // エフェクト（簡易的）
-            // newBallに少し浮力を与える
-            // Body.applyForce(newBall, newBall.position, {x:0, y:-0.05});
         }
     }
 });
 
-// 開始
+// 実行
 initEvolutionCircle();
-prepareNext();
+initGame();
 Render.run(render);
 const runner = Runner.create();
 Runner.run(runner, engine);
