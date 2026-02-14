@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Rubik's Cube</title>
+    <style>
+        body { margin: 0; background: #222; color: white; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+        canvas { display: block; }
+        .ui { position: absolute; bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; width: 100%; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 5px; background: #444; color: white; font-weight: bold; }
+        button:hover { background: #666; }
+        .instructions { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div class="instructions">
+        マウスドラッグ: 回転視点移動<br>
+        ボタン: 各面を回転 (時計回り)
+    </div>
+
+    <div class="ui">
+        <button onclick="rotateFace('U')">U (上)</button>
+        <button onclick="rotateFace('D')">D (下)</button>
+        <button onclick="rotateFace('L')">L (左)</button>
+        <button onclick="rotateFace('R')">R (右)</button>
+        <button onclick="rotateFace('F')">F (前)</button>
+        <button onclick="rotateFace('B')">B (後)</button>
+        <button onclick="shuffle()" style="background: #e67e22;">シャッフル</button>
+    </div>
+
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "orbit": "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js" } }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'orbit';
+
+        // シーン設定
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        camera.position.set(5, 5, 5);
+        controls.update();
+
+        // キューブの作成
+        const cubes = [];
+        const cubeGroup = new THREE.Group();
+        scene.add(cubeGroup);
+
+        const colors = [
+            0xffffff, // Right: White
+            0xffff00, // Left: Yellow
+            0xff0000, // Top: Red
+            0xffa500, // Bottom: Orange
+            0x00ff00, // Front: Green
+            0x0000ff  // Back: Blue
+        ];
+
+        function createCube() {
+            for (let x = -1; x <= 1; x++) {
+                for (let y = -1; y <= 1; y++) {
+                    for (let z = -1; z <= 1; z++) {
+                        const geometry = new THREE.BoxGeometry(0.95, 0.95, 0.95);
+                        const materials = colors.map(c => new THREE.MeshBasicMaterial({ color: c }));
+                        const cube = new THREE.Mesh(geometry, materials);
+                        cube.position.set(x, y, z);
+                        cubeGroup.add(cube);
+                        cubes.push(cube);
+                    }
+                }
+            }
+        }
+        createCube();
+
+        // 回転処理
+        window.rotateFace = (face) => {
+            const tempGroup = new THREE.Group();
+            scene.add(tempGroup);
+
+            const selection = cubes.filter(cube => {
+                const pos = new THREE.Vector3();
+                cube.getWorldPosition(pos);
+                if (face === 'U') return pos.y > 0.5;
+                if (face === 'D') return pos.y < -0.5;
+                if (face === 'L') return pos.x < -0.5;
+                if (face === 'R') return pos.x > 0.5;
+                if (face === 'F') return pos.z > 0.5;
+                if (face === 'B') return pos.z < -0.5;
+            });
+
+            selection.forEach(cube => tempGroup.attach(cube));
+
+            // アニメーションなしの即時回転（ロジック簡略化のため）
+            if (face === 'U' || face === 'D') tempGroup.rotation.y -= Math.PI / 2;
+            if (face === 'L' || face === 'R') tempGroup.rotation.x -= Math.PI / 2;
+            if (face === 'F' || face === 'B') tempGroup.rotation.z -= Math.PI / 2;
+
+            tempGroup.updateMatrixWorld();
+            selection.forEach(cube => cubeGroup.attach(cube));
+            scene.remove(tempGroup);
+        };
+
+        window.shuffle = () => {
+            const moves = ['U', 'D', 'L', 'R', 'F', 'B'];
+            for(let i=0; i<20; i++) {
+                rotateFace(moves[Math.floor(Math.random() * moves.length)]);
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
