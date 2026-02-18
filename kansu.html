@@ -3,39 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Functionary | Interactive Grapher</title>
+    <title>Functionary | Advanced Math Plotter</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <style>
-        :root {
-            --ui-bg: rgba(255, 255, 255, 0.92);
-            --accent: #0984e3;
-        }
+        :root { --ui-bg: rgba(255, 255, 255, 0.95); --accent: #0984e3; --border: #dfe6e9; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         
         #graphCanvas { position: absolute; top: 0; left: 0; background: #fff; cursor: grab; }
         #graphCanvas:active { cursor: grabbing; }
 
         .ui-panel {
-            position: absolute; top: 20px; left: 20px; width: 320px;
+            position: absolute; top: 20px; left: 20px; width: 340px;
             background: var(--ui-bg); backdrop-filter: blur(10px);
-            padding: 20px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            z-index: 10; max-height: 85vh; overflow-y: auto;
-            user-select: none;
+            padding: 20px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            z-index: 10; max-height: 90vh; overflow-y: auto; user-select: none;
         }
-        h1 { margin: 0 0 5px 0; font-size: 24px; letter-spacing: -1px; }
+        h1 { margin: 0 0 5px 0; font-size: 22px; letter-spacing: -0.5px; }
         h1 span { color: var(--accent); }
-        .subtitle { font-size: 11px; color: #636e72; margin-bottom: 15px; }
-
-        .formula-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-        .color-indicator { width: 4px; height: 24px; border-radius: 2px; flex-shrink: 0; }
-        input { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Fira Code', monospace; font-size: 14px; }
         
-        button { padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .add-btn { background: var(--accent); color: white; width: 100%; margin-top: 10px; }
-        .remove-btn { background: #ff7675; color: white; width: 30px; height: 38px; }
-        button:hover { opacity: 0.8; }
+        .formula-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 10px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; color: #636e72; font-weight: bold; }
+        
+        select { border: none; background: #f1f2f6; padding: 2px 6px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Fira Code', monospace; font-size: 14px; box-sizing: border-box; margin-bottom: 5px; }
+        input:focus { outline: none; border-color: var(--accent); }
+        
+        .btn-add { background: var(--accent); color: white; border: none; padding: 10px; border-radius: 6px; width: 100%; cursor: pointer; font-weight: bold; }
+        .btn-remove { position: absolute; top: 5px; right: 5px; background: #ff7675; color: white; border: none; width: 20px; height: 20px; border-radius: 50%; font-size: 12px; cursor: pointer; line-height: 18px; text-align: center; padding: 0; }
 
-        .controls-hint { font-size: 11px; color: #636e72; margin-top: 20px; padding-top: 10px; border-top: 1px solid #eee; }
+        .param-inputs { display: flex; gap: 5px; }
+        .param-label { font-size: 12px; color: #aaa; margin-right: 5px; }
     </style>
 </head>
 <body>
@@ -43,19 +40,11 @@
     <canvas id="graphCanvas"></canvas>
 
     <div class="ui-panel">
-        <h1>Function<span>ary</span></h1>
-        <div class="subtitle">Interactive Math Plotter</div>
+        <h1>Function<span>ary</span> v4</h1>
+        <div style="font-size:12px; color:#666; margin-bottom:15px;">Implicit, Polar & Parametric Support</div>
         
         <div id="formulaContainer"></div>
-        
-        <button class="add-btn" onclick="addFormulaRow()">+ Add Graph</button>
-        
-        <div class="controls-hint">
-            <strong>Controls:</strong><br>
-            • ドラッグ: 画面移動<br>
-            • スクロール: 拡大・縮小<br>
-            • <code>x^2</code>, <code>sin(x)</code>, <code>log(x)</code> 等が使用可能
-        </div>
+        <button class="btn-add" onclick="addGraph()">+ グラフを追加</button>
     </div>
 
     <script>
@@ -63,30 +52,43 @@
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('formulaContainer');
         
-        let formulas = ["x^2", "sin(x) * 3"];
-        const colors = ["#0984e3", "#d63031", "#00b894", "#fdcb6e", "#6c5ce7", "#e67e22"];
+        // データ構造: { id, type, expr1, expr2, color }
+        let graphs = [
+            { id: 1, type: 'explicit', expr1: 'sin(x)', expr2: '', color: '#0984e3' },
+            { id: 2, type: 'implicit', expr1: 'x^2 + y^2 - 16', expr2: '', color: '#e17055' }
+        ];
         
-        // 表示状態
-        let scale = 60; // 1単位あたりのピクセル
-        let offsetX = 0; // 中心からのズレX
-        let offsetY = 0; // 中心からのズレY
-        
-        // マウス操作用
-        let isDragging = false;
-        let lastMouseX = 0;
-        let lastMouseY = 0;
+        const colors = ["#0984e3", "#e17055", "#00b894", "#6c5ce7", "#fdcb6e", "#2d3436"];
+        let nextId = 3;
 
+        // Viewport State
+        let scale = 40; 
+        let offsetX = 0; 
+        let offsetY = 0;
+        let isDragging = false, lastX = 0, lastY = 0;
+
+        // 初期化
         function init() {
             window.addEventListener('resize', resizeCanvas);
-            
-            // マウスイベント
-            canvas.addEventListener('mousedown', startDrag);
-            window.addEventListener('mousemove', drag);
-            window.addEventListener('mouseup', endDrag);
-            canvas.addEventListener('wheel', handleZoom, { passive: false });
+            canvas.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
+            window.addEventListener('mousemove', e => {
+                if (!isDragging) return;
+                offsetX += e.clientX - lastX; offsetY += e.clientY - lastY;
+                lastX = e.clientX; lastY = e.clientY;
+                requestAnimationFrame(draw);
+            });
+            window.addEventListener('mouseup', () => isDragging = false);
+            canvas.addEventListener('wheel', e => {
+                e.preventDefault();
+                const zoom = e.deltaY < 0 ? 1.1 : 0.9;
+                scale *= zoom;
+                offsetX -= (e.clientX - canvas.width/2 - offsetX) * (zoom - 1);
+                offsetY -= (e.clientY - canvas.height/2 - offsetY) * (zoom - 1);
+                requestAnimationFrame(draw);
+            }, { passive: false });
 
             resizeCanvas();
-            refreshUI();
+            renderUI();
         }
 
         function resizeCanvas() {
@@ -95,79 +97,57 @@
             draw();
         }
 
-        /* --- マウス操作ロジック --- */
-
-        function startDrag(e) {
-            isDragging = true;
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-        }
-
-        function drag(e) {
-            if (!isDragging) return;
-            offsetX += e.clientX - lastMouseX;
-            offsetY += e.clientY - lastMouseY;
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-            draw();
-        }
-
-        function endDrag() {
-            isDragging = false;
-        }
-
-        function handleZoom(e) {
-            e.preventDefault();
-            const zoomSpeed = 1.1;
-            const mouseX = e.clientX - canvas.width / 2 - offsetX;
-            const mouseY = e.clientY - canvas.height / 2 - offsetY;
-
-            const oldScale = scale;
-            if (e.deltaY < 0) scale *= zoomSpeed;
-            else scale /= zoomSpeed;
-
-            // マウス位置を中心にズームするためのオフセット調整
-            const ratio = scale / oldScale;
-            offsetX -= mouseX * (ratio - 1);
-            offsetY -= mouseY * (ratio - 1);
-
-            draw();
-        }
-
-        /* --- UI管理 --- */
-
-        function refreshUI() {
+        // --- UI Handling ---
+        function renderUI() {
             container.innerHTML = '';
-            formulas.forEach((f, i) => {
+            graphs.forEach((g, index) => {
                 const div = document.createElement('div');
-                div.className = 'formula-row';
+                div.className = 'formula-card';
+                div.style.borderLeft = `4px solid ${g.color}`;
+                
+                let inputsHtml = '';
+                if (g.type === 'explicit') {
+                    inputsHtml = `<input value="${g.expr1}" onchange="updateGraph(${index}, 'expr1', this.value)" placeholder="y = ... (例: sin(x))">`;
+                } else if (g.type === 'implicit') {
+                    inputsHtml = `<input value="${g.expr1}" onchange="updateGraph(${index}, 'expr1', this.value)" placeholder="f(x,y) = 0 (例: x^2 + y^2 - 9)">`;
+                } else if (g.type === 'polar_implicit') {
+                    inputsHtml = `<input value="${g.expr1}" onchange="updateGraph(${index}, 'expr1', this.value)" placeholder="f(r,θ) = 0 (例: r - sin(5*theta))">`;
+                } else if (g.type === 'parametric') {
+                    inputsHtml = `
+                        <div class="param-inputs">
+                            <span class="param-label">x=</span><input value="${g.expr1}" onchange="updateGraph(${index}, 'expr1', this.value)" placeholder="t - sin(t)">
+                        </div>
+                        <div class="param-inputs">
+                            <span class="param-label">y=</span><input value="${g.expr2}" onchange="updateGraph(${index}, 'expr2', this.value)" placeholder="1 - cos(t)">
+                        </div>`;
+                }
+
                 div.innerHTML = `
-                    <div class="color-indicator" style="background: ${colors[i % colors.length]}"></div>
-                    <input type="text" value="${f}" oninput="updateFormula(${i}, this.value)">
-                    ${i > 0 ? `<button class="remove-btn" onclick="removeRow(${i})">×</button>` : '<div style="width:38px"></div>'}
+                    <div class="card-header">
+                        <select onchange="changeType(${index}, this.value)">
+                            <option value="explicit" ${g.type === 'explicit' ? 'selected' : ''}>y = f(x)</option>
+                            <option value="implicit" ${g.type === 'implicit' ? 'selected' : ''}>Implicit (xy)</option>
+                            <option value="polar_implicit" ${g.type === 'polar_implicit' ? 'selected' : ''}>Implicit (rθ)</option>
+                            <option value="parametric" ${g.type === 'parametric' ? 'selected' : ''}>Parametric (t)</option>
+                        </select>
+                        <button class="btn-remove" onclick="removeGraph(${index})">×</button>
+                    </div>
+                    ${inputsHtml}
                 `;
                 container.appendChild(div);
             });
             draw();
         }
 
-        function addFormulaRow() {
-            formulas.push("x");
-            refreshUI();
+        function addGraph() {
+            graphs.push({ id: nextId++, type: 'explicit', expr1: 'x', expr2: '', color: colors[graphs.length % colors.length] });
+            renderUI();
         }
+        function removeGraph(idx) { graphs.splice(idx, 1); renderUI(); }
+        function updateGraph(idx, key, val) { graphs[idx][key] = val; draw(); }
+        function changeType(idx, type) { graphs[idx].type = type; renderUI(); }
 
-        function removeRow(index) {
-            formulas.splice(index, 1);
-            refreshUI();
-        }
-
-        function updateFormula(index, val) {
-            formulas[index] = val;
-            draw();
-        }
-
-        /* --- 描画ロジック --- */
-
+        // --- Drawing Logic ---
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const cx = canvas.width / 2 + offsetX;
@@ -175,62 +155,101 @@
 
             drawGrid(cx, cy);
 
-            formulas.forEach((formulaStr, idx) => {
+            graphs.forEach(g => {
+                ctx.strokeStyle = g.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
                 try {
-                    const compiled = math.compile(formulaStr);
-                    ctx.beginPath();
-                    ctx.strokeStyle = colors[idx % colors.length];
-                    ctx.lineWidth = 2.5;
-
-                    let first = true;
-                    // パフォーマンスのため2ピクセルごとに計算
-                    for (let i = 0; i <= canvas.width; i += 2) {
-                        const x = (i - cx) / scale;
-                        const y = compiled.evaluate({ x: x });
-                        const screenY = cy - (y * scale);
-
-                        if (isNaN(screenY) || !isFinite(screenY)) {
-                            first = true;
-                            continue;
-                        }
-
-                        if (first) {
-                            ctx.moveTo(i, screenY);
-                            first = false;
-                        } else {
-                            ctx.lineTo(i, screenY);
-                        }
-                    }
-                    ctx.stroke();
-                } catch (e) {}
+                    if (g.type === 'explicit') drawExplicit(g, cx, cy);
+                    else if (g.type === 'parametric') drawParametric(g, cx, cy);
+                    else drawImplicit(g, cx, cy); // Handles both Cartesian and Polar Implicit
+                } catch (e) { console.warn(e); }
+                ctx.stroke();
             });
         }
 
+        function drawExplicit(g, cx, cy) {
+            const compiled = math.compile(g.expr1);
+            let first = true;
+            // 描画範囲の最適化
+            const startX = -cx / scale; 
+            const endX = (canvas.width - cx) / scale;
+            
+            for (let px = 0; px <= canvas.width; px += 2) {
+                const x = (px - cx) / scale;
+                const y = compiled.evaluate({x});
+                const py = cy - y * scale;
+                
+                if (Math.abs(py) > canvas.height * 2 || isNaN(py)) { first = true; continue; }
+                if (first) { ctx.moveTo(px, py); first = false; } else { ctx.lineTo(px, py); }
+            }
+        }
+
+        function drawParametric(g, cx, cy) {
+            const codeX = math.compile(g.expr1);
+            const codeY = math.compile(g.expr2);
+            let first = true;
+            // 媒介変数は t をループ (範囲は適当に -20pi ~ 20pi)
+            for (let t = -60; t <= 60; t += 0.05) {
+                const x = codeX.evaluate({t});
+                const y = codeY.evaluate({t});
+                const px = cx + x * scale;
+                const py = cy - y * scale;
+                if (first) { ctx.moveTo(px, py); first = false; } else { ctx.lineTo(px, py); }
+            }
+        }
+
+        // Marching Squares Algorithm (Simplified) for Implicit Plots
+        function drawImplicit(g, cx, cy) {
+            const compiled = math.compile(g.expr1);
+            const step = 6; // グリッド解像度 (小さいほど綺麗だが重い)
+            
+            // 画面範囲のみ計算
+            for (let px = 0; px < canvas.width; px += step) {
+                for (let py = 0; py < canvas.height; py += step) {
+                    // グリッド4点の値を計算
+                    const v = [];
+                    const corners = [[0,0], [step,0], [step,step], [0,step]];
+                    
+                    corners.forEach(([dx, dy]) => {
+                        const screenX = px + dx;
+                        const screenY = py + dy;
+                        const mathX = (screenX - cx) / scale;
+                        const mathY = (cy - screenY) / scale;
+                        
+                        let val;
+                        if (g.type === 'polar_implicit') {
+                            const r = Math.sqrt(mathX*mathX + mathY*mathY);
+                            const theta = Math.atan2(mathY, mathX);
+                            val = compiled.evaluate({ r, theta, t: theta }); // tもthetaとして使えるように
+                        } else {
+                            val = compiled.evaluate({ x: mathX, y: mathY });
+                        }
+                        v.push(val);
+                    });
+
+                    // 符号の変化を検知 (簡易実装: 左上と右下、左下と右上の積が負なら線が通る)
+                    // Marching Squaresの完全実装は長大になるため、中間点補間で近似
+                    if ((v[0] > 0) !== (v[1] > 0) || (v[1] > 0) !== (v[2] > 0) || (v[2] > 0) !== (v[3] > 0)) {
+                         // 中心点をプロット (簡易的なドット描画ではなく、短い線を描く)
+                         // ※本来は等値線を引くが、ここでは軽量化のため「セル内に線が含まれる」場合のみ描画
+                         ctx.moveTo(px, py);
+                         ctx.rect(px, py, 2, 2); 
+                    }
+                }
+            }
+        }
+
         function drawGrid(cx, cy) {
-            // 方眼のサイズをスケールに合わせて調整
-            let gridSize = scale;
-            while (gridSize < 40) gridSize *= 5;
-            while (gridSize > 200) gridSize /= 5;
-
-            ctx.strokeStyle = '#f0f0f0';
-            ctx.lineWidth = 1;
-
-            // 垂直線
-            for (let x = cx % gridSize; x < canvas.width; x += gridSize) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-            }
-            // 水平線
-            for (let y = cy % gridSize; y < canvas.height; y += gridSize) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-            }
-
-            // メイン軸
-            ctx.strokeStyle = '#bdc3c7';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy);
-            ctx.moveTo(cx, 0); ctx.lineTo(cx, canvas.height);
-            ctx.stroke();
+            ctx.strokeStyle = '#eee'; ctx.lineWidth = 1;
+            // 簡易グリッド
+            const gridSize = scale > 20 ? scale : scale * 5;
+            for(let x = cx % gridSize; x < canvas.width; x+=gridSize) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();}
+            for(let y = cy % gridSize; y < canvas.height; y+=gridSize) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();}
+            
+            ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, canvas.height); ctx.stroke();
         }
 
         init();
