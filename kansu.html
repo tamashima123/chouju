@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Functionary | Advanced Math Plotter</title>
+    <title>Functionary | LaTeX Grapher</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    
     <style>
         :root { --ui-bg: rgba(255, 255, 255, 0.95); --accent: #0984e3; --border: #dfe6e9; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
@@ -13,26 +16,44 @@
         #graphCanvas:active { cursor: grabbing; }
 
         .ui-panel {
-            position: absolute; top: 20px; left: 20px; width: 340px;
+            position: absolute; top: 20px; left: 20px; width: 360px;
             background: var(--ui-bg); backdrop-filter: blur(10px);
             padding: 20px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            z-index: 10; max-height: 90vh; overflow-y: auto; user-select: none;
+            z-index: 10; max-height: 90vh; overflow-y: auto;
         }
         h1 { margin: 0 0 5px 0; font-size: 22px; letter-spacing: -0.5px; }
         h1 span { color: var(--accent); }
         
-        .formula-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 10px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; color: #636e72; font-weight: bold; }
+        .formula-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.03); transition: 0.2s; }
+        .formula-card:focus-within { box-shadow: 0 4px 12px rgba(9, 132, 227, 0.15); border-color: var(--accent); }
+
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; color: #636e72; }
         
-        select { border: none; background: #f1f2f6; padding: 2px 6px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+        select { border: 1px solid #ddd; background: #f8f9fa; padding: 2px 6px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+        
         input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Fira Code', monospace; font-size: 14px; box-sizing: border-box; margin-bottom: 5px; }
         input:focus { outline: none; border-color: var(--accent); }
-        
-        .btn-add { background: var(--accent); color: white; border: none; padding: 10px; border-radius: 6px; width: 100%; cursor: pointer; font-weight: bold; }
-        .btn-remove { position: absolute; top: 5px; right: 5px; background: #ff7675; color: white; border: none; width: 20px; height: 20px; border-radius: 50%; font-size: 12px; cursor: pointer; line-height: 18px; text-align: center; padding: 0; }
 
-        .param-inputs { display: flex; gap: 5px; }
-        .param-label { font-size: 12px; color: #aaa; margin-right: 5px; }
+        /* 数式プレビューエリア */
+        .latex-preview {
+            min-height: 30px; padding: 5px; margin-top: 5px;
+            background: #f8f9fa; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1em; color: #2d3436; overflow-x: auto;
+        }
+
+        .latex-toggle { font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+        .btn-add { background: var(--accent); color: white; border: none; padding: 10px; border-radius: 6px; width: 100%; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .btn-remove { background: #ff7675; color: white; border: none; width: 20px; height: 20px; border-radius: 50%; font-size: 12px; cursor: pointer; line-height: 18px; text-align: center; margin-left: 5px; }
+
+        .param-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 5px; }
+        .param-input-group { display: flex; align-items: center; gap: 5px; }
+        .param-label { width: 20px; font-weight: bold; color: #888; }
+
+        /* エラー表示 */
+        .error-msg { color: #d63031; font-size: 10px; display: none; margin-top: 2px; }
+        .has-error .error-msg { display: block; }
+        .has-error input { border-color: #d63031; background: #fff0f0; }
     </style>
 </head>
 <body>
@@ -40,8 +61,8 @@
     <canvas id="graphCanvas"></canvas>
 
     <div class="ui-panel">
-        <h1>Function<span>ary</span> v4</h1>
-        <div style="font-size:12px; color:#666; margin-bottom:15px;">Implicit, Polar & Parametric Support</div>
+        <h1>Function<span>ary</span> v5</h1>
+        <div style="font-size:12px; color:#666; margin-bottom:15px;">LaTeX Support & Preview</div>
         
         <div id="formulaContainer"></div>
         <button class="btn-add" onclick="addGraph()">+ グラフを追加</button>
@@ -52,22 +73,19 @@
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('formulaContainer');
         
-        // データ構造: { id, type, expr1, expr2, color }
+        // データ構造
         let graphs = [
-            { id: 1, type: 'explicit', expr1: 'sin(x)', expr2: '', color: '#0984e3' },
-            { id: 2, type: 'implicit', expr1: 'x^2 + y^2 - 16', expr2: '', color: '#e17055' }
+            { id: 1, type: 'explicit', expr1: '\\sin(x) \\cdot x', expr2: '', isLatex: true, color: '#0984e3' },
+            { id: 2, type: 'explicit', expr1: 'x^2 - 4', expr2: '', isLatex: false, color: '#e17055' }
         ];
         
         const colors = ["#0984e3", "#e17055", "#00b894", "#6c5ce7", "#fdcb6e", "#2d3436"];
         let nextId = 3;
 
-        // Viewport State
-        let scale = 40; 
-        let offsetX = 0; 
-        let offsetY = 0;
+        // Viewport
+        let scale = 40; let offsetX = 0; let offsetY = 0;
         let isDragging = false, lastX = 0, lastY = 0;
 
-        // 初期化
         function init() {
             window.addEventListener('resize', resizeCanvas);
             canvas.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
@@ -97,55 +115,132 @@
             draw();
         }
 
-        // --- UI Handling ---
+        // --- LaTeX to MathJS Converter ---
+        function convertLatexToMath(latex) {
+            let s = latex;
+            // 一般的なLaTeXコマンドの置換
+            s = s.replace(/\\cdot/g, '*')
+                 .replace(/\\times/g, '*')
+                 .replace(/\\div/g, '/')
+                 .replace(/\\left/g, '') // 括弧のサイズ調整は無視
+                 .replace(/\\right/g, '')
+                 .replace(/\\sin/g, 'sin')
+                 .replace(/\\cos/g, 'cos')
+                 .replace(/\\tan/g, 'tan')
+                 .replace(/\\sqrt/g, 'sqrt')
+                 .replace(/\\log/g, 'log')
+                 .replace(/\\pi/g, 'pi')
+                 .replace(/\\theta/g, 'theta')
+                 .replace(/\\ln/g, 'log');
+
+            // 分数 \frac{a}{b} -> ((a)/(b))
+            // ネストに対応するためループ処理
+            while (s.includes('\\frac{')) {
+                s = s.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '(($1)/($2))');
+            }
+            
+            // 指数 {}^{} の除去 (簡単な対応)
+            s = s.replace(/\{([^{}]+)\}/g, '($1)'); 
+
+            return s;
+        }
+
+        // --- UI Rendering ---
         function renderUI() {
             container.innerHTML = '';
             graphs.forEach((g, index) => {
                 const div = document.createElement('div');
                 div.className = 'formula-card';
                 div.style.borderLeft = `4px solid ${g.color}`;
+                div.id = `card-${index}`;
                 
-                let inputsHtml = '';
-                if (g.type === 'explicit') {
-                    inputsHtml = `<input value="${g.expr1}" onchange="updateGraph(${index}, 'expr1', this.value)" placeholder="y = ... (例: sin(x))">`;
-                } else if (g.type === 'implicit') {
-                    inputsHtml = `<input value="${g.expr1}" onchange="updateGraph(${index}, 'expr1', this.value)" placeholder="f(x,y) = 0 (例: x^2 + y^2 - 9)">`;
-                } else if (g.type === 'polar_implicit') {
-                    inputsHtml = `<input value="${g.expr1}" onchange="updateGraph(${index}, 'expr1', this.value)" placeholder="f(r,θ) = 0 (例: r - sin(5*theta))">`;
-                } else if (g.type === 'parametric') {
-                    inputsHtml = `
-                        <div class="param-inputs">
-                            <span class="param-label">x=</span><input value="${g.expr1}" onchange="updateGraph(${index}, 'expr1', this.value)" placeholder="t - sin(t)">
+                // 入力エリアの生成
+                let inputArea = '';
+                if (g.type === 'parametric') {
+                    inputArea = `
+                    <div class="param-row">
+                        <div class="param-input-group">
+                            <span class="param-label">x=</span>
+                            <input value="${g.expr1}" oninput="updateGraph(${index}, 'expr1', this.value)" placeholder="例: \\sin(t)">
                         </div>
-                        <div class="param-inputs">
-                            <span class="param-label">y=</span><input value="${g.expr2}" onchange="updateGraph(${index}, 'expr2', this.value)" placeholder="1 - cos(t)">
-                        </div>`;
+                        <div class="param-input-group">
+                            <span class="param-label">y=</span>
+                            <input value="${g.expr2}" oninput="updateGraph(${index}, 'expr2', this.value)" placeholder="例: \\cos(t)">
+                        </div>
+                    </div>`;
+                } else {
+                    const ph = g.isLatex ? "例: \\frac{1}{x}" : "例: 1/x";
+                    inputArea = `<input value="${g.expr1}" oninput="updateGraph(${index}, 'expr1', this.value)" placeholder="${ph}">`;
                 }
 
                 div.innerHTML = `
                     <div class="card-header">
                         <select onchange="changeType(${index}, this.value)">
                             <option value="explicit" ${g.type === 'explicit' ? 'selected' : ''}>y = f(x)</option>
-                            <option value="implicit" ${g.type === 'implicit' ? 'selected' : ''}>Implicit (xy)</option>
-                            <option value="polar_implicit" ${g.type === 'polar_implicit' ? 'selected' : ''}>Implicit (rθ)</option>
+                            <option value="implicit" ${g.type === 'implicit' ? 'selected' : ''}>Implicit f(x,y)=0</option>
+                            <option value="polar_implicit" ${g.type === 'polar_implicit' ? 'selected' : ''}>Polar f(r,θ)=0</option>
                             <option value="parametric" ${g.type === 'parametric' ? 'selected' : ''}>Parametric (t)</option>
                         </select>
-                        <button class="btn-remove" onclick="removeGraph(${index})">×</button>
+                        <div style="display:flex; align-items:center;">
+                            <label class="latex-toggle">
+                                <input type="checkbox" ${g.isLatex ? 'checked' : ''} onchange="toggleLatex(${index})"> LaTeX
+                            </label>
+                            <button class="btn-remove" onclick="removeGraph(${index})">×</button>
+                        </div>
                     </div>
-                    ${inputsHtml}
+                    ${inputArea}
+                    <div class="error-msg">数式エラー</div>
+                    <div id="preview-${index}" class="latex-preview"></div>
                 `;
                 container.appendChild(div);
+                
+                // 初回プレビュー描画
+                updatePreview(index);
             });
             draw();
         }
 
+        function updatePreview(index) {
+            const g = graphs[index];
+            const el = document.getElementById(`preview-${index}`);
+            if (!el) return;
+
+            try {
+                let latexStr = '';
+                if (g.type === 'parametric') {
+                    latexStr = `\\begin{cases} x = ${g.expr1} \\\\ y = ${g.expr2} \\end{cases}`;
+                } else if (g.type === 'explicit') {
+                    latexStr = `y = ${g.expr1}`;
+                } else if (g.type === 'implicit') {
+                    latexStr = `${g.expr1} = 0`;
+                } else if (g.type === 'polar_implicit') {
+                    latexStr = `${g.expr1} = 0`;
+                }
+                
+                // KaTeXでレンダリング
+                katex.render(latexStr, el, { throwOnError: false });
+                
+                // エラー表示リセット
+                document.getElementById(`card-${index}`).classList.remove('has-error');
+            } catch (e) {
+                // LaTeX構文エラー時は何もしない
+            }
+        }
+
         function addGraph() {
-            graphs.push({ id: nextId++, type: 'explicit', expr1: 'x', expr2: '', color: colors[graphs.length % colors.length] });
+            graphs.push({ id: nextId++, type: 'explicit', expr1: '', expr2: '', isLatex: true, color: colors[graphs.length % colors.length] });
             renderUI();
         }
         function removeGraph(idx) { graphs.splice(idx, 1); renderUI(); }
-        function updateGraph(idx, key, val) { graphs[idx][key] = val; draw(); }
+        
+        function updateGraph(idx, key, val) { 
+            graphs[idx][key] = val; 
+            updatePreview(idx); // 入力時にプレビュー更新
+            draw(); 
+        }
+        
         function changeType(idx, type) { graphs[idx].type = type; renderUI(); }
+        function toggleLatex(idx) { graphs[idx].isLatex = !graphs[idx].isLatex; renderUI(); }
 
         // --- Drawing Logic ---
         function draw() {
@@ -155,41 +250,51 @@
 
             drawGrid(cx, cy);
 
-            graphs.forEach(g => {
+            graphs.forEach((g, idx) => {
+                if (!g.expr1 && !g.expr2) return;
+
                 ctx.strokeStyle = g.color;
                 ctx.lineWidth = 2;
                 ctx.beginPath();
+                
+                // 数式の準備 (LaTeXなら変換、そうでなければそのまま)
+                let code1, code2;
                 try {
-                    if (g.type === 'explicit') drawExplicit(g, cx, cy);
-                    else if (g.type === 'parametric') drawParametric(g, cx, cy);
-                    else drawImplicit(g, cx, cy); // Handles both Cartesian and Polar Implicit
-                } catch (e) { console.warn(e); }
+                    const str1 = g.isLatex ? convertLatexToMath(g.expr1) : g.expr1;
+                    code1 = str1 ? math.compile(str1) : null;
+                    
+                    if (g.type === 'parametric') {
+                        const str2 = g.isLatex ? convertLatexToMath(g.expr2) : g.expr2;
+                        code2 = str2 ? math.compile(str2) : null;
+                    }
+                } catch (e) {
+                    document.getElementById(`card-${idx}`)?.classList.add('has-error');
+                    return; // コンパイルエラーならスキップ
+                }
+
+                try {
+                    if (g.type === 'explicit' && code1) drawExplicit(code1, cx, cy);
+                    else if (g.type === 'parametric' && code1 && code2) drawParametric(code1, code2, cx, cy);
+                    else if (code1) drawImplicit(code1, g.type, cx, cy);
+                } catch (e) { }
+                
                 ctx.stroke();
             });
         }
 
-        function drawExplicit(g, cx, cy) {
-            const compiled = math.compile(g.expr1);
+        function drawExplicit(compiled, cx, cy) {
             let first = true;
-            // 描画範囲の最適化
-            const startX = -cx / scale; 
-            const endX = (canvas.width - cx) / scale;
-            
             for (let px = 0; px <= canvas.width; px += 2) {
                 const x = (px - cx) / scale;
                 const y = compiled.evaluate({x});
                 const py = cy - y * scale;
-                
                 if (Math.abs(py) > canvas.height * 2 || isNaN(py)) { first = true; continue; }
                 if (first) { ctx.moveTo(px, py); first = false; } else { ctx.lineTo(px, py); }
             }
         }
 
-        function drawParametric(g, cx, cy) {
-            const codeX = math.compile(g.expr1);
-            const codeY = math.compile(g.expr2);
+        function drawParametric(codeX, codeY, cx, cy) {
             let first = true;
-            // 媒介変数は t をループ (範囲は適当に -20pi ~ 20pi)
             for (let t = -60; t <= 60; t += 0.05) {
                 const x = codeX.evaluate({t});
                 const y = codeY.evaluate({t});
@@ -199,42 +304,27 @@
             }
         }
 
-        // Marching Squares Algorithm (Simplified) for Implicit Plots
-        function drawImplicit(g, cx, cy) {
-            const compiled = math.compile(g.expr1);
-            const step = 6; // グリッド解像度 (小さいほど綺麗だが重い)
-            
-            // 画面範囲のみ計算
+        function drawImplicit(compiled, type, cx, cy) {
+            const step = 6;
             for (let px = 0; px < canvas.width; px += step) {
                 for (let py = 0; py < canvas.height; py += step) {
-                    // グリッド4点の値を計算
-                    const v = [];
                     const corners = [[0,0], [step,0], [step,step], [0,step]];
-                    
+                    const v = [];
                     corners.forEach(([dx, dy]) => {
-                        const screenX = px + dx;
-                        const screenY = py + dy;
-                        const mathX = (screenX - cx) / scale;
-                        const mathY = (cy - screenY) / scale;
-                        
+                        const mx = (px + dx - cx) / scale;
+                        const my = (cy - (py + dy)) / scale;
                         let val;
-                        if (g.type === 'polar_implicit') {
-                            const r = Math.sqrt(mathX*mathX + mathY*mathY);
-                            const theta = Math.atan2(mathY, mathX);
-                            val = compiled.evaluate({ r, theta, t: theta }); // tもthetaとして使えるように
+                        if (type === 'polar_implicit') {
+                            const r = Math.sqrt(mx*mx + my*my);
+                            const th = Math.atan2(my, mx);
+                            val = compiled.evaluate({ r, theta: th, t: th });
                         } else {
-                            val = compiled.evaluate({ x: mathX, y: mathY });
+                            val = compiled.evaluate({ x: mx, y: my });
                         }
                         v.push(val);
                     });
-
-                    // 符号の変化を検知 (簡易実装: 左上と右下、左下と右上の積が負なら線が通る)
-                    // Marching Squaresの完全実装は長大になるため、中間点補間で近似
-                    if ((v[0] > 0) !== (v[1] > 0) || (v[1] > 0) !== (v[2] > 0) || (v[2] > 0) !== (v[3] > 0)) {
-                         // 中心点をプロット (簡易的なドット描画ではなく、短い線を描く)
-                         // ※本来は等値線を引くが、ここでは軽量化のため「セル内に線が含まれる」場合のみ描画
-                         ctx.moveTo(px, py);
-                         ctx.rect(px, py, 2, 2); 
+                    if ((v[0]>0)!==(v[1]>0) || (v[1]>0)!==(v[2]>0) || (v[2]>0)!==(v[3]>0)) {
+                        ctx.moveTo(px, py); ctx.rect(px, py, 2, 2); 
                     }
                 }
             }
@@ -242,12 +332,10 @@
 
         function drawGrid(cx, cy) {
             ctx.strokeStyle = '#eee'; ctx.lineWidth = 1;
-            // 簡易グリッド
-            const gridSize = scale > 20 ? scale : scale * 5;
-            for(let x = cx % gridSize; x < canvas.width; x+=gridSize) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();}
-            for(let y = cy % gridSize; y < canvas.height; y+=gridSize) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();}
-            
-            ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1.5;
+            const gs = scale > 20 ? scale : scale * 5;
+            for(let x = cx % gs; x < canvas.width; x+=gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();}
+            for(let y = cy % gs; y < canvas.height; y+=gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();}
+            ctx.strokeStyle = '#bdc3c7'; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, canvas.height); ctx.stroke();
         }
